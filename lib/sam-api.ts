@@ -391,28 +391,42 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
   }
 
+  // Try direct noticeId lookup first
   try {
     const response = await fetch(
-      `https://api.sam.gov/opportunities/v2/search?api_key=${apiKey}&noticeid=${noticeId}`,
+      `https://api.sam.gov/opportunities/v2/search?api_key=${apiKey}&noticeid=${encodeURIComponent(noticeId)}&limit=1`,
       { next: { revalidate: 3600 } }
     )
 
-    if (!response.ok) {
-      return MOCK_CONTRACTS.find(c => c.id === noticeId) || null
+    if (response.ok) {
+      const data = await response.json()
+      const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
+      if (opportunities.length > 0) {
+        return transformSamOpportunity(opportunities[0])
+      }
     }
-
-    const data = await response.json()
-    const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-
-    if (opportunities.length === 0) {
-      return MOCK_CONTRACTS.find(c => c.id === noticeId) || null
-    }
-
-    return transformSamOpportunity(opportunities[0])
-  } catch (error) {
-    console.error('Failed to fetch contract by ID:', error)
-    return MOCK_CONTRACTS.find(c => c.id === noticeId) || null
+  } catch {
+    // fall through to list search
   }
+
+  // Fallback: search recent active contracts and find by noticeId
+  try {
+    const response = await fetch(
+      `https://api.sam.gov/opportunities/v2/search?api_key=${apiKey}&limit=100&active=true`,
+      { next: { revalidate: 3600 } }
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
+      const match = opportunities.find(o => o.noticeId === noticeId)
+      if (match) return transformSamOpportunity(match)
+    }
+  } catch {
+    // fall through
+  }
+
+  return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
 }
 
 export { MOCK_CONTRACTS }
