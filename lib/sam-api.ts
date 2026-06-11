@@ -345,17 +345,17 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
   }
 }
 
-async function fetchContractsFromSam(naicsCode?: string): Promise<Contract[]> {
+// Fetch ALL contracts once, no per-user filters — cache globally for 1 hour
+async function fetchAllContractsFromSam(): Promise<Contract[]> {
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) return MOCK_CONTRACTS
 
   const params = new URLSearchParams({
     api_key: apiKey,
-    limit: '25',
+    limit: '100',
     offset: '0',
     active: 'true',
   })
-  if (naicsCode) params.set('naicsCode', naicsCode)
 
   const response = await fetch(
     `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
@@ -374,9 +374,10 @@ async function fetchContractsFromSam(naicsCode?: string): Promise<Contract[]> {
   return opportunities.map(transformSamOpportunity)
 }
 
+// Single shared cache for all users — one SAM.gov call per hour max
 const getCachedContracts = unstable_cache(
-  fetchContractsFromSam,
-  ['sam-gov-contracts'],
+  fetchAllContractsFromSam,
+  ['sam-gov-contracts-global'],
   { revalidate: 3600 }
 )
 
@@ -385,8 +386,7 @@ export async function fetchContracts(profile?: CompanyProfile): Promise<Contract
   if (!apiKey) return MOCK_CONTRACTS
 
   try {
-    const naicsCode = profile?.naicsCodes?.[0]
-    return await getCachedContracts(naicsCode)
+    return await getCachedContracts()
   } catch (error) {
     console.error('Failed to fetch from SAM.gov:', error)
     return MOCK_CONTRACTS
