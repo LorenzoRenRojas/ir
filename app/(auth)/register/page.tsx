@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -50,6 +51,16 @@ export default function RegisterPage() {
         return
       }
 
+      const result = await signIn('credentials', {
+        email: form.email,
+        password: form.password,
+        redirect: false,
+      })
+      if (result?.error) {
+        setError('Account created but login failed. Please sign in manually.')
+        router.push('/login')
+        return
+      }
       router.push('/onboarding')
     } catch {
       setError('Something went wrong. Please try again.')
