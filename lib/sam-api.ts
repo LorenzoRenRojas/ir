@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import type { CompanyProfile } from './matching'
 
 export interface Contract {
@@ -344,40 +345,48 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
   }
 }
 
-export async function fetchContracts(profile?: CompanyProfile): Promise<Contract[]> {
+async function fetchContractsFromSam(naicsCode?: string): Promise<Contract[]> {
   const apiKey = process.env.SAM_GOV_API_KEY
+  if (!apiKey) return MOCK_CONTRACTS
 
-  if (!apiKey) {
-    // Return mock data for demo
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    limit: '25',
+    offset: '0',
+    active: 'true',
+  })
+  if (naicsCode) params.set('naicsCode', naicsCode)
+
+  const response = await fetch(
+    `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
+    { cache: 'no-store' }
+  )
+
+  if (!response.ok) {
+    console.error('SAM.gov API error:', response.status, response.statusText)
     return MOCK_CONTRACTS
   }
 
+  const data = await response.json()
+  const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
+  if (opportunities.length === 0) return MOCK_CONTRACTS
+
+  return opportunities.map(transformSamOpportunity)
+}
+
+const getCachedContracts = unstable_cache(
+  fetchContractsFromSam,
+  ['sam-gov-contracts'],
+  { revalidate: 3600 }
+)
+
+export async function fetchContracts(profile?: CompanyProfile): Promise<Contract[]> {
+  const apiKey = process.env.SAM_GOV_API_KEY
+  if (!apiKey) return MOCK_CONTRACTS
+
   try {
-    const params = new URLSearchParams({
-      api_key: apiKey,
-      limit: '25',
-      offset: '0',
-      active: 'true',
-    })
-
-    if (profile?.naicsCodes && profile.naicsCodes.length > 0) {
-      params.set('naicsCode', profile.naicsCodes[0])
-    }
-
-    const response = await fetch(
-      `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
-      { next: { revalidate: 3600 } }
-    )
-
-    if (!response.ok) {
-      console.error('SAM.gov API error:', response.status, response.statusText)
-      return MOCK_CONTRACTS
-    }
-
-    const data = await response.json()
-    const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-
-    return opportunities.map(transformSamOpportunity)
+    const naicsCode = profile?.naicsCodes?.[0]
+    return await getCachedContracts(naicsCode)
   } catch (error) {
     console.error('Failed to fetch from SAM.gov:', error)
     return MOCK_CONTRACTS
