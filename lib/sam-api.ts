@@ -345,10 +345,10 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
   }
 }
 
-// Fetch ALL contracts once, no per-user filters — cache globally for 1 hour
+// Throws on failure so unstable_cache never stores error/fallback responses
 async function fetchAllContractsFromSam(): Promise<Contract[]> {
   const apiKey = process.env.SAM_GOV_API_KEY
-  if (!apiKey) return MOCK_CONTRACTS
+  if (!apiKey) throw new Error('No API key')
 
   const params = new URLSearchParams({
     api_key: apiKey,
@@ -363,21 +363,20 @@ async function fetchAllContractsFromSam(): Promise<Contract[]> {
   )
 
   if (!response.ok) {
-    console.error('SAM.gov API error:', response.status, response.statusText)
-    return MOCK_CONTRACTS
+    throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`)
   }
 
   const data = await response.json()
   const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-  if (opportunities.length === 0) return MOCK_CONTRACTS
+  if (opportunities.length === 0) throw new Error('SAM.gov returned 0 results')
 
   return opportunities.map(transformSamOpportunity)
 }
 
-// Single shared cache for all users — one SAM.gov call per hour max
+// Cache key v2 — busts the old cached mock-data responses
 const getCachedContracts = unstable_cache(
   fetchAllContractsFromSam,
-  ['sam-gov-contracts-global'],
+  ['sam-gov-contracts-v2'],
   { revalidate: 3600 }
 )
 
@@ -388,7 +387,7 @@ export async function fetchContracts(profile?: CompanyProfile): Promise<Contract
   try {
     return await getCachedContracts()
   } catch (error) {
-    console.error('Failed to fetch from SAM.gov:', error)
+    console.error('SAM.gov fetch failed, using mock data:', error)
     return MOCK_CONTRACTS
   }
 }
