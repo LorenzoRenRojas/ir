@@ -350,11 +350,19 @@ async function fetchAllContractsFromSam(): Promise<Contract[]> {
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) throw new Error('No API key')
 
+  const toDate = new Date()
+  const fromDate = new Date()
+  fromDate.setDate(fromDate.getDate() - 30)
+  const fmt = (d: Date) =>
+    `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+
   const params = new URLSearchParams({
     api_key: apiKey,
     limit: '100',
     offset: '0',
     active: 'true',
+    postedFrom: fmt(fromDate),
+    postedTo: fmt(toDate),
   })
 
   const response = await fetch(
