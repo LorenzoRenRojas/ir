@@ -407,40 +407,39 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
   }
 
+  const toDate = new Date()
+  const fromDate = new Date()
+  fromDate.setDate(fromDate.getDate() - 180) // 6 month window to catch older saved contracts
+  const fmt = (d: Date) =>
+    `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+
+  const baseParams = new URLSearchParams({
+    api_key: apiKey,
+    postedFrom: fmt(fromDate),
+    postedTo: fmt(toDate),
+    limit: '1',
+  })
+
   // Try direct noticeId lookup first
   try {
+    baseParams.set('noticeid', noticeId)
     const response = await fetch(
-      `https://api.sam.gov/opportunities/v2/search?api_key=${apiKey}&noticeid=${encodeURIComponent(noticeId)}&limit=1`,
+      `https://api.sam.gov/opportunities/v2/search?${baseParams.toString()}`,
       { next: { revalidate: 3600 } }
     )
-
     if (response.ok) {
       const data = await response.json()
       const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-      if (opportunities.length > 0) {
-        return transformSamOpportunity(opportunities[0])
-      }
+      if (opportunities.length > 0) return transformSamOpportunity(opportunities[0])
     }
-  } catch {
-    // fall through to list search
-  }
+  } catch { /* fall through */ }
 
-  // Fallback: search recent active contracts and find by noticeId
+  // Fallback: search cached contract list
   try {
-    const response = await fetch(
-      `https://api.sam.gov/opportunities/v2/search?api_key=${apiKey}&limit=100&active=true`,
-      { next: { revalidate: 3600 } }
-    )
-
-    if (response.ok) {
-      const data = await response.json()
-      const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-      const match = opportunities.find(o => o.noticeId === noticeId)
-      if (match) return transformSamOpportunity(match)
-    }
-  } catch {
-    // fall through
-  }
+    const cached = await getCachedContracts()
+    const match = cached.find(c => c.id === noticeId || c.noticeId === noticeId)
+    if (match) return match
+  } catch { /* fall through */ }
 
   return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
 }
