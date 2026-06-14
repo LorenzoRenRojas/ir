@@ -381,11 +381,11 @@ async function fetchAllContractsFromSam(): Promise<Contract[]> {
   return opportunities.map(transformSamOpportunity)
 }
 
-// Cache key v2 — busts the old cached mock-data responses
+// Cache key v3 — 24hr revalidation to stay under SAM.gov free tier daily limit
 const getCachedContracts = unstable_cache(
   fetchAllContractsFromSam,
-  ['sam-gov-contracts-v2'],
-  { revalidate: 3600 }
+  ['sam-gov-contracts-v3'],
+  { revalidate: 86400 }
 )
 
 export async function fetchContracts(profile?: CompanyProfile): Promise<Contract[]> {
