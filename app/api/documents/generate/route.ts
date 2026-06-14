@@ -18,6 +18,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Document type is required' }, { status: 400 })
     }
 
+    // Subscription tier enforcement
+    const subscriptionTier = session.user.subscriptionTier ?? 'free'
+
+    if (subscriptionTier === 'free') {
+      return NextResponse.json(
+        { error: 'Upgrade your plan to generate documents' },
+        { status: 403 }
+      )
+    }
+
+    if (subscriptionTier === 'starter') {
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const monthlyCount = await prisma.generatedDocument.count({
+        where: {
+          userId: session.user.id,
+          createdAt: { gte: startOfMonth },
+        },
+      })
+
+      if (monthlyCount >= 3) {
+        return NextResponse.json(
+          { error: "You've reached your monthly document limit. Upgrade to Pro for unlimited documents." },
+          { status: 403 }
+        )
+      }
+    }
+
     // Load company profile
     const dbProfile = await prisma.companyProfile.findUnique({
       where: { userId: session.user.id },

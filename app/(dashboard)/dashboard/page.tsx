@@ -111,12 +111,20 @@ export default function DashboardPage() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
 
   // Filters
+  const [searchInput, setSearchInput] = useState('')
   const [q, setQ] = useState('')
   const [agency, setAgency] = useState('')
   const [type, setType] = useState('')
   const [setAside, setSetAside] = useState('')
   const [minValue, setMinValue] = useState('')
   const [maxValue, setMaxValue] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQ(searchInput)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const fetchContracts = useCallback(async () => {
     setLoading(true)
@@ -205,8 +213,8 @@ export default function DashboardPage() {
           <input
             type="text"
             placeholder="Search contracts…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="col-span-2 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
           />
           <input

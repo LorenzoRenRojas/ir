@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
               stripeCustomerId: session.customer as string,
             },
           })
+        } else {
+          console.warn(
+            'checkout.session.completed: missing userId or tier in metadata',
+            { userId, tier, sessionId: session.id }
+          )
         }
         break
       }

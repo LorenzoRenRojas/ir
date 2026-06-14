@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [upgradeError, setUpgradeError] = useState('')
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -87,6 +88,7 @@ export default function SettingsPage() {
   }
 
   async function handleUpgrade(tierId: string) {
+    setUpgradeError('')
     try {
       const res = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
@@ -97,10 +99,10 @@ export default function SettingsPage() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert(data.error ?? 'Failed to start checkout')
+        setUpgradeError(data.error ?? 'Failed to start checkout')
       }
     } catch {
-      alert('Failed to start checkout session')
+      setUpgradeError('Failed to start checkout session')
     }
   }
 
@@ -275,6 +277,10 @@ export default function SettingsPage() {
             )
           })}
         </div>
+
+        {upgradeError && (
+          <div className="mt-4 p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">{upgradeError}</div>
+        )}
       </div>
 
       {/* Notifications section */}

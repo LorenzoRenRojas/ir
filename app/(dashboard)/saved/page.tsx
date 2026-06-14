@@ -53,10 +53,12 @@ export default function SavedContractsPage() {
   async function handleRemove(contractId: string) {
     setRemoving(contractId)
     try {
-      await fetch(`/api/contracts/saved?contractId=${encodeURIComponent(contractId)}`, {
+      const res = await fetch(`/api/contracts/saved?contractId=${encodeURIComponent(contractId)}`, {
         method: 'DELETE',
       })
-      setContracts((prev) => prev.filter((c) => c.contractId !== contractId))
+      if (res.ok) {
+        setContracts((prev) => prev.filter((c) => c.contractId !== contractId))
+      }
     } catch (err) {
       console.error(err)
     } finally {
