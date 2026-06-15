@@ -27,9 +27,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      style={{ height: '100%' }}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
+      <body style={{ minHeight: '100%', background: '#0A0A0B', color: '#E2E8F0', margin: 0 }}>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
