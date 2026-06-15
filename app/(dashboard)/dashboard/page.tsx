@@ -161,7 +161,7 @@ export default function DashboardPage() {
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>CONTRACT INTELLIGENCE</div>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>IR — CONTRACT INTELLIGENCE</div>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Matched Opportunities</h1>
       </div>
 

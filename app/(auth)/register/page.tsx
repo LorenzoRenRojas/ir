@@ -65,7 +65,7 @@ export default function RegisterPage() {
     <div style={{ width: '100%', maxWidth: 400 }}>
       <div style={{ border: '1px solid rgba(255,255,255,0.07)', background: '#0F0F10', padding: '40px 36px' }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>CREATE ACCOUNT</div>
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>IR — CREATE ACCOUNT</div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)', margin: 0 }}>Get access</h1>
         </div>
 
