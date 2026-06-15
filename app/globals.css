@@ -2,7 +2,6 @@
 
 :root {
   --crimson: #C41230;
-  --crimson-light: rgba(196, 18, 48, 0.06);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -12,7 +11,7 @@ body {
   color: #0A0A0A;
 }
 
-/* ── Metatron / Sacred geometry animations ── */
+/* ── Geometry animations ── */
 @keyframes spinCW {
   to { transform: rotate(360deg); }
 }
@@ -27,15 +26,11 @@ body {
   0%, 100% { opacity: 0.35; }
   50%       { opacity: 0.75; }
 }
-@keyframes corePulse {
-  0%, 100% { r: 4; opacity: 0.7; }
-  50%       { r: 7; opacity: 1; }
-}
 
-/* ── Page entrance animations ── */
+/* ── Page entrance ── */
 @keyframes slideInLeft {
   from { transform: translateX(-64px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(0);     opacity: 1; }
 }
 @keyframes slideInRight {
   from { transform: translateX(64px); opacity: 0; }
@@ -49,41 +44,137 @@ body {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
-/* ── Red swipe divider ── */
 @keyframes swipeRight {
   from { transform: scaleX(0); transform-origin: left; }
   to   { transform: scaleX(1); transform-origin: left; }
 }
 
-/* ── Primary CTA button ── */
+/* ──────────────────────────────────────────────────────────────
+   Buttons — Palantir-style left-to-right swipe on hover
+   Uses a gradient that shifts position on hover.
+   No JS needed, no pseudo-element z-index juggling.
+────────────────────────────────────────────────────────────── */
+
+/* Crimson fill → darker crimson on hover */
 .btn-primary {
   display: inline-block;
   padding: 16px 36px;
-  background: #C41230;
+  background: linear-gradient(to right, #9e0e24 50%, #C41230 50%);
+  background-size: 200% 100%;
+  background-position: right center;
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-decoration: none;
   font-family: var(--font-geist-mono, monospace);
-  position: relative;
-  overflow: hidden;
-  transition: background 0.2s ease;
+  transition: background-position 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+  border: none;
 }
-.btn-primary:hover { background: #a10e26; }
+.btn-primary:hover {
+  background-position: left center;
+}
 
+/* Transparent → crimson fill, text turns white */
 .btn-ghost {
   display: inline-block;
   padding: 16px 28px;
-  background: transparent;
-  color: rgba(10,10,10,0.55);
+  background: linear-gradient(to right, #C41230 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: right center;
+  color: rgba(10,10,10,0.52);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-decoration: none;
   font-family: var(--font-geist-mono, monospace);
-  border: 1px solid rgba(10,10,10,0.12);
-  transition: border-color 0.2s, color 0.2s;
+  border: 1px solid rgba(10,10,10,0.14);
+  transition: background-position 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.28s ease,
+              border-color 0.28s ease;
+  cursor: pointer;
 }
-.btn-ghost:hover { border-color: #C41230; color: #C41230; }
+.btn-ghost:hover {
+  background-position: left center;
+  color: #ffffff;
+  border-color: #C41230;
+}
+
+/* White fill → off-white on hover (for crimson-bg CTA section) */
+.btn-white {
+  display: inline-block;
+  padding: 18px 48px;
+  background: linear-gradient(to right, rgba(255,255,255,0.88) 50%, #ffffff 50%);
+  background-size: 200% 100%;
+  background-position: right center;
+  color: #C41230;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  font-family: var(--font-geist-mono, monospace);
+  transition: background-position 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+}
+.btn-white:hover {
+  background-position: left center;
+}
+
+/* Subtle underline swipe for nav links */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #C41230;
+  transition: width 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.nav-link:hover::after {
+  width: 100%;
+}
+.nav-link:hover {
+  color: #0A0A0A !important;
+}
+
+/* Dark theme swipe button (dashboard) */
+.btn-dark-primary {
+  display: inline-block;
+  background: linear-gradient(to right, #a08058 50%, #C8A96E 50%);
+  background-size: 200% 100%;
+  background-position: right center;
+  color: #0A0A0B;
+  font-family: var(--font-geist-mono, monospace);
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background-position 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.btn-dark-primary:hover {
+  background-position: left center;
+}
+
+.btn-dark-ghost {
+  display: inline-block;
+  background: linear-gradient(to right, rgba(255,255,255,0.08) 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: right center;
+  color: rgba(255,255,255,0.4);
+  font-family: var(--font-geist-mono, monospace);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: background-position 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.25s ease;
+}
+.btn-dark-ghost:hover {
+  background-position: left center;
+  color: rgba(255,255,255,0.8);
+}
