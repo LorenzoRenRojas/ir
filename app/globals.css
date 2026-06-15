@@ -1,23 +1,89 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020817;
-  --foreground: #f8fafc;
-  --gold: #C8A96E;
-  --navy: #1E3A5F;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --crimson: #C41230;
+  --crimson-light: rgba(196, 18, 48, 0.06);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #ffffff;
+  color: #0A0A0A;
 }
 
-.gold { color: var(--gold); }
-.bg-gold { background-color: var(--gold); }
+/* ── Metatron / Sacred geometry animations ── */
+@keyframes spinCW {
+  to { transform: rotate(360deg); }
+}
+@keyframes spinCCW {
+  to { transform: rotate(-360deg); }
+}
+@keyframes irisReveal {
+  from { clip-path: circle(0% at 50% 50%); opacity: 0; }
+  to   { clip-path: circle(80% at 50% 50%); opacity: 1; }
+}
+@keyframes metatronPulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.75; }
+}
+@keyframes corePulse {
+  0%, 100% { r: 4; opacity: 0.7; }
+  50%       { r: 7; opacity: 1; }
+}
+
+/* ── Page entrance animations ── */
+@keyframes slideInLeft {
+  from { transform: translateX(-64px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(64px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { transform: translateY(48px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Red swipe divider ── */
+@keyframes swipeRight {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+
+/* ── Primary CTA button ── */
+.btn-primary {
+  display: inline-block;
+  padding: 16px 36px;
+  background: #C41230;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  font-family: var(--font-geist-mono, monospace);
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+.btn-primary:hover { background: #a10e26; }
+
+.btn-ghost {
+  display: inline-block;
+  padding: 16px 28px;
+  background: transparent;
+  color: rgba(10,10,10,0.55);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  font-family: var(--font-geist-mono, monospace);
+  border: 1px solid rgba(10,10,10,0.12);
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-ghost:hover { border-color: #C41230; color: #C41230; }
