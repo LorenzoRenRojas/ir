@@ -1,168 +1,269 @@
 import Link from 'next/link'
 
-const PRICING_PLANS = [
-  {
-    name: 'STARTER',
-    price: 79,
-    features: ['25 contract matches/month', '3 document templates', 'Basic match scoring', 'Email support', 'SAM.gov integration'],
-    cta: 'Deploy',
-    popular: false,
-    tier: 'starter',
-  },
-  {
-    name: 'PRO',
-    price: 199,
-    features: ['Unlimited contract matches', 'Full document suite', 'AI-drafted responses', 'Advanced match scoring', 'Priority support', 'Direct SAM.gov integration'],
-    cta: 'Deploy',
-    popular: true,
-    tier: 'pro',
-  },
-  {
-    name: 'ENTERPRISE',
-    price: 499,
-    features: ['Everything in Pro', '5 team seats', 'Teaming roundtable', 'White-label documents', 'Dedicated account manager', 'SLA guarantee'],
-    cta: 'Contact',
-    popular: false,
-    tier: 'enterprise',
-  },
-]
+// ─── Metatron's Cube geometry (pre-computed) ───────────────────────────────
+const C = 250
+const R = 80
 
+function polar(angleDeg: number, dist: number): [number, number] {
+  const rad = (angleDeg - 90) * Math.PI / 180
+  return [
+    parseFloat((C + dist * Math.cos(rad)).toFixed(1)),
+    parseFloat((C + dist * Math.sin(rad)).toFixed(1)),
+  ]
+}
+
+const INNER_PTS: [number, number][] = [0, 60, 120, 180, 240, 300].map(a => polar(a, R))
+const OUTER_PTS: [number, number][] = [0, 60, 120, 180, 240, 300].map(a => polar(a, R * 2))
+const ALL_PTS: [number, number][] = [[C, C], ...INNER_PTS, ...OUTER_PTS]
+
+// All 78 Metatron connecting lines
+const METATRON_LINES = ALL_PTS.flatMap((p, i) =>
+  ALL_PTS.slice(i + 1).map(q => ({ x1: p[0], y1: p[1], x2: q[0], y2: q[1] }))
+)
+
+// ─── Content ───────────────────────────────────────────────────────────────
 const STATS = [
-  { value: '24,629', label: 'ACTIVE OPPORTUNITIES', sublabel: 'updated daily from SAM.gov' },
-  { value: '$847B', label: 'CONTRACT VALUE', sublabel: 'tracked annually' },
-  { value: '100ms', label: 'MATCH LATENCY', sublabel: 'average scoring time' },
-  { value: '94%', label: 'MATCH ACCURACY', sublabel: 'NAICS + set-aside scoring' },
+  { value: '24,629', label: 'ACTIVE OPPORTUNITIES', sub: 'updated daily from SAM.gov' },
+  { value: '$847B',  label: 'CONTRACT VALUE',        sub: 'tracked annually' },
+  { value: '100ms',  label: 'MATCH LATENCY',          sub: 'average scoring time' },
+  { value: '94%',    label: 'MATCH ACCURACY',         sub: 'NAICS + set-aside scoring' },
 ]
 
-const HOW_IT_WORKS = [
-  { step: '01', title: 'PROFILE INGESTION', desc: 'Input your NAICS codes, certifications, clearance levels, and past performance. Our system maps your capability matrix.' },
-  { step: '02', title: 'SIGNAL PROCESSING', desc: 'Contracts are scored against your profile in real time. NAICS depth, set-aside eligibility, contract size, and geography weighted algorithmically.' },
-  { step: '03', title: 'MATCH DELIVERY', desc: 'Ranked opportunities surface in your dashboard. Win probability, incumbent detection, and deadline alerts keep you ahead.' },
-  { step: '04', title: 'DOCUMENT GENERATION', desc: 'Capability statements, letters of intent, and teaming agreements generated from your profile. Ready to submit.' },
+const HOW = [
+  { n: '01', title: 'PROFILE INGESTION',   body: 'Input your NAICS codes, certifications, clearance levels, and past performance. We map your full capability matrix against every open solicitation in the federal database.' },
+  { n: '02', title: 'SIGNAL PROCESSING',   body: 'Every contract scored against your profile in real time. NAICS depth, set-aside eligibility, contract size, and geography — weighted algorithmically to surface what matters.' },
+  { n: '03', title: 'MATCH DELIVERY',      body: 'Ranked opportunities surface in your dashboard. Win probability scores, incumbent detection, and deadline alerts keep you a step ahead of the competition.' },
+  { n: '04', title: 'DOCUMENT GENERATION', body: 'Capability statements, letters of intent, and teaming agreements generated from your profile data. Submit-ready in minutes, not days.' },
 ]
 
+const PLANS = [
+  { name: 'STARTER',    price: 79,  tier: 'starter',    popular: false, features: ['25 contract matches/month', '3 document templates', 'Basic match scoring', 'Email support', 'SAM.gov integration'] },
+  { name: 'PRO',        price: 199, tier: 'pro',        popular: true,  features: ['Unlimited contract matches', 'Full document suite', 'AI-drafted responses', 'Advanced match scoring', 'Priority support'] },
+  { name: 'ENTERPRISE', price: 499, tier: 'enterprise', popular: false, features: ['Everything in Pro', '5 team seats', 'Teaming roundtable', 'White-label documents', 'Dedicated account manager'] },
+]
+
+// ─── Page ──────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  return (
-    <div style={{ background: '#0A0A0B', minHeight: '100vh', color: '#E2E8F0', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+  const mono    = 'var(--font-geist-mono, monospace)'
+  const sans    = 'var(--font-geist-sans, sans-serif)'
+  const crimson = '#C41230'
 
-      {/* Navbar */}
-      <nav style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10,10,11,0.92)', backdropFilter: 'blur(8px)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+  return (
+    <div style={{ background: '#fff', minHeight: '100vh', color: '#0A0A0A', fontFamily: sans }}>
+
+      {/* ── NAVBAR ── */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <span style={{ color: '#C8A96E', fontSize: 22, fontWeight: 700 }}>ᛁ</span>
-            <span style={{ color: '#fff', fontSize: 15, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 11, letterSpacing: '0.08em', marginLeft: 4 }}>GOVCON INTELLIGENCE</span>
+            <span style={{ color: crimson, fontSize: 22, fontWeight: 700 }}>ᛁ</span>
+            <span style={{ color: '#0A0A0A', fontSize: 15, fontWeight: 800, letterSpacing: '0.1em' }}>IR</span>
+            <span style={{ color: 'rgba(0,0,0,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>GOVCON INTELLIGENCE</span>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-            <Link href="#how-it-works" style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, letterSpacing: '0.1em', textDecoration: 'none' }}>HOW IT WORKS</Link>
-            <Link href="#pricing" style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, letterSpacing: '0.1em', textDecoration: 'none' }}>PRICING</Link>
-            <Link href="/login" style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, letterSpacing: '0.1em', textDecoration: 'none' }}>SIGN IN</Link>
-            <Link href="/register" style={{ background: '#C8A96E', color: '#0A0A0B', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', padding: '8px 16px', textDecoration: 'none' }}>
-              GET ACCESS →
-            </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
+            <Link href="#how"     style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW IT WORKS</Link>
+            <Link href="#pricing" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
+            <Link href="/login"   style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>SIGN IN</Link>
+            <Link href="/register" className="btn-primary" style={{ padding: '9px 20px', fontSize: 10 }}>GET ACCESS →</Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 80px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
-          <span style={{ color: '#4ADE80', fontSize: 11, letterSpacing: '0.12em' }}>LIVE — SAM.GOV FEED ACTIVE</span>
-        </div>
+      {/* ── HERO ── */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 32px 60px', display: 'grid', gridTemplateColumns: '1fr 460px', gap: 72, alignItems: 'center', minHeight: '88vh' }}>
 
-        <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: 28, maxWidth: 800, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-          Government contracts<br />
-          <span style={{ color: '#C8A96E' }}>matched to your company.</span><br />
-          Not the other way around.
-        </h1>
-
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 16, lineHeight: 1.7, maxWidth: 520, marginBottom: 40, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-          IR scores every federal opportunity against your capability profile — NAICS depth, set-aside eligibility, contract size, geography. Your match score in under 100ms.
-        </p>
-
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link href="/register" style={{ background: '#C8A96E', color: '#0A0A0B', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', padding: '14px 28px', textDecoration: 'none', display: 'inline-block' }}>
-            START MATCHING →
-          </Link>
-          <Link href="#how-it-works" style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, letterSpacing: '0.08em', textDecoration: 'none', padding: '14px 0' }}>
-            SEE HOW IT WORKS
-          </Link>
-        </div>
-      </section>
-
-      {/* Stats bar */}
-      <section style={{ borderTop: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {STATS.map((s, i) => (
-            <div key={i} style={{ padding: '32px 24px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-              <div style={{ color: '#C8A96E', fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{s.value}</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, letterSpacing: '0.12em', marginTop: 6 }}>{s.label}</div>
-              <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, marginTop: 2 }}>{s.sublabel}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px' }}>
-        <div style={{ marginBottom: 56 }}>
-          <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.16em', marginBottom: 16 }}>SYSTEM ARCHITECTURE</div>
-          <h2 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>How IR works</h2>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1, background: 'rgba(255,255,255,0.07)' }}>
-          {HOW_IT_WORKS.map((item) => (
-            <div key={item.step} style={{ background: '#0A0A0B', padding: '40px 36px' }}>
-              <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11, letterSpacing: '0.12em', marginBottom: 16 }}>{item.step}</div>
-              <h3 style={{ color: '#C8A96E', fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 14 }}>{item.title}</h3>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px' }}>
-          <div style={{ marginBottom: 56 }}>
-            <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.16em', marginBottom: 16 }}>ACCESS TIERS</div>
-            <h2 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Pricing</h2>
+        {/* Copy */}
+        <div style={{ animation: 'slideInLeft 0.9s cubic-bezier(0.25,0.46,0.45,0.94) both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
+            <span style={{ color: '#16a34a', fontSize: 10, letterSpacing: '0.14em', fontFamily: mono }}>LIVE — SAM.GOV FEED ACTIVE</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'rgba(255,255,255,0.07)' }}>
-            {PRICING_PLANS.map((plan) => (
-              <div key={plan.tier} style={{ background: plan.popular ? '#0F0F10' : '#0A0A0B', padding: '40px 32px', position: 'relative' }}>
-                {plan.popular && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#C8A96E' }} />
-                )}
-                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, letterSpacing: '0.16em', marginBottom: 12 }}>{plan.name}</div>
-                <div style={{ marginBottom: 32 }}>
-                  <span style={{ fontSize: 40, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>${plan.price}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, marginLeft: 6 }}>/mo</span>
+
+          <h1 style={{ fontSize: 'clamp(40px, 5vw, 76px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0A0A0A' }}>
+            When you were young,
+          </h1>
+          <h1 style={{ fontSize: 'clamp(40px, 5vw, 76px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: '-0.03em', margin: '0 0 36px', color: crimson }}>
+            you dreamed of shaping the world.
+          </h1>
+
+          <p style={{ fontSize: 18, lineHeight: 1.8, color: 'rgba(0,0,0,0.55)', maxWidth: 500, margin: '0 0 16px' }}>
+            Not just your corner of it —{' '}
+            <span style={{ color: '#0A0A0A', fontWeight: 600 }}>the whole world.</span>{' '}
+            IR is the catalyst. We connect mission-driven companies to $847 billion in federal opportunities, giving you the resources to build something that echoes through millennia.
+          </p>
+
+          <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.38)', maxWidth: 460, margin: '0 0 48px', fontFamily: mono, letterSpacing: '0.02em' }}>
+            Every active federal solicitation. Scored against your company profile. Delivered in under 100ms.
+          </p>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link href="/register" className="btn-primary">START MATCHING →</Link>
+            <Link href="#how" className="btn-ghost">SEE HOW IT WORKS</Link>
+          </div>
+        </div>
+
+        {/* Metatron's Cube */}
+        <div style={{ animation: 'slideInRight 1s cubic-bezier(0.25,0.46,0.45,0.94) 0.2s both', position: 'relative' }}>
+          <div style={{ animation: 'irisReveal 1.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.5s both', opacity: 0 }}>
+            <svg viewBox="0 0 500 500" width="100%" height="100%" style={{ display: 'block' }}>
+              <defs>
+                <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={crimson} stopOpacity="0.07" />
+                  <stop offset="100%" stopColor={crimson} stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              {/* Ambient glow */}
+              <circle cx={C} cy={C} r={220} fill="url(#glow)" />
+
+              {/* Outer rotating decorative ring */}
+              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCW 70s linear infinite' }}>
+                <circle cx={C} cy={C} r={R * 3.4} fill="none" stroke={crimson} strokeWidth="0.4" strokeOpacity="0.12" strokeDasharray="3 9" />
+                <circle cx={C} cy={C} r={R * 2.9} fill="none" stroke={crimson} strokeWidth="0.25" strokeOpacity="0.07" />
+                {Array.from({ length: 12 }, (_, i) => {
+                  const a = (i * 30 - 90) * Math.PI / 180
+                  const r1 = R * 3.32, r2 = R * 3.52
+                  return <line key={i} x1={C + r1 * Math.cos(a)} y1={C + r1 * Math.sin(a)} x2={C + r2 * Math.cos(a)} y2={C + r2 * Math.sin(a)} stroke={crimson} strokeWidth="0.6" strokeOpacity="0.18" />
+                })}
+              </g>
+
+              {/* Outer circles — counter-rotating */}
+              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCCW 90s linear infinite' }}>
+                {OUTER_PTS.map(([cx, cy], i) => (
+                  <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={crimson} strokeWidth="0.5" strokeOpacity="0.16" />
+                ))}
+              </g>
+
+              {/* All 78 Metatron lines (fade in after 1s) */}
+              <g style={{ animation: 'fadeIn 2s ease 1s both', opacity: 0 }}>
+                {METATRON_LINES.map((l, i) => (
+                  <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={crimson} strokeWidth="0.25" strokeOpacity="0.1" />
+                ))}
+              </g>
+
+              {/* Inner circles — co-rotating slowly */}
+              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCW 110s linear infinite' }}>
+                {INNER_PTS.map(([cx, cy], i) => (
+                  <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={crimson} strokeWidth="0.7" strokeOpacity="0.32" />
+                ))}
+              </g>
+
+              {/* Hexagram star lines */}
+              {([
+                [INNER_PTS[0], INNER_PTS[3]],
+                [INNER_PTS[1], INNER_PTS[4]],
+                [INNER_PTS[2], INNER_PTS[5]],
+              ] as [[number,number],[number,number]][]).map(([a, b], i) => (
+                <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={crimson} strokeWidth="0.9" strokeOpacity="0.28" />
+              ))}
+
+              {/* Outer hexagon */}
+              <polygon points={OUTER_PTS.map(([x,y]) => `${x},${y}`).join(' ')} fill="none" stroke={crimson} strokeWidth="0.5" strokeOpacity="0.18" />
+
+              {/* Inner hexagon */}
+              <polygon points={INNER_PTS.map(([x,y]) => `${x},${y}`).join(' ')} fill="none" stroke={crimson} strokeWidth="0.8" strokeOpacity="0.28" />
+
+              {/* Center pulsing circle */}
+              <circle cx={C} cy={C} r={R} fill="none" stroke={crimson} strokeWidth="1.2" strokeOpacity="0.45"
+                style={{ animation: 'metatronPulse 4s ease-in-out infinite' }} />
+
+              {/* Center dot */}
+              <circle cx={C} cy={C} r={4} fill={crimson}
+                style={{ animation: 'metatronPulse 4s ease-in-out infinite' }} />
+            </svg>
+          </div>
+
+          <div style={{ position: 'absolute', bottom: 8, right: 0, fontFamily: mono, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.15)', animation: 'fadeIn 3s ease 2.5s both', opacity: 0 }}>
+            METATRON / SACRED GEOMETRY PATTERN
+          </div>
+        </div>
+      </section>
+
+      {/* ── SWIPE DIVIDER ── */}
+      <div style={{ overflow: 'hidden' }}>
+        <div style={{ height: 3, background: crimson, animation: 'swipeRight 1.2s cubic-bezier(0.25,0.46,0.45,0.94) 0.8s both', transformOrigin: 'left', transform: 'scaleX(0)' }} />
+      </div>
+
+      {/* ── PURPOSE ── */}
+      <section style={{ background: '#FAFAFA', padding: '100px 32px' }}>
+        <div style={{ maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 44 }}>WHY WE EXIST</div>
+          <blockquote style={{ fontSize: 'clamp(20px, 2.8vw, 34px)', fontWeight: 700, lineHeight: 1.5, letterSpacing: '-0.02em', margin: '0 0 40px', color: '#0A0A0A', fontStyle: 'normal' }}>
+            &ldquo;The organizations that will define civilization&rsquo;s next chapter are out there right now — underfunded, overlooked, fighting for a foothold. <span style={{ color: crimson }}>IR finds their government contracts before anyone else does.</span>&rdquo;
+          </blockquote>
+          <div style={{ width: 48, height: 3, background: crimson, margin: '0 auto 40px' }} />
+          <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.48)', maxWidth: 600, margin: '0 auto' }}>
+            Federal contracting is where serious capital meets serious purpose. For decades it has been gated behind relationships, insider knowledge, and armies of proposal writers. We built IR to change that — permanently.
+          </p>
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
+          {STATS.map((s, i) => (
+            <div key={i} style={{ padding: '44px 36px', borderRight: i < 3 ? '1px solid rgba(0,0,0,0.07)' : 'none' }}>
+              <div style={{ fontSize: 38, fontWeight: 800, color: crimson, letterSpacing: '-0.03em', marginBottom: 8 }}>{s.value}</div>
+              <div style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#0A0A0A', marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)' }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="how" style={{ padding: '100px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 64 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>SYSTEM ARCHITECTURE</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>How IR works</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+            {HOW.map((item) => (
+              <div key={item.n} style={{ background: '#fff', padding: '52px 48px' }}>
+                <div style={{ fontFamily: mono, fontSize: 11, color: 'rgba(0,0,0,0.16)', letterSpacing: '0.1em', marginBottom: 22 }}>{item.n}</div>
+                <h3 style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: crimson, margin: '0 0 18px' }}>{item.title}</h3>
+                <p style={{ fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.52)', margin: 0 }}>{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
+      <section id="pricing" style={{ borderTop: '1px solid rgba(0,0,0,0.07)', background: '#FAFAFA' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
+          <div style={{ marginBottom: 64 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>ACCESS TIERS</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>Pricing</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+            {PLANS.map((plan) => (
+              <div key={plan.tier} style={{ background: '#fff', padding: '48px 40px', position: 'relative' }}>
+                {plan.popular && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: crimson }} />}
+                <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>{plan.name}</div>
+                <div style={{ marginBottom: 36 }}>
+                  <span style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.04em' }}>${plan.price}</span>
+                  <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.32)', marginLeft: 6 }}>/mo</span>
                 </div>
-                <ul style={{ marginBottom: 36, listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 36px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {plan.features.map((f) => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, color: 'rgba(255,255,255,0.5)', fontSize: 13, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-                      <span style={{ color: '#C8A96E', flexShrink: 0, marginTop: 1 }}>—</span>
-                      {f}
+                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: 'rgba(0,0,0,0.58)' }}>
+                      <span style={{ color: crimson, flexShrink: 0, fontWeight: 700, marginTop: 1 }}>—</span>{f}
                     </li>
                   ))}
                 </ul>
                 <Link
                   href={plan.tier === 'enterprise' ? 'mailto:hello@ir-gov.app' : '/register'}
                   style={{
-                    display: 'block',
-                    textAlign: 'center',
-                    padding: '12px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.1em',
-                    textDecoration: 'none',
-                    background: plan.popular ? '#C8A96E' : 'transparent',
-                    color: plan.popular ? '#0A0A0B' : 'rgba(255,255,255,0.5)',
-                    border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                    display: 'block', textAlign: 'center', padding: '14px',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+                    textDecoration: 'none', fontFamily: mono,
+                    background: plan.popular ? crimson : 'transparent',
+                    color: plan.popular ? '#fff' : 'rgba(0,0,0,0.4)',
+                    border: plan.popular ? 'none' : '1px solid rgba(0,0,0,0.12)',
                   }}
                 >
-                  {plan.cta} →
+                  {plan.tier === 'enterprise' ? 'CONTACT →' : 'DEPLOY →'}
                 </Link>
               </div>
             ))}
@@ -170,38 +271,40 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '100px 24px', textAlign: 'center' }}>
-        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10, letterSpacing: '0.16em', marginBottom: 24 }}>READY TO DEPLOY</div>
-        <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-          24,629 contracts.<br />
-          <span style={{ color: '#C8A96E' }}>How many match your company?</span>
-        </h2>
-        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14, marginBottom: 36, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-          Profile takes 4 minutes. First matches in under 60 seconds.
-        </p>
-        <Link href="/register" style={{ background: '#C8A96E', color: '#0A0A0B', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', padding: '16px 32px', textDecoration: 'none', display: 'inline-block' }}>
-          START FOR FREE →
-        </Link>
+      {/* ── FINAL CTA ── */}
+      <section style={{ background: crimson, padding: '100px 32px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>THE MISSION STARTS HERE</div>
+          <h2 style={{ fontSize: 'clamp(30px, 4vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, margin: '0 0 20px' }}>
+            24,629 contracts.<br />How many match your company?
+          </h2>
+          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', margin: '0 0 48px', lineHeight: 1.7 }}>
+            Profile takes 4 minutes. First matches appear in under 60 seconds.
+          </p>
+          <Link href="/register" style={{ display: 'inline-block', padding: '18px 48px', background: '#fff', color: crimson, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+            START FOR FREE →
+          </Link>
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '48px 24px' }}>
+      {/* ── FOOTER ── */}
+      <footer style={{ borderTop: '1px solid rgba(0,0,0,0.08)', padding: '48px 32px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: '#C8A96E', fontSize: 20, fontWeight: 700 }}>ᛁ</span>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, letterSpacing: '0.1em' }}>IR GOVCON INTELLIGENCE</span>
+            <span style={{ color: crimson, fontSize: 20, fontWeight: 700 }}>ᛁ</span>
+            <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.38)' }}>IR GOVCON INTELLIGENCE</span>
           </div>
           <div style={{ display: 'flex', gap: 32 }}>
-            <Link href="/login" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none' }}>SIGN IN</Link>
-            <Link href="/register" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none' }}>REGISTER</Link>
-            <Link href="mailto:hello@ir-gov.app" style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none' }}>CONTACT</Link>
+            {[['SIGN IN', '/login'], ['REGISTER', '/register'], ['CONTACT', 'mailto:hello@ir-gov.app']].map(([label, href]) => (
+              <Link key={label} href={href} style={{ fontFamily: mono, color: 'rgba(0,0,0,0.28)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none' }}>{label}</Link>
+            ))}
           </div>
-          <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10, letterSpacing: '0.06em' }}>
+          <div style={{ fontFamily: mono, color: 'rgba(0,0,0,0.18)', fontSize: 10, letterSpacing: '0.06em' }}>
             © {new Date().getFullYear()} IR — DATA SOURCED FROM SAM.GOV
           </div>
         </div>
       </footer>
+
     </div>
   )
 }
