@@ -18,12 +18,28 @@ interface ModalState {
   agency: string
 }
 
-const initialModal: ModalState = {
-  open: false,
-  type: '',
-  typeName: '',
-  contractTitle: '',
-  agency: '',
+const initialModal: ModalState = { open: false, type: '', typeName: '', contractTitle: '', agency: '' }
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  background: '#0A0A0B',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#E2E8F0',
+  fontSize: 13,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+  outline: 'none',
+  boxSizing: 'border-box' as const,
+}
+
+const labelStyle = {
+  display: 'block',
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  color: 'rgba(255,255,255,0.3)',
+  marginBottom: 8,
+  fontFamily: 'var(--font-geist-mono, monospace)',
 }
 
 export default function DocumentsPage() {
@@ -34,9 +50,7 @@ export default function DocumentsPage() {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    loadDocs()
-  }, [])
+  useEffect(() => { loadDocs() }, [])
 
   async function loadDocs() {
     try {
@@ -71,17 +85,10 @@ export default function DocumentsPage() {
       const res = await fetch('/api/documents/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: modal.type,
-          contractTitle: modal.contractTitle || undefined,
-          agency: modal.agency || undefined,
-        }),
+        body: JSON.stringify({ type: modal.type, contractTitle: modal.contractTitle || undefined, agency: modal.agency || undefined }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Generation failed')
-        return
-      }
+      if (!res.ok) { setError(data.error ?? 'Generation failed'); return }
       setGeneratedContent(data.content)
     } catch {
       setError('Failed to generate document')
@@ -102,72 +109,56 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Document Generator</h1>
-        <p className="text-slate-400">Generate professional proposal documents filled with your company data</p>
+    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>DOCUMENT SUITE</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Document Generator</h1>
       </div>
 
       {/* Templates */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mb-10">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 32 }}>
         {DOCUMENT_TEMPLATES.map((tmpl) => (
-          <div
-            key={tmpl.id}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-3 hover:border-slate-700 transition-colors"
-          >
-            <div className="text-3xl">{tmpl.icon}</div>
+          <div key={tmpl.id} style={{ background: '#0F0F10', padding: '24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontSize: 24 }}>{tmpl.icon}</div>
             <div>
-              <h3 className="text-base font-semibold text-white">{tmpl.name}</h3>
-              <p className="text-sm text-slate-400 mt-1 leading-relaxed">{tmpl.description}</p>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#E2E8F0', marginBottom: 6, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{tmpl.name}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{tmpl.description}</div>
             </div>
-            <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-800">
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
-                style={{
-                  background: 'rgba(200,169,110,0.1)',
-                  color: '#C8A96E',
-                  border: '1px solid rgba(200,169,110,0.25)',
-                }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.1em', padding: '3px 8px', background: 'rgba(200,169,110,0.08)', color: '#C8A96E', border: '1px solid rgba(200,169,110,0.2)', fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase' }}>
                 {tmpl.requiredTier}+
               </span>
               <button
                 onClick={() => openModal(tmpl.type, tmpl.name)}
-                className="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-950 transition-colors"
-                style={{ background: '#C8A96E' }}
+                style={{ padding: '7px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
               >
-                Generate
+                GENERATE →
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent documents */}
+      {/* History */}
       <div>
-        <h2 className="text-xl font-bold text-white mb-4">Previously Generated</h2>
+        <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 16, fontFamily: 'var(--font-geist-mono, monospace)' }}>PREVIOUSLY GENERATED</div>
         {loading ? (
-          <p className="text-slate-400 text-sm">Loading…</p>
+          <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)' }}>LOADING…</div>
         ) : docs.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-            <p className="text-slate-400">No documents generated yet. Use the templates above to get started.</p>
+          <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '24px', textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+            No documents generated yet. Use the templates above to get started.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.05)' }}>
             {docs.map((doc) => (
-              <div
-                key={doc.id}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between hover:border-slate-700 transition-colors"
-              >
+              <div key={doc.id} style={{ background: '#0F0F10', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p className="text-sm font-medium text-white">{doc.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {new Date(doc.createdAt).toLocaleDateString('en-US', {
-                      month: 'short', day: 'numeric', year: 'numeric',
-                    })}
-                  </p>
+                  <div style={{ fontSize: 12, color: '#E2E8F0', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{doc.title}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2, letterSpacing: '0.06em' }}>
+                    {new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500 capitalize">{doc.type.replace(/_/g, ' ')}</span>
+                <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>{doc.type.replace(/_/g, ' ')}</span>
               </div>
             ))}
           </div>
@@ -176,88 +167,57 @@ export default function DocumentsPage() {
 
       {/* Modal */}
       {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-              <h2 className="text-lg font-semibold text-white">Generate {modal.typeName}</h2>
-              <button
-                onClick={closeModal}
-                className="text-slate-400 hover:text-white transition-colors text-xl leading-none"
-              >
-                ×
-              </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', padding: 16 }}>
+          <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A96E', fontFamily: 'var(--font-geist-mono, monospace)' }}>GENERATE {modal.typeName.toUpperCase()}</div>
+              <button onClick={closeModal} style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
 
-            {/* Modal body */}
-            <div className="overflow-y-auto flex-1 px-6 py-5">
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               {!generatedContent ? (
-                <div className="space-y-4">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Contract Title <span className="text-slate-500">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={modal.contractTitle}
-                      onChange={(e) => setModal((m) => ({ ...m, contractTitle: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                      placeholder="Enterprise IT Modernization Services"
-                    />
+                    <label style={labelStyle}>CONTRACT TITLE <span style={{ color: 'rgba(255,255,255,0.2)' }}>(OPTIONAL)</span></label>
+                    <input type="text" value={modal.contractTitle} onChange={(e) => setModal((m) => ({ ...m, contractTitle: e.target.value }))} style={inputStyle} placeholder="Enterprise IT Modernization Services" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Agency Name <span className="text-slate-500">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={modal.agency}
-                      onChange={(e) => setModal((m) => ({ ...m, agency: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                      placeholder="Department of Veterans Affairs"
-                    />
+                    <label style={labelStyle}>AGENCY NAME <span style={{ color: 'rgba(255,255,255,0.2)' }}>(OPTIONAL)</span></label>
+                    <input type="text" value={modal.agency} onChange={(e) => setModal((m) => ({ ...m, agency: e.target.value }))} style={inputStyle} placeholder="Department of Veterans Affairs" />
                   </div>
                   {error && (
-                    <div className="p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">
-                      {error}
-                    </div>
+                    <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 11 }}>{error}</div>
                   )}
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-slate-400">Document generated successfully</p>
-                    <button
-                      onClick={handleDownload}
-                      className="text-xs px-3 py-1.5 rounded-lg font-medium text-slate-950"
-                      style={{ background: '#C8A96E' }}
-                    >
-                      ↓ Download
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 10, letterSpacing: '0.1em', color: '#4ADE80' }}>DOCUMENT READY</span>
+                    <button onClick={handleDownload} style={{ padding: '6px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+                      ↓ DOWNLOAD
                     </button>
                   </div>
-                  <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-300 whitespace-pre-wrap overflow-auto max-h-96 font-mono leading-relaxed">
+                  <pre style={{ background: '#0A0A0B', border: '1px solid rgba(255,255,255,0.07)', padding: 16, fontSize: 11, color: 'rgba(255,255,255,0.7)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 360, fontFamily: 'var(--font-geist-mono, monospace)', lineHeight: 1.7, margin: 0 }}>
                     {generatedContent}
                   </pre>
                 </div>
               )}
             </div>
 
-            {/* Modal footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm font-medium hover:border-slate-500 transition-colors"
-              >
-                {generatedContent ? 'Close' : 'Cancel'}
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <button onClick={closeModal} style={{ padding: '9px 16px', fontSize: 10, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+                {generatedContent ? 'CLOSE' : 'CANCEL'}
               </button>
               {!generatedContent && (
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="px-5 py-2 rounded-lg text-sm font-semibold text-slate-950 disabled:opacity-60"
-                  style={{ background: '#C8A96E' }}
+                  style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: generating ? 'not-allowed' : 'pointer', opacity: generating ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
                 >
-                  {generating ? 'Generating…' : 'Generate Document'}
+                  {generating ? 'GENERATING…' : 'GENERATE DOCUMENT →'}
                 </button>
               )}
             </div>

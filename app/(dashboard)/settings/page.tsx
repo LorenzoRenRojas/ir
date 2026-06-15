@@ -20,6 +20,28 @@ const TIERS = [
   { id: 'enterprise', ...SUBSCRIPTION_TIERS.enterprise },
 ]
 
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  background: '#0A0A0B',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#E2E8F0',
+  fontSize: 13,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+  outline: 'none',
+  boxSizing: 'border-box' as const,
+}
+
+const labelStyle = {
+  display: 'block',
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  color: 'rgba(255,255,255,0.3)',
+  marginBottom: 8,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+}
+
 export default function SettingsPage() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,21 +49,16 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [upgradeError, setUpgradeError] = useState('')
-
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [website, setWebsite] = useState('')
   const [uei, setUei] = useState('')
-
-  // Notifications state (local only, demo)
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifDeadlines, setNotifDeadlines] = useState(true)
   const [notifNewMatches, setNotifNewMatches] = useState(false)
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
+  useEffect(() => { loadSettings() }, [])
 
   async function loadSettings() {
     try {
@@ -74,10 +91,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ name, email, companyName, website, uei }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Save failed')
-        return
-      }
+      if (!res.ok) { setError(data.error ?? 'Save failed'); return }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch {
@@ -108,169 +122,120 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center">
-        <p className="text-slate-400">Loading settings…</p>
-      </div>
+      <div style={{ padding: '32px 40px', fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)' }}>LOADING…</div>
     )
   }
 
   const currentTier = userData?.subscriptionTier ?? 'free'
 
+  const sectionStyle = {
+    background: '#0F0F10',
+    border: '1px solid rgba(255,255,255,0.07)',
+    padding: '28px 28px',
+    marginBottom: 1,
+  }
+
+  const sectionHeadStyle = {
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: '0.16em',
+    color: 'rgba(255,255,255,0.25)',
+    marginBottom: 24,
+    fontFamily: 'var(--font-geist-mono, monospace)',
+  }
+
   return (
-    <div className="p-8 max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-1">Settings</h1>
-        <p className="text-slate-400">Manage your account and preferences</p>
+    <div style={{ padding: '32px 40px', minHeight: '100vh', maxWidth: 760 }}>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>CONFIGURATION</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Settings</h1>
       </div>
 
-      {/* Profile section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-5">Profile</h2>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+      {/* Profile */}
+      <div style={sectionStyle}>
+        <div style={sectionHeadStyle}>PROFILE</div>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                placeholder="Jane Smith"
-              />
+              <label style={labelStyle}>FULL NAME</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Jane Smith" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                placeholder="jane@company.com"
-              />
+              <label style={labelStyle}>EMAIL</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="jane@company.com" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Company Name</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-              placeholder="Acme Government Solutions LLC"
-            />
+            <label style={labelStyle}>COMPANY NAME</label>
+            <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} placeholder="Acme Government Solutions LLC" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Website</label>
-              <input
-                type="url"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                placeholder="https://www.company.com"
-              />
+              <label style={labelStyle}>WEBSITE</label>
+              <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} style={inputStyle} placeholder="https://www.company.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">UEI Number</label>
-              <input
-                type="text"
-                value={uei}
-                onChange={(e) => setUei(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                placeholder="12-char SAM.gov UEI"
-                maxLength={12}
-              />
+              <label style={labelStyle}>UEI NUMBER</label>
+              <input type="text" value={uei} onChange={(e) => setUei(e.target.value)} style={inputStyle} placeholder="12-char SAM.gov UEI" maxLength={12} />
             </div>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>
+            <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 11 }}>{error}</div>
           )}
           {saved && (
-            <div className="p-3 bg-green-950 border border-green-800 rounded-lg text-green-300 text-sm">
-              Settings saved successfully.
-            </div>
+            <div style={{ padding: '10px 12px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', color: '#86efac', fontSize: 11, letterSpacing: '0.06em' }}>SETTINGS SAVED.</div>
           )}
 
-          <div className="flex justify-end">
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-lg font-semibold text-slate-950 disabled:opacity-60"
-              style={{ background: '#C8A96E' }}
+              style={{ padding: '10px 20px', background: '#C8A96E', color: '#0A0A0B', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
             >
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? 'SAVING…' : 'SAVE CHANGES →'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Subscription section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-white">Subscription</h2>
-          <span
-            className="text-sm px-3 py-1 rounded-full font-medium capitalize"
-            style={{
-              background: 'rgba(200,169,110,0.15)',
-              color: '#C8A96E',
-              border: '1px solid rgba(200,169,110,0.3)',
-            }}
-          >
-            Current: {currentTier}
+      {/* Subscription */}
+      <div style={{ ...sectionStyle, marginTop: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div style={sectionHeadStyle}>SUBSCRIPTION</div>
+          <span style={{ fontSize: 9, letterSpacing: '0.12em', padding: '3px 10px', background: 'rgba(200,169,110,0.1)', color: '#C8A96E', border: '1px solid rgba(200,169,110,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase' }}>
+            CURRENT: {currentTier}
           </span>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'rgba(255,255,255,0.05)' }}>
           {TIERS.map((tier) => {
             const isCurrent = currentTier === tier.id
             return (
-              <div
-                key={tier.id}
-                className="relative rounded-xl p-4 border flex flex-col gap-3"
-                style={
-                  isCurrent
-                    ? { border: '1px solid #C8A96E', background: 'rgba(200,169,110,0.06)' }
-                    : { borderColor: '#1e293b' }
-                }
-              >
-                {(tier as { popular?: boolean }).popular && (
-                  <span
-                    className="absolute -top-2.5 left-3 text-xs font-bold px-2 py-0.5 rounded-full text-slate-950"
-                    style={{ background: '#C8A96E' }}
-                  >
-                    POPULAR
-                  </span>
+              <div key={tier.id} style={{ background: isCurrent ? 'rgba(200,169,110,0.04)' : '#0A0A0B', padding: '20px', position: 'relative', borderTop: isCurrent ? '2px solid #C8A96E' : '2px solid transparent' }}>
+                {(tier as { popular?: boolean }).popular && !isCurrent && (
+                  <div style={{ fontSize: 8, letterSpacing: '0.12em', color: '#C8A96E', marginBottom: 8, fontFamily: 'var(--font-geist-mono, monospace)' }}>POPULAR</div>
                 )}
-                <div>
-                  <p className="font-semibold text-white">{tier.name}</p>
-                  <p className="text-xl font-bold mt-0.5" style={{ color: '#C8A96E' }}>
-                    ${tier.price}<span className="text-sm font-normal text-slate-400">/mo</span>
-                  </p>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: 8, fontFamily: 'var(--font-geist-mono, monospace)' }}>{tier.name.toUpperCase()}</div>
+                <div style={{ marginBottom: 16 }}>
+                  <span style={{ fontSize: 28, fontWeight: 700, color: '#E2E8F0', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>${tier.price}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginLeft: 4 }}>/mo</span>
                 </div>
-                <ul className="space-y-1.5 flex-1">
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {tier.features.map((f) => (
-                    <li key={f} className="text-xs text-slate-400 flex items-start gap-1.5">
-                      <span style={{ color: '#C8A96E' }}>✓</span> {f}
+                    <li key={f} style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', display: 'flex', gap: 8, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                      <span style={{ color: '#C8A96E', flexShrink: 0 }}>—</span>{f}
                     </li>
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button
-                    disabled
-                    className="w-full py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-500 cursor-not-allowed"
-                  >
-                    Current Plan
-                  </button>
+                  <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '8px', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'var(--font-geist-mono, monospace)' }}>CURRENT PLAN</div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(tier.id)}
-                    className="w-full py-2 rounded-lg text-sm font-semibold text-slate-950 transition-colors"
-                    style={{ background: '#C8A96E' }}
+                    style={{ width: '100%', padding: '8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
                   >
-                    {tier.price > (SUBSCRIPTION_TIERS[currentTier as keyof typeof SUBSCRIPTION_TIERS]?.price ?? 0)
-                      ? 'Upgrade'
-                      : 'Downgrade'}
+                    {tier.price > (SUBSCRIPTION_TIERS[currentTier as keyof typeof SUBSCRIPTION_TIERS]?.price ?? 0) ? 'UPGRADE →' : 'CHANGE →'}
                   </button>
                 )}
               </div>
@@ -279,35 +244,28 @@ export default function SettingsPage() {
         </div>
 
         {upgradeError && (
-          <div className="mt-4 p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">{upgradeError}</div>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 11 }}>{upgradeError}</div>
         )}
       </div>
 
-      {/* Notifications section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-5">Notifications</h2>
-        <div className="space-y-4">
+      {/* Notifications */}
+      <div style={{ ...sectionStyle, marginTop: 1 }}>
+        <div style={sectionHeadStyle}>NOTIFICATIONS</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[
             { label: 'Email digest of new contract matches', value: notifEmail, setter: setNotifEmail },
             { label: 'Deadline reminders (3 days before due date)', value: notifDeadlines, setter: setNotifDeadlines },
             { label: 'Instant alerts for high-match contracts (90%+)', value: notifNewMatches, setter: setNotifNewMatches },
           ].map(({ label, value, setter }) => (
-            <label key={label} className="flex items-center justify-between cursor-pointer group">
-              <span className="text-sm text-slate-300 group-hover:text-white transition-colors">{label}</span>
-              <div
-                onClick={() => setter(!value)}
-                className="relative w-10 h-5 rounded-full transition-colors cursor-pointer"
-                style={{ background: value ? '#C8A96E' : '#334155' }}
-              >
-                <div
-                  className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"
-                  style={{ transform: value ? 'translateX(22px)' : 'translateX(2px)' }}
-                />
+            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setter(!value)}>
+              <span style={{ fontSize: 13, color: value ? '#E2E8F0' : 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{label}</span>
+              <div style={{ width: 36, height: 20, background: value ? '#C8A96E' : 'rgba(255,255,255,0.1)', position: 'relative', flexShrink: 0, cursor: 'pointer', transition: 'background 0.2s' }}>
+                <div style={{ position: 'absolute', top: 3, left: value ? 19 : 3, width: 14, height: 14, background: value ? '#0A0A0B' : 'rgba(255,255,255,0.3)', transition: 'left 0.2s' }} />
               </div>
-            </label>
+            </div>
           ))}
         </div>
-        <p className="text-xs text-slate-500 mt-4">Notification preferences are saved locally for demo purposes.</p>
+        <div style={{ marginTop: 16, fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>NOTIFICATION PREFERENCES ARE LOCAL — DEMO ONLY.</div>
       </div>
     </div>
   )

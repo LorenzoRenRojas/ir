@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const NAICS_OPTIONS = [
   { code: '236220', label: '236220 — Commercial Building Construction' },
@@ -27,18 +28,8 @@ const NAICS_OPTIONS = [
   { code: '811212', label: '811212 — Computer/IT Repair' },
 ]
 
-const BUSINESS_TYPES = [
-  'Small Business',
-  '8(a) Certified',
-  'SDVOSB',
-  'WOSB',
-  'HUBZone',
-  'Large Business',
-  'Nonprofit',
-]
-
+const BUSINESS_TYPES = ['Small Business', '8(a) Certified', 'SDVOSB', 'WOSB', 'HUBZone', 'Large Business', 'Nonprofit']
 const CONTRACT_TYPES = ['Services', 'Products', 'Construction', 'R&D', 'IT/Technology']
-
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
   'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
@@ -49,75 +40,73 @@ const US_STATES = [
   'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
   'Wisconsin', 'Wyoming',
 ]
-
-const CERTIFICATIONS = [
-  'ISO 9001',
-  'ISO 27001',
-  'CMMI Level 2',
-  'CMMI Level 3',
-  'SOC 2',
-  'No Clearance',
-  'Secret Clearance',
-  'Top Secret',
-  'Top Secret/SCI',
-]
-
+const CERTIFICATIONS = ['ISO 9001', 'ISO 27001', 'CMMI Level 2', 'CMMI Level 3', 'SOC 2', 'No Clearance', 'Secret Clearance', 'Top Secret', 'Top Secret/SCI']
 const PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: '$79/mo',
-    features: ['25 matches/month', '3 document templates', 'Email alerts', 'SAM.gov integration'],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$199/mo',
-    popular: true,
-    features: ['Unlimited matches', 'Full document suite', 'Priority alerts', 'Match score explanations'],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: '$499/mo',
-    features: ['Everything in Pro', '5 team seats', 'Dedicated support', 'White-label documents'],
-  },
+  { id: 'starter', name: 'STARTER', price: '$79/mo', features: ['25 matches/month', '3 document templates', 'Email alerts', 'SAM.gov integration'] },
+  { id: 'pro', name: 'PRO', price: '$199/mo', popular: true, features: ['Unlimited matches', 'Full document suite', 'Priority alerts', 'Match score explanations'] },
+  { id: 'enterprise', name: 'ENTERPRISE', price: '$499/mo', features: ['Everything in Pro', '5 team seats', 'Dedicated support', 'White-label documents'] },
 ]
 
 interface FormData {
-  companyName: string
-  uei: string
-  website: string
-  yearFounded: string
-  businessTypes: string[]
-  naicsCodes: string[]
-  contractSizePref: string
-  contractTypePrefs: string[]
-  geoConus: boolean
-  geoStates: string[]
-  geoWorldwide: boolean
-  certifications: string[]
-  plan: string
+  companyName: string; uei: string; website: string; yearFounded: string
+  businessTypes: string[]; naicsCodes: string[]; contractSizePref: string
+  contractTypePrefs: string[]; geoConus: boolean; geoStates: string[]
+  geoWorldwide: boolean; certifications: string[]; plan: string
 }
 
 const initialForm: FormData = {
-  companyName: '',
-  uei: '',
-  website: '',
-  yearFounded: '',
-  businessTypes: [],
-  naicsCodes: [],
-  contractSizePref: 'Any',
-  contractTypePrefs: [],
-  geoConus: true,
-  geoStates: [],
-  geoWorldwide: false,
-  certifications: [],
-  plan: 'starter',
+  companyName: '', uei: '', website: '', yearFounded: '',
+  businessTypes: [], naicsCodes: [], contractSizePref: 'Any',
+  contractTypePrefs: [], geoConus: true, geoStates: [],
+  geoWorldwide: false, certifications: [], plan: 'starter',
 }
 
 function toggle<T>(arr: T[], item: T): T[] {
   return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item]
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#E2E8F0',
+  fontSize: 13,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+  outline: 'none',
+  boxSizing: 'border-box' as const,
+}
+
+const labelStyle = {
+  display: 'block',
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  color: 'rgba(255,255,255,0.3)',
+  marginBottom: 8,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+}
+
+function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '6px 12px',
+        fontSize: 11,
+        border: selected ? '1px solid rgba(200,169,110,0.5)' : '1px solid rgba(255,255,255,0.08)',
+        background: selected ? 'rgba(200,169,110,0.1)' : 'transparent',
+        color: selected ? '#C8A96E' : 'rgba(255,255,255,0.4)',
+        cursor: 'pointer',
+        fontFamily: 'var(--font-geist-mono, monospace)',
+        letterSpacing: '0.04em',
+        transition: 'all 0.15s',
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
 export default function OnboardingPage() {
@@ -126,7 +115,6 @@ export default function OnboardingPage() {
   const [form, setForm] = useState<FormData>(initialForm)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
   const TOTAL_STEPS = 7
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
@@ -146,24 +134,16 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyName: form.companyName,
-          uei: form.uei || null,
-          website: form.website || null,
+          companyName: form.companyName, uei: form.uei || null, website: form.website || null,
           yearFounded: form.yearFounded ? parseInt(form.yearFounded) : null,
-          businessTypes: form.businessTypes,
-          naicsCodes: form.naicsCodes,
+          businessTypes: form.businessTypes, naicsCodes: form.naicsCodes,
           contractSizePrefs: form.contractSizePref === 'Any' ? ['Any'] : [form.contractSizePref],
-          contractTypePrefs: form.contractTypePrefs,
-          geoPrefs,
-          certifications: form.certifications,
-          plan: form.plan,
+          contractTypePrefs: form.contractTypePrefs, geoPrefs,
+          certifications: form.certifications, plan: form.plan,
         }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Something went wrong')
-        return
-      }
+      if (!res.ok) { setError(data.error ?? 'Something went wrong'); return }
       router.push('/dashboard')
     } catch {
       setError('Failed to save profile. Please try again.')
@@ -172,471 +152,248 @@ export default function OnboardingPage() {
     }
   }
 
+  const stepTitles = ['COMPANY BASICS', 'BUSINESS TYPE', 'NAICS CODES', 'CONTRACT PREFS', 'GEOGRAPHY', 'CERTIFICATIONS', 'REVIEW & SUBSCRIBE']
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-12">
+    <div style={{ minHeight: '100vh', background: '#0A0A0B', color: '#E2E8F0', fontFamily: 'var(--font-geist-mono, monospace)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 24px' }}>
       {/* Logo */}
-      <div className="mb-10">
-        <span className="text-3xl font-bold" style={{ color: '#C8A96E' }}>ᛁ IR</span>
+      <div style={{ marginBottom: 40, alignSelf: 'flex-start', maxWidth: 640, width: '100%', margin: '0 auto 40px' }}>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <span style={{ color: '#C8A96E', fontSize: 20, fontWeight: 700 }}>ᛁ</span>
+          <span style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
+        </Link>
       </div>
 
-      {/* Progress bar */}
-      <div className="w-full max-w-2xl mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-slate-400">Step {step} of {TOTAL_STEPS}</span>
-          <span className="text-sm text-slate-400">{Math.round((step / TOTAL_STEPS) * 100)}% complete</span>
+      <div style={{ width: '100%', maxWidth: 640 }}>
+        {/* Progress */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)' }}>STEP {step} OF {TOTAL_STEPS} — {stepTitles[step - 1]}</span>
+            <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.2)' }}>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
+          </div>
+          <div style={{ height: 2, background: 'rgba(255,255,255,0.07)' }}>
+            <div style={{ height: '100%', width: `${(step / TOTAL_STEPS) * 100}%`, background: '#C8A96E', transition: 'width 0.3s' }} />
+          </div>
         </div>
-        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${(step / TOTAL_STEPS) * 100}%`, background: '#C8A96E' }}
-          />
-        </div>
-      </div>
 
-      {/* Card */}
-      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-xl p-8">
+        {/* Card */}
+        <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '36px' }}>
 
-        {/* Step 1 — Company Basics */}
-        {step === 1 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Company Basics</h2>
-            <p className="text-slate-400 mb-6">Tell us about your organization</p>
-            <div className="space-y-4">
+          {/* Step 1 */}
+          {step === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Company Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.companyName}
-                  onChange={(e) => setField('companyName', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                  placeholder="Acme Government Solutions LLC"
-                />
+                <label style={labelStyle}>COMPANY NAME <span style={{ color: 'rgba(255,100,100,0.6)' }}>*</span></label>
+                <input type="text" value={form.companyName} onChange={(e) => setField('companyName', e.target.value)} style={inputStyle} placeholder="Acme Government Solutions LLC" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  UEI Number <span className="text-slate-500">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.uei}
-                  onChange={(e) => setField('uei', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                  placeholder="12-character UEI from SAM.gov"
-                  maxLength={12}
-                />
+                <label style={labelStyle}>UEI NUMBER <span style={{ color: 'rgba(255,255,255,0.2)' }}>(OPTIONAL)</span></label>
+                <input type="text" value={form.uei} onChange={(e) => setField('uei', e.target.value)} style={inputStyle} placeholder="12-character UEI from SAM.gov" maxLength={12} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Website <span className="text-slate-500">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={form.website}
-                  onChange={(e) => setField('website', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                  placeholder="https://www.yourcompany.com"
-                />
+                <label style={labelStyle}>WEBSITE <span style={{ color: 'rgba(255,255,255,0.2)' }}>(OPTIONAL)</span></label>
+                <input type="url" value={form.website} onChange={(e) => setField('website', e.target.value)} style={inputStyle} placeholder="https://www.yourcompany.com" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Year Founded <span className="text-slate-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  value={form.yearFounded}
-                  onChange={(e) => setField('yearFounded', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-                  placeholder="2010"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                />
+                <label style={labelStyle}>YEAR FOUNDED <span style={{ color: 'rgba(255,255,255,0.2)' }}>(OPTIONAL)</span></label>
+                <input type="number" value={form.yearFounded} onChange={(e) => setField('yearFounded', e.target.value)} style={inputStyle} placeholder="2010" min={1900} max={new Date().getFullYear()} />
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 2 — Business Type */}
-        {step === 2 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Business Type</h2>
-            <p className="text-slate-400 mb-6">Select all that apply to your business</p>
-            <div className="grid grid-cols-2 gap-3">
-              {BUSINESS_TYPES.map((bt) => {
-                const selected = form.businessTypes.includes(bt)
-                return (
-                  <button
-                    key={bt}
-                    type="button"
-                    onClick={() => setField('businessTypes', toggle(form.businessTypes, bt))}
-                    className="flex items-center gap-3 p-4 rounded-lg border text-left transition-all"
-                    style={selected
-                      ? { border: '1px solid #C8A96E', background: 'rgba(200,169,110,0.08)', color: '#C8A96E' }
-                      : { borderColor: '#334155', color: '#94a3b8' }
-                    }
-                  >
-                    <div
-                      className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center"
-                      style={selected
-                        ? { background: '#C8A96E', borderColor: '#C8A96E' }
-                        : { borderColor: '#475569' }
-                      }
-                    >
-                      {selected && <span className="text-slate-950 text-xs font-bold">✓</span>}
-                    </div>
-                    <span className="text-sm font-medium">{bt}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 — NAICS Codes */}
-        {step === 3 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">NAICS Codes</h2>
-            <p className="text-slate-400 mb-6">Select the NAICS codes that apply to your business (select all that fit)</p>
-            <div className="flex flex-wrap gap-2">
-              {NAICS_OPTIONS.map(({ code, label }) => {
-                const selected = form.naicsCodes.includes(code)
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setField('naicsCodes', toggle(form.naicsCodes, code))}
-                    className="px-3 py-2 rounded-lg text-sm font-medium border transition-all"
-                    style={selected
-                      ? { border: '1px solid #C8A96E', background: 'rgba(200,169,110,0.12)', color: '#C8A96E' }
-                      : { borderColor: '#334155', color: '#94a3b8' }
-                    }
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-            {form.naicsCodes.length > 0 && (
-              <p className="mt-4 text-sm" style={{ color: '#C8A96E' }}>
-                {form.naicsCodes.length} code{form.naicsCodes.length !== 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Step 4 — Contract Preferences */}
-        {step === 4 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Contract Preferences</h2>
-            <p className="text-slate-400 mb-6">What types of contracts are you targeting?</p>
-
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Contract Size</h3>
-              <div className="space-y-2">
-                {['Micro (<$10K)', 'Simplified ($10K-$250K)', 'Large ($250K+)', 'Any'].map((size) => (
-                  <label key={size} className="flex items-center gap-3 cursor-pointer group">
-                    <div
-                      className="w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
-                      style={form.contractSizePref === size
-                        ? { borderColor: '#C8A96E', background: '#C8A96E' }
-                        : { borderColor: '#475569' }
-                      }
-                      onClick={() => setField('contractSizePref', size)}
-                    >
-                      {form.contractSizePref === size && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />
-                      )}
-                    </div>
-                    <span
-                      className="text-sm cursor-pointer"
-                      style={{ color: form.contractSizePref === size ? '#C8A96E' : '#94a3b8' }}
-                      onClick={() => setField('contractSizePref', size)}
-                    >
-                      {size}
-                    </span>
-                  </label>
+          {/* Step 2 */}
+          {step === 2 && (
+            <div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>Select all that apply to your business.</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {BUSINESS_TYPES.map((bt) => (
+                  <Chip key={bt} label={bt} selected={form.businessTypes.includes(bt)} onClick={() => setField('businessTypes', toggle(form.businessTypes, bt))} />
                 ))}
               </div>
             </div>
+          )}
 
+          {/* Step 3 */}
+          {step === 3 && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Contract Type</h3>
-              <div className="space-y-2">
-                {CONTRACT_TYPES.map((type) => {
-                  const selected = form.contractTypePrefs.includes(type)
-                  return (
-                    <label key={type} className="flex items-center gap-3 cursor-pointer">
-                      <div
-                        className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all cursor-pointer"
-                        style={selected
-                          ? { background: '#C8A96E', borderColor: '#C8A96E' }
-                          : { borderColor: '#475569' }
-                        }
-                        onClick={() => setField('contractTypePrefs', toggle(form.contractTypePrefs, type))}
-                      >
-                        {selected && <span className="text-slate-950 text-xs font-bold">✓</span>}
-                      </div>
-                      <span
-                        className="text-sm cursor-pointer"
-                        style={{ color: selected ? '#C8A96E' : '#94a3b8' }}
-                        onClick={() => setField('contractTypePrefs', toggle(form.contractTypePrefs, type))}
-                      >
-                        {type}
-                      </span>
-                    </label>
-                  )
-                })}
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 20, lineHeight: 1.6 }}>Select all NAICS codes that apply to your business.</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {NAICS_OPTIONS.map(({ code, label }) => (
+                  <Chip key={code} label={label} selected={form.naicsCodes.includes(code)} onClick={() => setField('naicsCodes', toggle(form.naicsCodes, code))} />
+                ))}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5 — Geographic Preferences */}
-        {step === 5 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Geographic Preferences</h2>
-            <p className="text-slate-400 mb-6">Where do you want to perform work?</p>
-
-            <div className="space-y-3 mb-6">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div
-                  className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
-                  style={form.geoConus
-                    ? { background: '#C8A96E', borderColor: '#C8A96E' }
-                    : { borderColor: '#475569' }
-                  }
-                  onClick={() => setField('geoConus', !form.geoConus)}
-                >
-                  {form.geoConus && <span className="text-slate-950 text-xs font-bold">✓</span>}
-                </div>
-                <span
-                  className="text-sm cursor-pointer font-medium"
-                  style={{ color: form.geoConus ? '#C8A96E' : '#94a3b8' }}
-                  onClick={() => setField('geoConus', !form.geoConus)}
-                >
-                  CONUS (Continental United States)
-                </span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div
-                  className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
-                  style={form.geoWorldwide
-                    ? { background: '#C8A96E', borderColor: '#C8A96E' }
-                    : { borderColor: '#475569' }
-                  }
-                  onClick={() => setField('geoWorldwide', !form.geoWorldwide)}
-                >
-                  {form.geoWorldwide && <span className="text-slate-950 text-xs font-bold">✓</span>}
-                </div>
-                <span
-                  className="text-sm cursor-pointer font-medium"
-                  style={{ color: form.geoWorldwide ? '#C8A96E' : '#94a3b8' }}
-                  onClick={() => setField('geoWorldwide', !form.geoWorldwide)}
-                >
-                  Worldwide (including OCONUS)
-                </span>
-              </label>
-            </div>
-
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Specific States</h3>
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
-              {US_STATES.map((state) => {
-                const selected = form.geoStates.includes(state)
-                return (
-                  <button
-                    key={state}
-                    type="button"
-                    onClick={() => setField('geoStates', toggle(form.geoStates, state))}
-                    className="px-2 py-1.5 rounded text-xs font-medium border transition-all text-left"
-                    style={selected
-                      ? { border: '1px solid #C8A96E', background: 'rgba(200,169,110,0.1)', color: '#C8A96E' }
-                      : { borderColor: '#334155', color: '#94a3b8' }
-                    }
-                  >
-                    {state}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 6 — Certifications */}
-        {step === 6 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Certifications & Clearances</h2>
-            <p className="text-slate-400 mb-6">Select all certifications and clearance levels your company holds</p>
-            <div className="space-y-3">
-              {CERTIFICATIONS.map((cert) => {
-                const selected = form.certifications.includes(cert)
-                return (
-                  <label key={cert} className="flex items-center gap-3 cursor-pointer">
-                    <div
-                      className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all cursor-pointer"
-                      style={selected
-                        ? { background: '#C8A96E', borderColor: '#C8A96E' }
-                        : { borderColor: '#475569' }
-                      }
-                      onClick={() => setField('certifications', toggle(form.certifications, cert))}
-                    >
-                      {selected && <span className="text-slate-950 text-xs font-bold">✓</span>}
-                    </div>
-                    <span
-                      className="text-sm cursor-pointer"
-                      style={{ color: selected ? '#C8A96E' : '#94a3b8' }}
-                      onClick={() => setField('certifications', toggle(form.certifications, cert))}
-                    >
-                      {cert}
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 7 — Review & Subscribe */}
-        {step === 7 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Review & Subscribe</h2>
-            <p className="text-slate-400 mb-6">Confirm your profile and choose a plan</p>
-
-            {/* Summary */}
-            <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 mb-6 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Company</span>
-                <span className="text-white font-medium">{form.companyName || 'Not set'}</span>
-              </div>
-              {form.uei && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">UEI</span>
-                  <span className="text-white">{form.uei}</span>
+              {form.naicsCodes.length > 0 && (
+                <div style={{ marginTop: 16, fontSize: 10, color: '#C8A96E', letterSpacing: '0.08em' }}>
+                  {form.naicsCodes.length} CODE{form.naicsCodes.length !== 1 ? 'S' : ''} SELECTED
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Business Types</span>
-                <span className="text-white text-right max-w-xs">
-                  {form.businessTypes.length > 0 ? form.businessTypes.join(', ') : 'None selected'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">NAICS Codes</span>
-                <span className="text-white">{form.naicsCodes.length} selected</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Contract Size</span>
-                <span className="text-white">{form.contractSizePref}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Geography</span>
-                <span className="text-white">
-                  {[
-                    form.geoWorldwide && 'Worldwide',
-                    form.geoConus && 'CONUS',
-                    form.geoStates.length > 0 && `${form.geoStates.length} states`,
-                  ].filter(Boolean).join(', ') || 'Not set'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Certifications</span>
-                <span className="text-white">{form.certifications.length > 0 ? form.certifications.join(', ') : 'None'}</span>
-              </div>
             </div>
+          )}
 
-            {/* Plan selection */}
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Choose Your Plan</h3>
-            <div className="space-y-3">
-              {PLANS.map((plan) => {
-                const selected = form.plan === plan.id
-                return (
-                  <div
-                    key={plan.id}
-                    onClick={() => setField('plan', plan.id)}
-                    className="relative p-4 rounded-lg border cursor-pointer transition-all"
-                    style={selected
-                      ? { border: '1px solid #C8A96E', background: 'rgba(200,169,110,0.06)' }
-                      : { borderColor: '#334155' }
-                    }
-                  >
-                    {plan.popular && (
-                      <span
-                        className="absolute -top-2.5 left-4 text-xs font-bold px-2 py-0.5 rounded-full text-slate-950"
-                        style={{ background: '#C8A96E' }}
-                      >
-                        MOST POPULAR
-                      </span>
-                    )}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
-                          style={selected ? { borderColor: '#C8A96E', background: '#C8A96E' } : { borderColor: '#475569' }}
-                        >
-                          {selected && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
-                        </div>
-                        <span className="font-semibold text-white">{plan.name}</span>
+          {/* Step 4 */}
+          {step === 4 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>CONTRACT SIZE</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {['Micro (<$10K)', 'Simplified ($10K-$250K)', 'Large ($250K+)', 'Any'].map((size) => (
+                    <div key={size} onClick={() => setField('contractSizePref', size)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: form.contractSizePref === size ? '2px solid #C8A96E' : '2px solid rgba(255,255,255,0.15)', background: form.contractSizePref === size ? '#C8A96E' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {form.contractSizePref === size && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#0A0A0B' }} />}
                       </div>
-                      <span className="font-bold" style={{ color: '#C8A96E' }}>{plan.price}</span>
+                      <span style={{ fontSize: 12, color: form.contractSizePref === size ? '#C8A96E' : 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{size}</span>
                     </div>
-                    <ul className="ml-7 space-y-1">
-                      {plan.features.map((f) => (
-                        <li key={f} className="text-xs text-slate-400 flex items-center gap-2">
-                          <span style={{ color: '#C8A96E' }}>✓</span> {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )
-              })}
-            </div>
-
-            {error && (
-              <div className="mt-4 p-3 bg-red-950 border border-red-800 rounded-lg text-red-300 text-sm">
-                {error}
+                  ))}
+                </div>
               </div>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>CONTRACT TYPE</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {CONTRACT_TYPES.map((type) => (
+                    <Chip key={type} label={type} selected={form.contractTypePrefs.includes(type)} onClick={() => setField('contractTypePrefs', toggle(form.contractTypePrefs, type))} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5 */}
+          {step === 5 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { label: 'CONUS (Continental United States)', key: 'geoConus' as const },
+                  { label: 'Worldwide (including OCONUS)', key: 'geoWorldwide' as const },
+                ].map(({ label, key }) => (
+                  <div key={key} onClick={() => setField(key, !form[key])} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                    <div style={{ width: 14, height: 14, border: form[key] ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.15)', background: form[key] ? '#C8A96E' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {form[key] && <span style={{ fontSize: 9, color: '#0A0A0B', fontWeight: 700 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 12, color: form[key] ? '#C8A96E' : 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12 }}>SPECIFIC STATES</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                  {US_STATES.map((state) => (
+                    <Chip key={state} label={state} selected={form.geoStates.includes(state)} onClick={() => setField('geoStates', toggle(form.geoStates, state))} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 6 */}
+          {step === 6 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 8, lineHeight: 1.6 }}>Select all certifications and clearance levels your company holds.</div>
+              {CERTIFICATIONS.map((cert) => (
+                <div key={cert} onClick={() => setField('certifications', toggle(form.certifications, cert))} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <div style={{ width: 14, height: 14, border: form.certifications.includes(cert) ? '1px solid #C8A96E' : '1px solid rgba(255,255,255,0.15)', background: form.certifications.includes(cert) ? '#C8A96E' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {form.certifications.includes(cert) && <span style={{ fontSize: 9, color: '#0A0A0B', fontWeight: 700 }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize: 12, color: form.certifications.includes(cert) ? '#C8A96E' : 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{cert}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Step 7 */}
+          {step === 7 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Summary */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', padding: '20px' }}>
+                <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 16 }}>PROFILE SUMMARY</div>
+                {[
+                  { label: 'COMPANY', value: form.companyName || 'Not set' },
+                  form.uei ? { label: 'UEI', value: form.uei } : null,
+                  { label: 'BUSINESS TYPES', value: form.businessTypes.length > 0 ? form.businessTypes.join(', ') : 'None selected' },
+                  { label: 'NAICS CODES', value: `${form.naicsCodes.length} selected` },
+                  { label: 'CONTRACT SIZE', value: form.contractSizePref },
+                  { label: 'GEOGRAPHY', value: [form.geoWorldwide && 'Worldwide', form.geoConus && 'CONUS', form.geoStates.length > 0 && `${form.geoStates.length} states`].filter(Boolean).join(', ') || 'Not set' },
+                  { label: 'CERTIFICATIONS', value: form.certifications.length > 0 ? form.certifications.join(', ') : 'None' },
+                ].filter(Boolean).map((item) => item && (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)' }}>{item.label}</span>
+                    <span style={{ fontSize: 11, color: '#E2E8F0', textAlign: 'right', maxWidth: '60%', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Plan selection */}
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>CHOOSE YOUR PLAN</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.04)' }}>
+                  {PLANS.map((plan) => {
+                    const selected = form.plan === plan.id
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setField('plan', plan.id)}
+                        style={{ background: selected ? 'rgba(200,169,110,0.05)' : '#0F0F10', padding: '16px 20px', cursor: 'pointer', borderLeft: selected ? '2px solid #C8A96E' : '2px solid transparent' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: '50%', border: selected ? '2px solid #C8A96E' : '2px solid rgba(255,255,255,0.15)', background: selected ? '#C8A96E' : 'transparent' }} />
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: selected ? '#C8A96E' : 'rgba(255,255,255,0.6)' }}>{plan.name}</span>
+                            {plan.popular && <span style={{ fontSize: 8, letterSpacing: '0.1em', color: '#C8A96E', padding: '2px 6px', border: '1px solid rgba(200,169,110,0.3)' }}>POPULAR</span>}
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: selected ? '#C8A96E' : 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{plan.price}</span>
+                        </div>
+                        <ul style={{ listStyle: 'none', padding: '0 0 0 22px', margin: 0, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+                          {plan.features.map((f) => (
+                            <li key={f} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', display: 'flex', gap: 6, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                              <span style={{ color: '#C8A96E' }}>—</span>{f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {error && (
+                <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 11 }}>{error}</div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 36, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              disabled={step === 1}
+              style={{ padding: '10px 20px', fontSize: 10, letterSpacing: '0.1em', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)', cursor: step === 1 ? 'not-allowed' : 'pointer', opacity: step === 1 ? 0.3 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
+            >
+              ← BACK
+            </button>
+
+            {step < TOTAL_STEPS ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (step === 1 && !form.companyName.trim()) { setError('Company name is required'); return }
+                  setError('')
+                  setStep((s) => s + 1)
+                }}
+                style={{ padding: '10px 24px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
+              >
+                CONTINUE →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleComplete}
+                disabled={loading}
+                style={{ padding: '10px 24px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
+              >
+                {loading ? 'SETTING UP…' : 'COMPLETE SETUP →'}
+              </button>
             )}
           </div>
-        )}
-
-        {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            disabled={step === 1}
-            className="px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 font-medium disabled:opacity-30 hover:border-slate-500 transition-colors"
-          >
-            Back
-          </button>
-
-          {step < TOTAL_STEPS ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (step === 1 && !form.companyName.trim()) {
-                  setError('Company name is required')
-                  return
-                }
-                setError('')
-                setStep((s) => s + 1)
-              }}
-              className="px-6 py-2.5 rounded-lg font-semibold text-slate-950 transition-colors"
-              style={{ background: '#C8A96E' }}
-            >
-              Continue
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleComplete}
-              disabled={loading}
-              className="px-6 py-2.5 rounded-lg font-semibold text-slate-950 transition-colors disabled:opacity-60"
-              style={{ background: '#C8A96E' }}
-            >
-              {loading ? 'Setting up…' : 'Complete Setup'}
-            </button>
-          )}
         </div>
       </div>
     </div>

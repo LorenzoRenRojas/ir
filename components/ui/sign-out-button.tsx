@@ -6,9 +6,9 @@ export function SignOutButton() {
   return (
     <button
       onClick={() => signOut({ callbackUrl: '/' })}
-      className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+      style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.2)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', padding: 0 }}
     >
-      Sign out
+      SIGN OUT
     </button>
   )
 }
