@@ -46,19 +46,13 @@ export default function SavedContractsPage() {
     }
   }
 
-  useEffect(() => {
-    loadSaved()
-  }, [])
+  useEffect(() => { loadSaved() }, [])
 
   async function handleRemove(contractId: string) {
     setRemoving(contractId)
     try {
-      const res = await fetch(`/api/contracts/saved?contractId=${encodeURIComponent(contractId)}`, {
-        method: 'DELETE',
-      })
-      if (res.ok) {
-        setContracts((prev) => prev.filter((c) => c.contractId !== contractId))
-      }
+      const res = await fetch(`/api/contracts/saved?contractId=${encodeURIComponent(contractId)}`, { method: 'DELETE' })
+      if (res.ok) setContracts((prev) => prev.filter((c) => c.contractId !== contractId))
     } catch (err) {
       console.error(err)
     } finally {
@@ -67,75 +61,54 @@ export default function SavedContractsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Saved Contracts</h1>
-        <p className="text-slate-400">Contracts you&apos;ve bookmarked for later</p>
+    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>WATCHLIST</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Saved Contracts</h1>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <p className="text-slate-400">Loading…</p>
-        </div>
+        <div style={{ textAlign: 'center', paddingTop: 80, fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)' }}>LOADING…</div>
       ) : contracts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <p className="text-4xl mb-4">📌</p>
-          <p className="text-xl font-semibold text-white mb-2">No saved contracts yet</p>
-          <p className="text-slate-400 mb-6">Browse the dashboard and save contracts you want to track.</p>
-          <Link
-            href="/dashboard"
-            className="px-6 py-2.5 rounded-lg font-semibold text-slate-950"
-            style={{ background: '#C8A96E' }}
-          >
-            Browse Contracts
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 80, textAlign: 'center', gap: 16 }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.2)' }}>WATCHLIST EMPTY</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)', maxWidth: 320 }}>
+            Browse the dashboard and save contracts you want to track.
+          </div>
+          <Link href="/dashboard" style={{ marginTop: 8, padding: '10px 20px', background: '#C8A96E', color: '#0A0A0B', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none' }}>
+            BROWSE CONTRACTS →
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.05)' }}>
           {contracts.map((c) => (
-            <div
-              key={c.id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4 hover:border-slate-700 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <div key={c.id} style={{ background: '#0F0F10', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                   {c.matchScore != null && (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full"
-                      style={{
-                        background: 'rgba(200,169,110,0.15)',
-                        color: '#C8A96E',
-                        border: '1px solid rgba(200,169,110,0.3)',
-                      }}
-                    >
-                      {c.matchScore}% Match
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 8px', background: 'rgba(200,169,110,0.1)', color: '#C8A96E', border: '1px solid rgba(200,169,110,0.25)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+                      {c.matchScore}% MATCH
                     </span>
                   )}
-                  <span className="text-xs text-slate-500">Saved {formatDate(c.createdAt)}</span>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>SAVED {formatDate(c.createdAt).toUpperCase()}</span>
                 </div>
-                <h3 className="text-sm font-semibold text-white truncate">{c.title}</h3>
-                <div className="flex gap-4 mt-1">
-                  <span className="text-xs text-slate-400">{c.agency}</span>
-                  <span className="text-xs text-slate-400">{formatValue(c.value)}</span>
-                  {c.deadline && (
-                    <span className="text-xs text-slate-400">Due: {formatDate(c.deadline)}</span>
-                  )}
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#E2E8F0', fontFamily: 'var(--font-geist-sans, sans-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{c.agency}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{formatValue(c.value)}</span>
+                  {c.deadline && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Due {formatDate(c.deadline)}</span>}
                 </div>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <Link
-                  href={`/contracts/${c.contractId}`}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-950"
-                  style={{ background: '#C8A96E' }}
-                >
-                  View
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <Link href={`/contracts/${c.contractId}`} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+                  VIEW →
                 </Link>
                 <button
                   onClick={() => handleRemove(c.contractId)}
                   disabled={removing === c.contractId}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-400 hover:border-red-700 hover:text-red-400 transition-colors disabled:opacity-50"
+                  style={{ padding: '7px 12px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.3)', cursor: removing === c.contractId ? 'not-allowed' : 'pointer', opacity: removing === c.contractId ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
                 >
-                  {removing === c.contractId ? '…' : 'Remove'}
+                  {removing === c.contractId ? '…' : 'REMOVE'}
                 </button>
               </div>
             </div>

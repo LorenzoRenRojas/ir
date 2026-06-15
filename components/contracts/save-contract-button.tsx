@@ -33,8 +33,8 @@ export function SaveContractButton({ contract }: { contract: Contract }) {
 
   if (saved) {
     return (
-      <div className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 cursor-default">
-        ♥ Saved
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, letterSpacing: '0.1em', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ADE80', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+        ♥ SAVED TO WATCHLIST
       </div>
     )
   }
@@ -43,10 +43,9 @@ export function SaveContractButton({ contract }: { contract: Contract }) {
     <button
       onClick={handleSave}
       disabled={loading}
-      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold text-slate-950 transition-colors disabled:opacity-60"
-      style={{ background: '#C8A96E' }}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
     >
-      {loading ? 'Saving…' : '♡ Save Contract'}
+      {loading ? 'SAVING…' : '♡ SAVE CONTRACT →'}
     </button>
   )
 }

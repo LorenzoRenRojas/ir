@@ -23,17 +23,12 @@ function formatDate(d: string): string {
 function ScoreBar({ label, score, max }: { label: string; score: number; max: number }) {
   const pct = max > 0 ? Math.round((score / max) * 100) : 0
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-slate-400 w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, background: score > 0 ? '#C8A96E' : '#334155' }}
-        />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 120, flexShrink: 0, letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>{label}</span>
+      <div style={{ flex: 1, height: 2, background: 'rgba(255,255,255,0.07)' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: score > 0 ? '#C8A96E' : 'rgba(255,255,255,0.05)', transition: 'width 0.3s' }} />
       </div>
-      <span className="text-sm font-semibold w-8 text-right" style={{ color: score > 0 ? '#C8A96E' : '#64748b' }}>
-        +{score}
-      </span>
+      <span style={{ fontSize: 10, fontWeight: 700, width: 28, textAlign: 'right', color: score > 0 ? '#C8A96E' : '#64748b', fontFamily: 'var(--font-geist-mono, monospace)' }}>+{score}</span>
     </div>
   )
 }
@@ -50,7 +45,6 @@ export default async function ContractDetailPage({
     notFound()
   }
 
-  // Get match score breakdown
   const session = await auth()
   let breakdown = null
   if (session?.user?.id) {
@@ -71,106 +65,100 @@ export default async function ContractDetailPage({
   }
 
   const fields = [
-    { label: 'Agency', value: contract.agency },
-    { label: 'Sub-Agency', value: contract.subAgency ?? '—' },
-    { label: 'Notice ID', value: contract.noticeId },
-    { label: 'Solicitation #', value: contract.solicitationNumber || '—' },
-    { label: 'Type', value: contract.typeDescription || contract.type },
-    { label: 'Set-Aside', value: contract.setAsideDescription || 'None' },
-    { label: 'NAICS Code', value: `${contract.naicsCode} — ${contract.naicsDescription}` },
-    { label: 'Estimated Value', value: formatValue(contract.value) },
-    { label: 'Posted Date', value: formatDate(contract.postedDate) },
-    { label: 'Response Deadline', value: formatDate(contract.responseDeadline) },
-    { label: 'Place of Performance', value: contract.placeOfPerformance || 'TBD' },
+    { label: 'AGENCY', value: contract.agency },
+    { label: 'SUB-AGENCY', value: contract.subAgency ?? '—' },
+    { label: 'NOTICE ID', value: contract.noticeId },
+    { label: 'SOLICITATION #', value: contract.solicitationNumber || '—' },
+    { label: 'TYPE', value: contract.typeDescription || contract.type },
+    { label: 'SET-ASIDE', value: contract.setAsideDescription || 'None' },
+    { label: 'NAICS CODE', value: `${contract.naicsCode} — ${contract.naicsDescription}` },
+    { label: 'ESTIMATED VALUE', value: formatValue(contract.value) },
+    { label: 'POSTED DATE', value: formatDate(contract.postedDate) },
+    { label: 'RESPONSE DEADLINE', value: formatDate(contract.responseDeadline) },
+    { label: 'PLACE OF PERFORMANCE', value: contract.placeOfPerformance || 'TBD' },
   ]
 
+  const scoreColor = breakdown
+    ? breakdown.total >= 80 ? '#4ADE80' : breakdown.total >= 60 ? '#C8A96E' : '#64748b'
+    : '#64748b'
+
   return (
-    <div className="p-8 max-w-5xl">
-      {/* Back */}
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-6 transition-colors"
-      >
-        ← Back to Dashboard
+    <div style={{ padding: '32px 40px', minHeight: '100vh', maxWidth: 1100, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+      <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.35)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none', marginBottom: 28 }}>
+        ← BACK TO DASHBOARD
       </Link>
 
-      {/* Title */}
-      <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E2E8F0', lineHeight: 1.3, margin: '0 0 8px', letterSpacing: '-0.01em', fontFamily: 'var(--font-geist-sans, sans-serif)', maxWidth: 700 }}>
         {contract.title}
       </h1>
-      <p className="text-slate-400 mb-8">{contract.agency}</p>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 32, letterSpacing: '0.06em' }}>{contract.agency}</div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left: details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Detail grid */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Contract Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 1, background: 'rgba(255,255,255,0.05)', alignItems: 'start' }}>
+        {/* Left */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {/* Details grid */}
+          <div style={{ background: '#0F0F10', padding: '28px' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>CONTRACT DETAILS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 40px' }}>
               {fields.map(({ label, value }) => (
                 <div key={label}>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-                  <p className="text-sm text-white">{value}</p>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 13, color: '#E2E8F0', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{value}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Description */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Description</h2>
-            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+          <div style={{ background: '#0F0F10', padding: '28px' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 16 }}>DESCRIPTION</div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
               {contract.description || 'No description available.'}
             </p>
           </div>
         </div>
 
-        {/* Right: match score + actions */}
-        <div className="space-y-4">
+        {/* Right */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {/* Match score */}
           {breakdown && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-1">Match Score</h2>
-              <div className="mb-4">
-                <span
-                  className="text-4xl font-bold"
-                  style={{ color: breakdown.total >= 80 ? '#4ade80' : breakdown.total >= 60 ? '#C8A96E' : '#94a3b8' }}
-                >
-                  {breakdown.total}
-                </span>
-                <span className="text-slate-400 text-lg">/100</span>
+            <div style={{ background: '#0F0F10', padding: '24px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 16 }}>MATCH SCORE</div>
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontSize: 48, fontWeight: 700, color: scoreColor, fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1 }}>{breakdown.total}</span>
+                <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.25)', marginLeft: 4 }}>/100</span>
               </div>
-              <div className="space-y-3">
-                <ScoreBar label="NAICS Match" score={breakdown.naicsScore} max={40} />
-                <ScoreBar label="Set-Aside" score={breakdown.setAsideScore} max={25} />
-                <ScoreBar label="Contract Size" score={breakdown.contractSizeScore} max={20} />
-                <ScoreBar label="Geography" score={breakdown.geoScore} max={15} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <ScoreBar label="NAICS MATCH" score={breakdown.naicsScore} max={40} />
+                <ScoreBar label="SET-ASIDE" score={breakdown.setAsideScore} max={25} />
+                <ScoreBar label="CONTRACT SIZE" score={breakdown.contractSizeScore} max={20} />
+                <ScoreBar label="GEOGRAPHY" score={breakdown.geoScore} max={15} />
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-800 space-y-1.5">
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {Object.values(breakdown.details).map((detail, i) => (
-                  <p key={i} className="text-xs text-slate-400">• {detail}</p>
+                  <div key={i} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>• {detail}</div>
                 ))}
               </div>
             </div>
           )}
 
           {/* Actions */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-            <h2 className="text-base font-semibold text-white mb-2">Actions</h2>
+          <div style={{ background: '#0F0F10', padding: '24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 8 }}>ACTIONS</div>
             <SaveContractButton contract={contract} />
             <Link
               href="/documents"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm font-medium hover:border-slate-500 hover:text-white transition-colors"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
             >
-              📄 Generate Documents
+              ☰ GENERATE DOCUMENTS
             </Link>
             <a
               href={contract.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm font-medium hover:border-slate-500 hover:text-white transition-colors"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
             >
-              🔗 View on SAM.gov ↗
+              ↗ VIEW ON SAM.GOV
             </a>
           </div>
         </div>

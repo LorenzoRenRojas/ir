@@ -19,88 +19,85 @@ function formatDate(d: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function ScoreBadge({ score }: { score?: number }) {
-  if (score === undefined) return null
-  const color =
-    score >= 80 ? '#4ade80' : score >= 60 ? '#C8A96E' : score >= 40 ? '#94a3b8' : '#64748b'
-  return (
-    <span
-      className="text-xs font-bold px-2 py-0.5 rounded-full"
-      style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}
-    >
-      {score}% Match
-    </span>
-  )
+function scoreColor(score?: number) {
+  if (!score) return '#64748b'
+  if (score >= 80) return '#4ADE80'
+  if (score >= 60) return '#C8A96E'
+  return '#64748b'
 }
 
-function SetAsideBadge({ label }: { label?: string }) {
-  if (!label || label === 'No Set-Aside' || label === 'No Set-Aside Used' || label === 'NONE') return null
+function ContractCard({ contract, onSave, saving }: { contract: Contract; onSave: (c: Contract) => void; saving: boolean }) {
+  const color = scoreColor(contract.matchScore)
   return (
-    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-      {label}
-    </span>
-  )
-}
-
-function ContractCard({
-  contract,
-  onSave,
-  saving,
-}: {
-  contract: Contract
-  onSave: (c: Contract) => void
-  saving: boolean
-}) {
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-3 hover:border-slate-700 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <ScoreBadge score={contract.matchScore} />
-          <SetAsideBadge label={contract.setAsideDescription} />
+    <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {contract.matchScore !== undefined && (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 8px', background: `${color}15`, color, border: `1px solid ${color}30`, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              {contract.matchScore}% MATCH
+            </span>
+          )}
+          {contract.setAsideDescription && contract.setAsideDescription !== 'No Set-Aside' && contract.setAsideDescription !== 'No Set-Aside Used' && contract.setAsideDescription !== 'NONE' && (
+            <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              {contract.setAsideDescription}
+            </span>
+          )}
         </div>
-        <span className="text-xs text-slate-500 flex-shrink-0">{contract.type}</span>
+        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.08em', flexShrink: 0, fontFamily: 'var(--font-geist-mono, monospace)' }}>{contract.type}</span>
       </div>
 
-      <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2">
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#E2E8F0', lineHeight: 1.4, margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
         {contract.title}
       </h3>
 
-      <div className="space-y-1">
-        <p className="text-xs text-slate-400 flex items-center gap-1.5">
-          <span>🏛</span> {contract.agency}
-          {contract.subAgency && <span className="text-slate-600"> · {contract.subAgency}</span>}
-        </p>
-        <div className="flex gap-4">
-          <p className="text-xs text-slate-400">
-            <span className="font-medium text-slate-300">{formatValue(contract.value)}</span>
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{contract.agency}</div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{formatValue(contract.value)}</span>
           {contract.responseDeadline && (
-            <p className="text-xs text-slate-400">
-              Due: <span className="font-medium text-slate-300">{formatDate(contract.responseDeadline)}</span>
-            </p>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>Due {formatDate(contract.responseDeadline)}</span>
           )}
         </div>
-        <p className="text-xs text-slate-500">NAICS {contract.naicsCode}</p>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>NAICS {contract.naicsCode}</div>
       </div>
 
-      <div className="flex gap-2 mt-auto pt-2 border-t border-slate-800">
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button
           onClick={() => onSave(contract)}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition-colors disabled:opacity-50"
+          style={{ padding: '7px 12px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
         >
-          ♡ Save
+          ♡ SAVE
         </button>
         <Link
           href={`/contracts/${contract.id}`}
-          className="flex-1 text-center px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-950 transition-colors"
-          style={{ background: '#C8A96E' }}
+          style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
         >
-          View Details
+          VIEW →
         </Link>
       </div>
     </div>
   )
+}
+
+const selectStyle = {
+  padding: '8px 12px',
+  background: '#0F0F10',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: 'rgba(255,255,255,0.6)',
+  fontSize: 11,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+  outline: 'none',
+}
+
+const inputFilterStyle = {
+  padding: '8px 12px',
+  background: '#0F0F10',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#E2E8F0',
+  fontSize: 11,
+  fontFamily: 'var(--font-geist-mono, monospace)',
+  outline: 'none',
 }
 
 export default function DashboardPage() {
@@ -109,21 +106,16 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
-
-  // Filters
   const [searchInput, setSearchInput] = useState('')
   const [q, setQ] = useState('')
   const [agency, setAgency] = useState('')
   const [type, setType] = useState('')
-  const [setAside, setSetAside] = useState('')
   const [minValue, setMinValue] = useState('')
   const [maxValue, setMaxValue] = useState('')
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setQ(searchInput)
-    }, 400)
-    return () => clearTimeout(timer)
+    const t = setTimeout(() => setQ(searchInput), 400)
+    return () => clearTimeout(t)
   }, [searchInput])
 
   const fetchContracts = useCallback(async () => {
@@ -133,10 +125,8 @@ export default function DashboardPage() {
       if (q) params.set('q', q)
       if (agency) params.set('agency', agency)
       if (type) params.set('type', type)
-      if (setAside) params.set('setAside', setAside)
       if (minValue) params.set('minValue', minValue)
       if (maxValue) params.set('maxValue', maxValue)
-
       const res = await fetch(`/api/contracts?${params.toString()}`)
       const data = await res.json()
       setContracts(data.contracts ?? [])
@@ -145,11 +135,9 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [q, agency, type, setAside, minValue, maxValue])
+  }, [q, agency, type, minValue, maxValue])
 
-  useEffect(() => {
-    fetchContracts()
-  }, [fetchContracts])
+  useEffect(() => { fetchContracts() }, [fetchContracts])
 
   async function handleSave(contract: Contract) {
     setSaving(contract.id)
@@ -157,19 +145,9 @@ export default function DashboardPage() {
       const res = await fetch('/api/contracts/saved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractId: contract.id,
-          samNoticeId: contract.noticeId,
-          title: contract.title,
-          agency: contract.agency,
-          value: contract.value,
-          deadline: contract.responseDeadline,
-          matchScore: contract.matchScore,
-        }),
+        body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore }),
       })
-      if (res.ok) {
-        setSavedIds((prev) => new Set([...prev, contract.id]))
-      }
+      if (res.ok) setSavedIds((prev) => new Set([...prev, contract.id]))
     } catch (err) {
       console.error(err)
     } finally {
@@ -180,55 +158,32 @@ export default function DashboardPage() {
   const onboardingDone = session?.user?.onboardingDone
 
   return (
-    <div className="p-8">
+    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-1">Contract Matches</h1>
-        <p className="text-slate-400">Opportunities matched to your company profile</p>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>CONTRACT INTELLIGENCE</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Matched Opportunities</h1>
       </div>
 
       {/* Onboarding banner */}
       {!onboardingDone && (
-        <div
-          className="mb-6 p-4 rounded-xl border flex items-center justify-between"
-          style={{ background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)' }}
-        >
+        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <p className="font-semibold" style={{ color: '#C8A96E' }}>Complete your profile to see personalized matches</p>
-            <p className="text-sm text-slate-400 mt-0.5">Add your NAICS codes, business type, and preferences to improve match scores.</p>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A96E', marginBottom: 4 }}>Complete your profile to see personalized matches</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Add NAICS codes, business type, and preferences to improve match scores.</div>
           </div>
-          <Link
-            href="/onboarding"
-            className="flex-shrink-0 ml-4 px-4 py-2 rounded-lg text-sm font-semibold text-slate-950"
-            style={{ background: '#C8A96E' }}
-          >
-            Complete Setup
+          <Link href="/onboarding" style={{ flexShrink: 0, padding: '8px 16px', background: '#C8A96E', color: '#0A0A0B', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            COMPLETE SETUP →
           </Link>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <input
-            type="text"
-            placeholder="Search contracts…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="col-span-2 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-          />
-          <input
-            type="text"
-            placeholder="Agency"
-            value={agency}
-            onChange={(e) => setAgency(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-          />
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-slate-500"
-          >
+      <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '16px', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 8 }}>
+          <input type="text" placeholder="Search contracts…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputFilterStyle} />
+          <input type="text" placeholder="Agency" value={agency} onChange={(e) => setAgency(e.target.value)} style={inputFilterStyle} />
+          <select value={type} onChange={(e) => setType(e.target.value)} style={selectStyle}>
             <option value="">All Types</option>
             <option value="Solicitation">Solicitation</option>
             <option value="Sources Sought">Sources Sought</option>
@@ -236,50 +191,34 @@ export default function DashboardPage() {
             <option value="Request for Proposal">RFP</option>
             <option value="Broad Agency">BAA</option>
           </select>
-          <input
-            type="number"
-            placeholder="Min value ($)"
-            value={minValue}
-            onChange={(e) => setMinValue(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-          />
-          <input
-            type="number"
-            placeholder="Max value ($)"
-            value={maxValue}
-            onChange={(e) => setMaxValue(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
-          />
+          <input type="number" placeholder="Min value ($)" value={minValue} onChange={(e) => setMinValue(e.target.value)} style={inputFilterStyle} />
+          <input type="number" placeholder="Max value ($)" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} style={inputFilterStyle} />
         </div>
       </div>
 
       {/* Results */}
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="text-center">
-            <div className="text-4xl mb-4 animate-spin">⊙</div>
-            <p className="text-slate-400">Loading contracts…</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12 }}>LOADING CONTRACTS…</div>
+            <div style={{ width: 120, height: 1, background: 'rgba(200,169,110,0.3)', margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, background: '#C8A96E', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </div>
           </div>
         </div>
       ) : contracts.length === 0 ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="text-center">
-            <p className="text-2xl mb-2">🔍</p>
-            <p className="text-white font-semibold mb-1">No contracts found</p>
-            <p className="text-slate-400 text-sm">Try adjusting your filters or broadening your search.</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.2)', marginBottom: 12 }}>NO RESULTS</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>No contracts match your filters. Try broadening your search.</div>
           </div>
         </div>
       ) : (
         <>
-          <p className="text-slate-400 text-sm mb-4">{contracts.length} opportunities found</p>
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.05)' }}>
             {contracts.map((contract) => (
-              <ContractCard
-                key={contract.id}
-                contract={contract}
-                onSave={handleSave}
-                saving={saving === contract.id}
-              />
+              <ContractCard key={contract.id} contract={contract} onSave={handleSave} saving={saving === contract.id} />
             ))}
           </div>
         </>
