@@ -58,7 +58,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflowAuto: 'auto' as never, overflow: 'auto' }}>
+      <main style={{ flex: 1, overflow: 'auto' }}>
         {children}
       </main>
     </div>
