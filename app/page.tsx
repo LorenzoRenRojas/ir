@@ -60,9 +60,9 @@ export default function LandingPage() {
             <span style={{ color: 'rgba(0,0,0,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>GOVCON INTELLIGENCE</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-            <Link href="#how"     style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW IT WORKS</Link>
-            <Link href="#pricing" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
-            <Link href="/login"   style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>SIGN IN</Link>
+            <Link href="#how"     className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW IT WORKS</Link>
+            <Link href="#pricing" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
+            <Link href="/login"   className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>SIGN IN</Link>
             <Link href="/register" className="btn-primary" style={{ padding: '9px 20px', fontSize: 10 }}>GET ACCESS →</Link>
           </div>
         </div>
@@ -172,9 +172,6 @@ export default function LandingPage() {
             </svg>
           </div>
 
-          <div style={{ position: 'absolute', bottom: 8, right: 0, fontFamily: mono, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.15)', animation: 'fadeIn 3s ease 2.5s both', opacity: 0 }}>
-            METATRON / SACRED GEOMETRY PATTERN
-          </div>
         </div>
       </section>
 
@@ -254,14 +251,8 @@ export default function LandingPage() {
                 </ul>
                 <Link
                   href={plan.tier === 'enterprise' ? 'mailto:hello@ir-gov.app' : '/register'}
-                  style={{
-                    display: 'block', textAlign: 'center', padding: '14px',
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
-                    textDecoration: 'none', fontFamily: mono,
-                    background: plan.popular ? crimson : 'transparent',
-                    color: plan.popular ? '#fff' : 'rgba(0,0,0,0.4)',
-                    border: plan.popular ? 'none' : '1px solid rgba(0,0,0,0.12)',
-                  }}
+                  className={plan.popular ? 'btn-primary' : 'btn-ghost'}
+                  style={{ display: 'block', textAlign: 'center', padding: '14px', fontSize: 11 }}
                 >
                   {plan.tier === 'enterprise' ? 'CONTACT →' : 'DEPLOY →'}
                 </Link>
@@ -281,7 +272,7 @@ export default function LandingPage() {
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', margin: '0 0 48px', lineHeight: 1.7 }}>
             Profile takes 4 minutes. First matches appear in under 60 seconds.
           </p>
-          <Link href="/register" style={{ display: 'inline-block', padding: '18px 48px', background: '#fff', color: crimson, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+          <Link href="/register" className="btn-white">
             START FOR FREE →
           </Link>
         </div>
