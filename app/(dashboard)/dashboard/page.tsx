@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
+import { contractToText } from '@/lib/embeddings'
 
 interface AIHint { id: string; aiScore: number; aiReason: string }
 type ContractWithAI = Contract & { aiHint?: AIHint }
@@ -271,7 +272,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/contracts/saved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore }),
+        body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore, contractText: contractToText(contract) }),
       })
       if (res.ok) setSavedIds((prev) => new Set([...prev, contract.id]))
     } catch (err) {

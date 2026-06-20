@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isEmbeddingEnabled, embedTexts, updatePreferenceVector } from '@/lib/embeddings'
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,6 +31,13 @@ export async function POST(req: NextRequest) {
         matchScore: matchScore ?? null,
       },
     })
+
+    // Update learned preference vector in background (non-blocking)
+    if (isEmbeddingEnabled() && samNoticeId) {
+      updateUserPreference(session.user.id, samNoticeId, body.contractText).catch(
+        (err) => console.error('Preference update error (non-fatal):', err)
+      )
+    }
 
     return NextResponse.json({ saved })
   } catch (err) {
@@ -73,6 +81,42 @@ export async function GET() {
     console.error('Get saved contracts error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+async function updateUserPreference(userId: string, noticeId: string, contractText?: string) {
+  // Get or compute the contract's embedding
+  let contractEmb: number[] | null = null
+  const cached = await prisma.contractEmbedding.findUnique({ where: { noticeId } })
+  if (cached) {
+    contractEmb = JSON.parse(cached.embedding)
+  } else if (contractText) {
+    const [vec] = await embedTexts([contractText])
+    contractEmb = vec
+    await prisma.contractEmbedding.upsert({
+      where: { noticeId },
+      update: { embedding: JSON.stringify(vec) },
+      create: { noticeId, embedding: JSON.stringify(vec) },
+    })
+  }
+  if (!contractEmb) return
+
+  // Update EMA preference vector
+  const current = await prisma.userEmbedding.findUnique({ where: { userId } })
+  const currentVec = current ? JSON.parse(current.preferenceEmbedding) as number[] : null
+  const updated = updatePreferenceVector(currentVec, contractEmb)
+
+  await prisma.userEmbedding.upsert({
+    where: { userId },
+    update: {
+      preferenceEmbedding: JSON.stringify(updated),
+      saveCount: { increment: 1 },
+    },
+    create: {
+      userId,
+      preferenceEmbedding: JSON.stringify(updated),
+      saveCount: 1,
+    },
+  })
 }
 
 export async function DELETE(req: NextRequest) {
