@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LogoRune } from '@/components/ui/logo-rune'
 
 // ─── Metatron's Cube geometry (pre-computed) ───────────────────────────────
 const C = 250
@@ -55,7 +56,7 @@ export default function LandingPage() {
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <span style={{ color: crimson, fontSize: 22, fontWeight: 700 }}>ᛁ</span>
+            <LogoRune size={26} color={crimson} />
             <span style={{ color: '#0A0A0A', fontSize: 15, fontWeight: 800, letterSpacing: '0.1em' }}>IR</span>
             <span style={{ color: 'rgba(0,0,0,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>GOVCON INTELLIGENCE</span>
           </Link>
@@ -282,7 +283,7 @@ export default function LandingPage() {
       <footer style={{ borderTop: '1px solid rgba(0,0,0,0.08)', padding: '48px 32px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: crimson, fontSize: 20, fontWeight: 700 }}>ᛁ</span>
+            <LogoRune size={22} color={crimson} />
             <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.38)' }}>IR GOVCON INTELLIGENCE</span>
           </div>
           <div style={{ display: 'flex', gap: 32 }}>
