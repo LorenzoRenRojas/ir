@@ -27,6 +27,12 @@ export interface Contract {
     setAsideScore: number
     contractSizeScore: number
     geoScore: number
+    details?: {
+      naics: string
+      setAside: string
+      contractSize: string
+      geo: string
+    }
   }
 }
 
