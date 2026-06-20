@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { LogoRune } from '@/components/ui/logo-rune'
 
 const NAICS_OPTIONS = [
   { code: '236220', label: '236220 — Commercial Building Construction' },
@@ -159,7 +160,7 @@ export default function OnboardingPage() {
       {/* Logo */}
       <div style={{ marginBottom: 40, alignSelf: 'flex-start', maxWidth: 640, width: '100%', margin: '0 auto 40px' }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <span style={{ color: '#C8A96E', fontSize: 20, fontWeight: 700 }}>ᛁ</span>
+          <LogoRune size={22} color="#C8A96E" />
           <span style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
         </Link>
       </div>
