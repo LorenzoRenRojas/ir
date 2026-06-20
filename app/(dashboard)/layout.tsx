@@ -20,8 +20,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isEnterprise = session.user.subscriptionTier === 'enterprise'
   let hasTeam = false
   if (isEnterprise) {
-    const membership = await prisma.teamMember.findFirst({ where: { userId: session.user.id } })
-    hasTeam = !!membership
+    try {
+      const membership = await prisma.teamMember.findFirst({ where: { userId: session.user.id } })
+      hasTeam = !!membership
+    } catch {
+      hasTeam = false
+    }
   }
 
   return (

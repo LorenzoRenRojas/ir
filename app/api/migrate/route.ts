@@ -29,12 +29,32 @@ export async function GET(req: Request) {
     `CREATE UNIQUE INDEX IF NOT EXISTS "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "CompanyProfile_userId_key" ON "CompanyProfile"("userId")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "SavedContract_userId_contractId_key" ON "SavedContract"("userId", "contractId")`,
+    // Team system tables
+    `CREATE TABLE IF NOT EXISTS "Team" ("id" TEXT NOT NULL PRIMARY KEY,"name" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS "TeamMember" ("id" TEXT NOT NULL PRIMARY KEY,"teamId" TEXT NOT NULL,"userId" TEXT NOT NULL,"role" TEXT NOT NULL DEFAULT 'member',"permissions" TEXT NOT NULL DEFAULT '{"canSaveContracts":true,"canGenerateDocs":false,"canManageWatchlist":true,"canEditCompanyProfile":false}',"joinedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "TeamMember_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team" ("id") ON DELETE CASCADE ON UPDATE CASCADE,CONSTRAINT "TeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS "TeamInvite" ("id" TEXT NOT NULL PRIMARY KEY,"teamId" TEXT NOT NULL,"email" TEXT NOT NULL,"token" TEXT NOT NULL,"role" TEXT NOT NULL DEFAULT 'member',"expiresAt" DATETIME NOT NULL,"acceptedAt" DATETIME,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "TeamInvite_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "TeamMember_teamId_userId_key" ON "TeamMember"("teamId", "userId")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "TeamInvite_token_key" ON "TeamInvite"("token")`,
+    // New CompanyProfile columns (ALTER TABLE ignores if column already exists via try-catch at runtime)
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "orgSize" TEXT`,
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "contractVehicles" TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "capabilityStatement" TEXT`,
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "pastPerformance" TEXT`,
   ]
 
   const results: string[] = []
   for (const sql of statements) {
-    await client.execute(sql)
-    results.push(`OK: ${sql.slice(0, 50)}...`)
+    try {
+      await client.execute(sql)
+      results.push(`OK: ${sql.slice(0, 60)}...`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('duplicate column') || msg.includes('already exists')) {
+        results.push(`SKIP (already exists): ${sql.slice(0, 60)}...`)
+      } else {
+        results.push(`ERROR: ${msg} | SQL: ${sql.slice(0, 60)}...`)
+      }
+    }
   }
 
   return NextResponse.json({ success: true, tables: results })
