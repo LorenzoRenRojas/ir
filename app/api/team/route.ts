@@ -40,7 +40,7 @@ export async function GET() {
         name: membership.team.name,
         role: membership.role,
         permissions: JSON.parse(membership.permissions),
-        members: membership.team.members.map((m) => ({
+        members: membership.team.members.map((m: (typeof membership.team.members)[number]) => ({
           id: m.id,
           userId: m.userId,
           role: m.role,

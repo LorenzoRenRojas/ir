@@ -51,7 +51,7 @@ export async function GET() {
       include: { team: { include: { members: true } } },
     })
     const teamUserIds = membership
-      ? membership.team.members.map((m) => m.userId)
+      ? membership.team.members.map((m: { userId: string }) => m.userId)
       : [session.user.id]
 
     const saved = await prisma.savedContract.findMany({
@@ -62,7 +62,7 @@ export async function GET() {
 
     // Deduplicate by contractId, keeping latest
     const seen = new Set<string>()
-    const deduplicated = saved.filter((c) => {
+    const deduplicated = saved.filter((c: (typeof saved)[number]) => {
       if (seen.has(c.contractId)) return false
       seen.add(c.contractId)
       return true
