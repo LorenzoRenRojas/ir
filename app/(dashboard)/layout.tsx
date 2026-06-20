@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { SignOutButton } from '@/components/ui/sign-out-button'
-import { LogoRune } from '@/components/ui/logo-rune'
 
 const NAV = [
   { href: '/dashboard', label: 'CONTRACTS', icon: '◈' },
@@ -24,7 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {/* Logo */}
         <div style={{ padding: '20px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <LogoRune size={22} color="#C8A96E" />
+            <span style={{ color: '#C8A96E', fontSize: 18, fontWeight: 700 }}>ᛁ</span>
             <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
           </Link>
           <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 9, letterSpacing: '0.08em', marginTop: 4 }}>GOVCON INTELLIGENCE</div>
