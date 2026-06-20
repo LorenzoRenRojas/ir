@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { Contract } from '@/lib/sam-api'
 import type { AIDetailAnalysis } from '@/app/api/ai/analyze/detail/route'
 
