@@ -45,12 +45,30 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const saved = await prisma.savedContract.findMany({
+    // Find user's team to include all team members' saved contracts
+    const membership = await prisma.teamMember.findFirst({
       where: { userId: session.user.id },
+      include: { team: { include: { members: true } } },
+    })
+    const teamUserIds = membership
+      ? membership.team.members.map((m) => m.userId)
+      : [session.user.id]
+
+    const saved = await prisma.savedContract.findMany({
+      where: { userId: { in: teamUserIds } },
       orderBy: { createdAt: 'desc' },
+      include: { user: { select: { name: true, email: true } } },
     })
 
-    return NextResponse.json({ saved })
+    // Deduplicate by contractId, keeping latest
+    const seen = new Set<string>()
+    const deduplicated = saved.filter((c) => {
+      if (seen.has(c.contractId)) return false
+      seen.add(c.contractId)
+      return true
+    })
+
+    return NextResponse.json({ saved: deduplicated })
   } catch (err) {
     console.error('Get saved contracts error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

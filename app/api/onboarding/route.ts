@@ -63,6 +63,25 @@ export async function POST(req: NextRequest) {
       data: { onboardingDone: true },
     })
 
+    // Auto-create team if user doesn't have one
+    const existingMembership = await prisma.teamMember.findFirst({ where: { userId: session.user.id } })
+    if (!existingMembership) {
+      const team = await prisma.team.create({ data: { name: companyName.trim() } })
+      await prisma.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: session.user.id,
+          role: 'admin',
+          permissions: JSON.stringify({
+            canSaveContracts: true,
+            canGenerateDocs: true,
+            canManageWatchlist: true,
+            canEditCompanyProfile: true,
+          }),
+        },
+      })
+    }
+
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('Onboarding error:', err)
