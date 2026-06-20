@@ -53,6 +53,7 @@ model User {
   savedContracts     SavedContract[]
   generatedDocuments GeneratedDocument[]
   teamMembers        TeamMember[]
+  userEmbedding      UserEmbedding?
 }
 
 model VerificationToken {
@@ -137,6 +138,24 @@ model TeamMember {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
+}
+
+// Stores Voyage AI embeddings for contracts keyed by SAM.gov noticeId
+model ContractEmbedding {
+  noticeId  String   @id
+  embedding String   // JSON float array (voyage-3-lite: 512 dims)
+  model     String   @default("voyage-3-lite")
+  createdAt DateTime @default(now())
+}
+
+// Per-user learned preference vector (EMA of saved contract embeddings)
+model UserEmbedding {
+  userId              String   @id
+  preferenceEmbedding String   // JSON float array
+  saveCount           Int      @default(0)
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TeamInvite {
