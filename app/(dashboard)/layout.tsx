@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { SignOutButton } from '@/components/ui/sign-out-button'
 
 const NAV = [
@@ -14,6 +15,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth()
   if (!session?.user) {
     redirect('/login')
+  }
+
+  const isEnterprise = session.user.subscriptionTier === 'enterprise'
+  let hasTeam = false
+  if (isEnterprise) {
+    const membership = await prisma.teamMember.findFirst({ where: { userId: session.user.id } })
+    hasTeam = !!membership
   }
 
   return (
@@ -38,6 +46,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
               {label}
             </Link>
           ))}
+
+          {isEnterprise && !hasTeam && (
+            <Link
+              href="/team/create"
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', textDecoration: 'none', fontSize: 10, letterSpacing: '0.1em', color: '#C41230', marginTop: 8, borderTop: '1px solid rgba(0,0,0,0.06)' }}
+            >
+              <span style={{ fontSize: 12 }}>◉</span>
+              CREATE TEAM
+            </Link>
+          )}
         </nav>
 
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(0,0,0,0.08)' }}>

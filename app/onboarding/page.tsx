@@ -144,7 +144,12 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong'); return }
-      router.push('/dashboard')
+      // Enterprise users get the extended onboarding flow
+      if (form.plan === 'enterprise') {
+        router.push('/onboarding/enterprise')
+      } else {
+        router.push('/dashboard')
+      }
     } catch {
       setError('Failed to save profile. Please try again.')
     } finally {
