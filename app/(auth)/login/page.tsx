@@ -8,9 +8,9 @@ import Link from 'next/link'
 const inputStyle = {
   width: '100%',
   padding: '10px 12px',
-  background: '#0F0F10',
-  border: '1px solid rgba(255,255,255,0.1)',
-  color: '#E2E8F0',
+  background: '#F8F8F7',
+  border: '1px solid rgba(0,0,0,0.12)',
+  color: '#0A0A0A',
   fontSize: 13,
   fontFamily: 'var(--font-geist-mono, monospace)',
   outline: 'none',
@@ -22,7 +22,7 @@ const labelStyle = {
   fontSize: 10,
   fontWeight: 700,
   letterSpacing: '0.12em',
-  color: 'rgba(255,255,255,0.45)',
+  color: 'rgba(0,0,0,0.45)',
   marginBottom: 8,
   fontFamily: 'var(--font-geist-mono, monospace)',
 }
@@ -55,14 +55,14 @@ export default function LoginPage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 400 }}>
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', background: '#0F0F10', padding: '40px 36px' }}>
+      <div style={{ border: '1px solid rgba(0,0,0,0.1)', background: '#FFFFFF', padding: '40px 36px' }}>
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>IR — AUTHENTICATION</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)', margin: 0 }}>Welcome back</h1>
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.28)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>AUTHENTICATION</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', fontFamily: 'var(--font-geist-sans, sans-serif)', margin: 0 }}>Welcome back</h1>
         </div>
 
         {error && (
-          <div style={{ marginBottom: 20, padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+          <div style={{ marginBottom: 20, padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>
             {error}
           </div>
         )}
@@ -79,16 +79,16 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{ background: '#C8A96E', color: '#0A0A0B', border: 'none', padding: '12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)', marginTop: 4 }}
+            style={{ background: '#C41230', color: '#ffffff', border: 'none', padding: '12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)', marginTop: 4 }}
           >
             {loading ? 'SIGNING IN…' : 'SIGN IN →'}
           </button>
         </form>
 
-        <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
-          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+        <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid rgba(0,0,0,0.07)', textAlign: 'center' }}>
+          <span style={{ color: 'rgba(0,0,0,0.4)', fontSize: 11, fontFamily: 'var(--font-geist-mono, monospace)' }}>
             No account?{' '}
-            <Link href="/register" style={{ color: '#C8A96E', textDecoration: 'none' }}>Register</Link>
+            <Link href="/register" style={{ color: '#C41230', textDecoration: 'none' }}>Register</Link>
           </span>
         </div>
       </div>

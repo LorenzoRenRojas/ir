@@ -33,7 +33,7 @@ export function SaveContractButton({ contract }: { contract: Contract }) {
 
   if (saved) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, letterSpacing: '0.1em', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ADE80', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, letterSpacing: '0.1em', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.25)', color: '#16a34a', fontFamily: 'var(--font-geist-mono, monospace)' }}>
         ♥ SAVED TO WATCHLIST
       </div>
     )
@@ -43,7 +43,7 @@ export function SaveContractButton({ contract }: { contract: Contract }) {
     <button
       onClick={handleSave}
       disabled={loading}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C8A96E', color: '#0A0A0B', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C41230', color: '#ffffff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
     >
       {loading ? 'SAVING…' : '♡ SAVE CONTRACT →'}
     </button>

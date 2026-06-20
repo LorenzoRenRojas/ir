@@ -21,15 +21,15 @@ function formatDate(d: string): string {
 
 function scoreColor(score?: number) {
   if (!score) return '#64748b'
-  if (score >= 80) return '#4ADE80'
-  if (score >= 60) return '#C8A96E'
+  if (score >= 80) return '#16a34a'
+  if (score >= 60) return '#C41230'
   return '#64748b'
 }
 
 function ContractCard({ contract, onSave, saving }: { contract: Contract; onSave: (c: Contract) => void; saving: boolean }) {
   const color = scoreColor(contract.matchScore)
   return (
-    <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {contract.matchScore !== undefined && (
@@ -38,40 +38,40 @@ function ContractCard({ contract, onSave, saving }: { contract: Contract; onSave
             </span>
           )}
           {contract.setAsideDescription && contract.setAsideDescription !== 'No Set-Aside' && contract.setAsideDescription !== 'No Set-Aside Used' && contract.setAsideDescription !== 'NONE' && (
-            <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+            <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.08)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
               {contract.setAsideDescription}
             </span>
           )}
         </div>
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.08em', flexShrink: 0, fontFamily: 'var(--font-geist-mono, monospace)' }}>{contract.type}</span>
+        <span style={{ fontSize: 9, color: 'rgba(0,0,0,0.2)', letterSpacing: '0.08em', flexShrink: 0, fontFamily: 'var(--font-geist-mono, monospace)' }}>{contract.type}</span>
       </div>
 
-      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#E2E8F0', lineHeight: 1.4, margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', lineHeight: 1.4, margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
         {contract.title}
       </h3>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{contract.agency}</div>
+        <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>{contract.agency}</div>
         <div style={{ display: 'flex', gap: 16 }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{formatValue(contract.value)}</span>
+          <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>{formatValue(contract.value)}</span>
           {contract.responseDeadline && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>Due {formatDate(contract.responseDeadline)}</span>
+            <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)' }}>Due {formatDate(contract.responseDeadline)}</span>
           )}
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>NAICS {contract.naicsCode}</div>
+        <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.2)', letterSpacing: '0.06em' }}>NAICS {contract.naicsCode}</div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         <button
           onClick={() => onSave(contract)}
           disabled={saving}
-          style={{ padding: '7px 12px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
+          style={{ padding: '7px 12px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.1)', background: 'transparent', color: 'rgba(0,0,0,0.4)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
         >
           ♡ SAVE
         </button>
         <Link
           href={`/contracts/${contract.id}`}
-          style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C8A96E', color: '#0A0A0B', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
+          style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
         >
           VIEW →
         </Link>
@@ -82,9 +82,9 @@ function ContractCard({ contract, onSave, saving }: { contract: Contract; onSave
 
 const selectStyle = {
   padding: '8px 12px',
-  background: '#0F0F10',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.6)',
+  background: '#FFFFFF',
+  border: '1px solid rgba(0,0,0,0.1)',
+  color: 'rgba(0,0,0,0.6)',
   fontSize: 11,
   fontFamily: 'var(--font-geist-mono, monospace)',
   outline: 'none',
@@ -92,9 +92,9 @@ const selectStyle = {
 
 const inputFilterStyle = {
   padding: '8px 12px',
-  background: '#0F0F10',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: '#E2E8F0',
+  background: '#FFFFFF',
+  border: '1px solid rgba(0,0,0,0.1)',
+  color: '#0A0A0A',
   fontSize: 11,
   fontFamily: 'var(--font-geist-mono, monospace)',
   outline: 'none',
@@ -161,25 +161,25 @@ export default function DashboardPage() {
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>IR — CONTRACT INTELLIGENCE</div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#E2E8F0', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Matched Opportunities</h1>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10 }}>IR — CONTRACT INTELLIGENCE</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Matched Opportunities</h1>
       </div>
 
       {/* Onboarding banner */}
       {!onboardingDone && (
-        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(196,18,48,0.04)', border: '1px solid rgba(196,18,48,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A96E', marginBottom: 4 }}>Complete your profile to see personalized matches</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Add NAICS codes, business type, and preferences to improve match scores.</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#C41230', marginBottom: 4 }}>Complete your profile to see personalized matches</div>
+            <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>Add NAICS codes, business type, and preferences to improve match scores.</div>
           </div>
-          <Link href="/onboarding" style={{ flexShrink: 0, padding: '8px 16px', background: '#C8A96E', color: '#0A0A0B', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <Link href="/onboarding" style={{ flexShrink: 0, padding: '8px 16px', background: '#C41230', color: '#ffffff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
             COMPLETE SETUP →
           </Link>
         </div>
       )}
 
       {/* Filters */}
-      <div style={{ background: '#0F0F10', border: '1px solid rgba(255,255,255,0.07)', padding: '16px', marginBottom: 24 }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '16px', marginBottom: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 8 }}>
           <input type="text" placeholder="Search contracts…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputFilterStyle} />
           <input type="text" placeholder="Agency" value={agency} onChange={(e) => setAgency(e.target.value)} style={inputFilterStyle} />
@@ -200,23 +200,23 @@ export default function DashboardPage() {
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.25)', marginBottom: 12 }}>LOADING CONTRACTS…</div>
-            <div style={{ width: 120, height: 1, background: 'rgba(200,169,110,0.3)', margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', inset: 0, background: '#C8A96E', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 12 }}>LOADING CONTRACTS…</div>
+            <div style={{ width: 120, height: 1, background: 'rgba(196,18,48,0.2)', margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, background: '#C41230', animation: 'pulse 1.5s ease-in-out infinite' }} />
             </div>
           </div>
         </div>
       ) : contracts.length === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.2)', marginBottom: 12 }}>NO RESULTS</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>No contracts match your filters. Try broadening your search.</div>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.2)', marginBottom: 12 }}>NO RESULTS</div>
+            <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>No contracts match your filters. Try broadening your search.</div>
           </div>
         </div>
       ) : (
         <>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
             {contracts.map((contract) => (
               <ContractCard key={contract.id} contract={contract} onSave={handleSave} saving={saving === contract.id} />
             ))}
