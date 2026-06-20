@@ -5,6 +5,9 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
 
+interface AIHint { id: string; aiScore: number; aiReason: string }
+type ContractWithAI = Contract & { aiHint?: AIHint }
+
 function formatValue(v?: number): string {
   if (!v) return 'TBD'
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
@@ -64,7 +67,7 @@ function MatchBar({ score }: { score: number }) {
   )
 }
 
-function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean }) {
+function ContractCard({ contract, onSave, isSaved, saving }: { contract: ContractWithAI; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean }) {
   const reason = topMatchReason(contract)
   const hasScore = contract.matchScore !== undefined
 
@@ -101,6 +104,14 @@ function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contrac
       {reason && (
         <div style={{ fontSize: 10, color: '#16a34a', letterSpacing: '0.04em', fontFamily: 'var(--font-geist-mono, monospace)', display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ opacity: 0.7 }}>↑</span> {reason}
+        </div>
+      )}
+
+      {/* AI hint */}
+      {contract.aiHint && (
+        <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)', display: 'flex', alignItems: 'flex-start', gap: 6, padding: '6px 8px', background: 'rgba(0,0,0,0.02)', borderLeft: '2px solid rgba(0,0,0,0.08)' }}>
+          <span style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.2)', flexShrink: 0, paddingTop: 1, fontFamily: 'var(--font-geist-mono, monospace)' }}>AI</span>
+          <span style={{ lineHeight: 1.5 }}>{contract.aiHint.aiReason}</span>
         </div>
       )}
 
@@ -182,8 +193,9 @@ const inputFilterStyle = {
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const [contracts, setContracts] = useState<Contract[]>([])
+  const [contracts, setContracts] = useState<ContractWithAI[]>([])
   const [loading, setLoading] = useState(true)
+  const [aiLoading, setAiLoading] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null)
@@ -212,8 +224,27 @@ export default function DashboardPage() {
       if (maxValue) params.set('maxValue', maxValue)
       const res = await fetch(`/api/contracts?${params.toString()}`)
       const data = await res.json()
-      setContracts(data.contracts ?? [])
+      const loaded: ContractWithAI[] = data.contracts ?? []
+      setContracts(loaded)
       setFetchedAt(new Date())
+
+      // Enrich with AI hints in background (top 20)
+      if (loaded.length > 0 && process.env.NEXT_PUBLIC_AI_HINTS !== 'false') {
+        setAiLoading(true)
+        fetch('/api/ai/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contracts: loaded.slice(0, 20) }),
+        })
+          .then(r => r.json())
+          .then(({ results }: { results: AIHint[] }) => {
+            if (!Array.isArray(results)) return
+            const map = new Map(results.map(h => [h.id, h]))
+            setContracts(prev => prev.map(c => ({ ...c, aiHint: map.get(c.id) })))
+          })
+          .catch(() => {})
+          .finally(() => setAiLoading(false))
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -326,7 +357,10 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
+          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span>{contracts.length} OPPORTUNITIES FOUND</span>
+            {aiLoading && <span style={{ color: 'rgba(0,0,0,0.2)', fontSize: 9 }}>· AI ANALYZING…</span>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
             {contracts.map((contract) => (
               <ContractCard
