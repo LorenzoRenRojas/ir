@@ -5,7 +5,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
 import { SaveContractButton } from '@/components/contracts/save-contract-button'
-import { AIAnalysisPanel } from '@/components/contracts/ai-analysis-panel'
 
 function formatValue(v?: number): string {
   if (!v) return 'TBD'
@@ -142,9 +141,6 @@ export default async function ContractDetailPage({
               </div>
             </div>
           )}
-
-          {/* AI Analysis */}
-          <AIAnalysisPanel contract={contract} />
 
           {/* Actions */}
           <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
