@@ -15,11 +15,10 @@ async function _fetchIncumbent(naicsCode: string, agency: string): Promise<Incum
       body: JSON.stringify({
         filters: {
           naics_codes: [naicsCode],
-          agencies: [{ type: 'awarding', tier: 'toptier', name: agency }],
           award_type_codes: ['A', 'B', 'C', 'D'],
           time_period: [{ start_date: '2022-01-01', end_date: new Date().toISOString().split('T')[0] }],
         },
-        fields: ['Recipient Name', 'Award Amount', 'Period of Performance Current End Date', 'Award ID'],
+        fields: ['Recipient Name', 'Award Amount', 'Period of Performance Current End Date', 'Award ID', 'Awarding Agency'],
         sort: 'Award Amount',
         order: 'desc',
         limit: 1,
