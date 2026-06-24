@@ -314,46 +314,32 @@ function MetatronCube() {
   }
 
   return (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+    <svg width="80" height="80" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}>
-      {/* Glow filter */}
-      <defs>
-        <filter id="redGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* Outer geometry — collapses inward */}
-      <g className="m-outer" style={{ transformOrigin: '32px 32px', transformBox: 'fill-box' }} filter="url(#redGlow)">
-        <circle cx={C} cy={C} r={rBound} stroke="#C41230" strokeWidth="0.6" strokeOpacity="0.45" fill="none" />
+      {/* Outer ring + full geometry — spins clockwise */}
+      <g className="m-outer" style={{ transformOrigin: '32px 32px', transformBox: 'fill-box' }}>
+        <circle cx={C} cy={C} r={rBound} stroke="#C41230" strokeWidth="0.7" strokeOpacity="0.5" fill="none" />
         <circle cx={C} cy={C} r={rInner} stroke="#C41230" strokeWidth="0.6" strokeOpacity="0.5" fill="none" />
-        <circle cx={C} cy={C} r="2" fill="#C41230" />
+        <circle cx={C} cy={C} r="2.2" fill="#C41230" />
         {hex.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="4" stroke="#C41230" strokeWidth="0.5" strokeOpacity="0.55" fill="rgba(196,18,48,0.1)" />
+          <circle key={i} cx={p.x} cy={p.y} r="4" stroke="#C41230" strokeWidth="0.55" strokeOpacity="0.6" fill="rgba(196,18,48,0.12)" />
         ))}
         {lines.map((l, i) => (
           <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-            stroke="#C41230" strokeWidth={i < 6 ? 0.7 : 0.3}
-            strokeOpacity={i < 6 ? 0.85 : 0.3} />
+            stroke="#C41230" strokeWidth={i < 6 ? 0.75 : 0.3}
+            strokeOpacity={i < 6 ? 0.9 : 0.35} />
         ))}
       </g>
 
-      {/* Inner layer — expands when outer collapses, rotated 30° */}
-      <g className="m-inner" style={{ transformOrigin: '32px 32px', transformBox: 'fill-box' }} filter="url(#redGlow)">
+      {/* Inner star layer — counter-spins */}
+      <g className="m-inner" style={{ transformOrigin: '32px 32px', transformBox: 'fill-box' }}>
         {Array.from({ length: 6 }, (_, i) => {
           const a = (Math.PI / 3) * i + Math.PI / 6
           const x = C + (rOrbit * 0.52) * Math.cos(a)
           const y = C + (rOrbit * 0.52) * Math.sin(a)
-          return <circle key={i} cx={x} cy={y} r="2.2" stroke="#ff2244" strokeWidth="0.5" fill="rgba(255,34,68,0.15)" />
+          return <line key={i} x1={C} y1={C} x2={x} y2={y} stroke="#ff2244" strokeWidth="0.55" strokeOpacity="0.65" />
         })}
-        {Array.from({ length: 6 }, (_, i) => {
-          const a = (Math.PI / 3) * i + Math.PI / 6
-          const x = C + (rOrbit * 0.52) * Math.cos(a)
-          const y = C + (rOrbit * 0.52) * Math.sin(a)
-          return <line key={i} x1={C} y1={C} x2={x} y2={y} stroke="#ff2244" strokeWidth="0.5" strokeOpacity="0.7" />
-        })}
-        <circle cx={C} cy={C} r="6" stroke="#ff2244" strokeWidth="0.5" strokeOpacity="0.5" fill="none" />
+        <circle cx={C} cy={C} r="7" stroke="#ff2244" strokeWidth="0.55" strokeOpacity="0.45" fill="none" />
       </g>
     </svg>
   )
@@ -461,7 +447,7 @@ export default function OnboardingPage() {
 
         {/* Metatron message */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 32, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ width: 64, height: 64, flexShrink: 0, marginTop: 0 }}>
+          <div style={{ width: 80, height: 80, flexShrink: 0, marginTop: 0 }}>
             <MetatronCube />
           </div>
           <div style={{ flex: 1 }}>
@@ -633,21 +619,15 @@ export default function OnboardingPage() {
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
         @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
 
-        /* Outer collapses to center, then expands back */
-        @keyframes outerFold {
-          0%, 100% { transform: scale(1);    opacity: 1; }
-          40%       { transform: scale(0.08); opacity: 0; }
-          60%       { transform: scale(0.08); opacity: 0; }
-        }
-        /* Inner expands briefly while outer is collapsed */
-        @keyframes innerReveal {
-          0%, 30%   { transform: scale(0) rotate(0deg);    opacity: 0; }
-          50%        { transform: scale(1) rotate(30deg);   opacity: 1; }
-          70%, 100% { transform: scale(0) rotate(60deg);   opacity: 0; }
+        @keyframes spinCW  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
+        @keyframes spinCCW { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
+        @keyframes glowPulse {
+          0%, 100% { filter: drop-shadow(0 0 3px #C41230) drop-shadow(0 0 6px #C41230); }
+          50%       { filter: drop-shadow(0 0 8px #ff2244) drop-shadow(0 0 16px #C41230); }
         }
 
-        .m-outer { animation: outerFold 5s ease-in-out infinite; }
-        .m-inner { animation: innerReveal 5s ease-in-out infinite; }
+        .m-outer { animation: spinCW 12s linear infinite, glowPulse 3s ease-in-out infinite; }
+        .m-inner { animation: spinCCW 8s linear infinite; }
 
         .matrix-font { font-family: 'Share Tech Mono', 'Courier New', monospace !important; }
 
