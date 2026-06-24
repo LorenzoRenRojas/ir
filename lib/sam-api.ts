@@ -22,6 +22,7 @@ export interface Contract {
   description: string
   link: string
   matchScore?: number
+  incumbent?: { awardee: string; amount: number } | null
   matchBreakdown?: {
     naicsScore: number
     setAsideScore: number
