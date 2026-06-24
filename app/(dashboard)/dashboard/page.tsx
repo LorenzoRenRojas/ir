@@ -64,21 +64,49 @@ function MatchBar({ score }: { score: number }) {
   )
 }
 
-function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean }) {
+function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number }) {
+  const [hovered, setHovered] = useState(false)
   const reason = topMatchReason(contract)
   const hasScore = contract.matchScore !== undefined
+  const score = contract.matchScore ?? 0
+  const accentColor = score >= 80 ? '#16a34a' : score >= 60 ? '#C41230' : '#94a3b8'
 
   const noSetAside = !contract.setAsideDescription ||
     contract.setAsideDescription === 'No Set-Aside' ||
     contract.setAsideDescription === 'No Set-Aside Used' ||
     contract.setAsideDescription === 'NONE'
 
-  return (
-    <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10, transition: 'border-color 0.15s' }}>
+  const incumbent = (contract as Contract & { incumbent?: { awardee: string; amount: number } | null }).incumbent
 
+  const prevValue = incumbent?.amount
+    ? incumbent.amount >= 1_000_000
+      ? `$${(incumbent.amount / 1_000_000).toFixed(1)}M`
+      : `$${(incumbent.amount / 1_000).toFixed(0)}K`
+    : null
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: '#FFFFFF',
+        border: '1px solid rgba(0,0,0,0.08)',
+        borderLeft: `3px solid ${accentColor}`,
+        padding: '18px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+        boxShadow: hovered ? '0 8px 32px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.04)',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        animation: `fadeSlideIn 0.35s ease both`,
+        animationDelay: `${index * 40}ms`,
+        cursor: 'default',
+      }}
+    >
       {/* Match bar + badges row */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {hasScore && <MatchBar score={contract.matchScore!} />}
+        {hasScore && <MatchBar score={score} />}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
           {!noSetAside && (
             <span style={{ fontSize: 9, padding: '2px 7px', background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.08)', letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>
@@ -110,8 +138,10 @@ function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contrac
         {contract.subAgency && contract.subAgency !== contract.agency && (
           <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>↳ {contract.subAgency}</div>
         )}
-        <div style={{ display: 'flex', gap: 12, marginTop: 2, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: '#0A0A0A', fontWeight: 700, fontFamily: 'var(--font-geist-mono, monospace)' }}>{formatValue(contract.value)}</span>
+        <div style={{ display: 'flex', gap: 12, marginTop: 2, flexWrap: 'wrap', alignItems: 'baseline' }}>
+          <span style={{ fontSize: 11, color: '#0A0A0A', fontWeight: 700, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+            {contract.value ? formatValue(contract.value) : prevValue ? `~${prevValue} prev.` : 'TBD'}
+          </span>
           {contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' && (
             <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>📍 {contract.placeOfPerformance}</span>
           )}
@@ -122,6 +152,19 @@ function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contrac
           </div>
         )}
       </div>
+
+      {/* Incumbent strip */}
+      {incumbent && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(0,0,0,0.025)', borderLeft: `2px solid ${accentColor}` }}>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 1 }}>PREV. WINNER</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{incumbent.awardee}</div>
+          </div>
+          {prevValue && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: accentColor, fontFamily: 'var(--font-geist-mono, monospace)' }}>{prevValue}</span>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, marginTop: 2, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
@@ -134,7 +177,7 @@ function ContractCard({ contract, onSave, isSaved, saving }: { contract: Contrac
         </button>
         <Link
           href={`/contracts/${contract.id}`}
-          style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
+          style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', transition: 'background 0.15s', opacity: hovered ? 0.9 : 1 }}
         >
           VIEW →
         </Link>
@@ -322,14 +365,21 @@ export default function DashboardPage() {
       ) : (
         <>
           <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
+          <style>{`
+            @keyframes fadeSlideIn {
+              from { opacity: 0; transform: translateY(12px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
-            {contracts.map((contract) => (
+            {contracts.map((contract, i) => (
               <ContractCard
                 key={contract.id}
                 contract={contract}
                 onSave={handleSave}
                 isSaved={savedIds.has(contract.id)}
                 saving={saving === contract.id}
+                index={i}
               />
             ))}
           </div>
