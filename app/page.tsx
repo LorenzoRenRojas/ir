@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import HeroMetatron from '@/components/HeroMetatron'
 
 // ─── Metatron's Cube geometry (pre-computed) ───────────────────────────────
 const C = 250
@@ -69,111 +70,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── HERO ── */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 32px 60px', display: 'grid', gridTemplateColumns: '1fr 460px', gap: 72, alignItems: 'center', minHeight: '88vh' }}>
-
-        {/* Copy */}
-        <div style={{ animation: 'slideInLeft 0.9s cubic-bezier(0.25,0.46,0.45,0.94) both' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
-            <span style={{ color: '#16a34a', fontSize: 10, letterSpacing: '0.14em', fontFamily: mono }}>LIVE — SAM.GOV FEED ACTIVE</span>
-          </div>
-
-          <h1 style={{ fontSize: 'clamp(40px, 5vw, 76px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: '-0.03em', margin: '0 0 10px', color: '#0A0A0A' }}>
-            When you were young,
-          </h1>
-          <h1 style={{ fontSize: 'clamp(40px, 5vw, 76px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: '-0.03em', margin: '0 0 36px', color: crimson }}>
-            you dreamed of shaping the world.
-          </h1>
-
-          <p style={{ fontSize: 18, lineHeight: 1.8, color: 'rgba(0,0,0,0.55)', maxWidth: 500, margin: '0 0 16px' }}>
-            Not just your corner of it —{' '}
-            <span style={{ color: '#0A0A0A', fontWeight: 600 }}>the whole world.</span>{' '}
-            IR is the catalyst. We connect mission-driven companies to $847 billion in federal opportunities, giving you the resources to build something that echoes through millennia.
-          </p>
-
-          <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(0,0,0,0.38)', maxWidth: 460, margin: '0 0 48px', fontFamily: mono, letterSpacing: '0.02em' }}>
-            Every active federal solicitation. Scored against your company profile. Delivered in under 100ms.
-          </p>
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register" className="btn-primary">START MATCHING →</Link>
-            <Link href="#how" className="btn-ghost">SEE HOW IT WORKS</Link>
-          </div>
-        </div>
-
-        {/* Metatron's Cube */}
-        <div style={{ animation: 'slideInRight 1s cubic-bezier(0.25,0.46,0.45,0.94) 0.2s both', position: 'relative' }}>
-          <div style={{ animation: 'irisReveal 1.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.5s both', opacity: 0 }}>
-            <svg viewBox="0 0 500 500" width="100%" height="100%" style={{ display: 'block' }}>
-              <defs>
-                <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%"   stopColor={crimson} stopOpacity="0.07" />
-                  <stop offset="100%" stopColor={crimson} stopOpacity="0" />
-                </radialGradient>
-              </defs>
-
-              {/* Ambient glow */}
-              <circle cx={C} cy={C} r={220} fill="url(#glow)" />
-
-              {/* Outer rotating decorative ring */}
-              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCW 70s linear infinite' }}>
-                <circle cx={C} cy={C} r={R * 3.4} fill="none" stroke={crimson} strokeWidth="0.4" strokeOpacity="0.12" strokeDasharray="3 9" />
-                <circle cx={C} cy={C} r={R * 2.9} fill="none" stroke={crimson} strokeWidth="0.25" strokeOpacity="0.07" />
-                {Array.from({ length: 12 }, (_, i) => {
-                  const a = (i * 30 - 90) * Math.PI / 180
-                  const r1 = R * 3.32, r2 = R * 3.52
-                  return <line key={i} x1={C + r1 * Math.cos(a)} y1={C + r1 * Math.sin(a)} x2={C + r2 * Math.cos(a)} y2={C + r2 * Math.sin(a)} stroke={crimson} strokeWidth="0.6" strokeOpacity="0.18" />
-                })}
-              </g>
-
-              {/* Outer circles — counter-rotating */}
-              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCCW 90s linear infinite' }}>
-                {OUTER_PTS.map(([cx, cy], i) => (
-                  <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={crimson} strokeWidth="0.5" strokeOpacity="0.16" />
-                ))}
-              </g>
-
-              {/* All 78 Metatron lines (fade in after 1s) */}
-              <g style={{ animation: 'fadeIn 2s ease 1s both', opacity: 0 }}>
-                {METATRON_LINES.map((l, i) => (
-                  <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={crimson} strokeWidth="0.25" strokeOpacity="0.1" />
-                ))}
-              </g>
-
-              {/* Inner circles — co-rotating slowly */}
-              <g style={{ transformOrigin: `${C}px ${C}px`, animation: 'spinCW 110s linear infinite' }}>
-                {INNER_PTS.map(([cx, cy], i) => (
-                  <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={crimson} strokeWidth="0.7" strokeOpacity="0.32" />
-                ))}
-              </g>
-
-              {/* Hexagram star lines */}
-              {([
-                [INNER_PTS[0], INNER_PTS[3]],
-                [INNER_PTS[1], INNER_PTS[4]],
-                [INNER_PTS[2], INNER_PTS[5]],
-              ] as [[number,number],[number,number]][]).map(([a, b], i) => (
-                <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={crimson} strokeWidth="0.9" strokeOpacity="0.28" />
-              ))}
-
-              {/* Outer hexagon */}
-              <polygon points={OUTER_PTS.map(([x,y]) => `${x},${y}`).join(' ')} fill="none" stroke={crimson} strokeWidth="0.5" strokeOpacity="0.18" />
-
-              {/* Inner hexagon */}
-              <polygon points={INNER_PTS.map(([x,y]) => `${x},${y}`).join(' ')} fill="none" stroke={crimson} strokeWidth="0.8" strokeOpacity="0.28" />
-
-              {/* Center pulsing circle */}
-              <circle cx={C} cy={C} r={R} fill="none" stroke={crimson} strokeWidth="1.2" strokeOpacity="0.45"
-                style={{ animation: 'metatronPulse 4s ease-in-out infinite' }} />
-
-              {/* Center dot */}
-              <circle cx={C} cy={C} r={4} fill={crimson}
-                style={{ animation: 'metatronPulse 4s ease-in-out infinite' }} />
-            </svg>
-          </div>
-
-        </div>
-      </section>
+      <HeroMetatron />
 
       {/* ── SWIPE DIVIDER ── */}
       <div style={{ overflow: 'hidden' }}>
