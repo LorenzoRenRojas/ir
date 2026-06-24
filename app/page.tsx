@@ -50,7 +50,7 @@ export default function LandingPage() {
   const crimson = '#C41230'
 
   return (
-    <div style={{ background: '#fff', minHeight: '100vh', color: '#0A0A0A', fontFamily: sans }}>
+    <div style={{ background: 'transparent', minHeight: '100vh', color: '#0A0A0A', fontFamily: sans }}>
 
       {/* ── NAVBAR ── */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
@@ -73,12 +73,12 @@ export default function LandingPage() {
       <HeroMetatron />
 
       {/* ── SWIPE DIVIDER ── */}
-      <div style={{ overflow: 'hidden' }}>
+      <div style={{ overflow: 'hidden', background: '#fff', position: 'relative', zIndex: 1 }}>
         <div style={{ height: 3, background: crimson, animation: 'swipeRight 1.2s cubic-bezier(0.25,0.46,0.45,0.94) 0.8s both', transformOrigin: 'left', transform: 'scaleX(0)' }} />
       </div>
 
       {/* ── PURPOSE ── */}
-      <section style={{ background: '#FAFAFA', padding: '100px 32px' }}>
+      <section style={{ background: '#FAFAFA', padding: '100px 32px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 44 }}>WHY WE EXIST</div>
           <blockquote style={{ fontSize: 'clamp(20px, 2.8vw, 34px)', fontWeight: 700, lineHeight: 1.5, letterSpacing: '-0.02em', margin: '0 0 40px', color: '#0A0A0A', fontStyle: 'normal' }}>
@@ -92,7 +92,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── STATS ── */}
-      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)', background: '#fff', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
           {STATS.map((s, i) => (
             <div key={i} style={{ padding: '44px 36px', borderRight: i < 3 ? '1px solid rgba(0,0,0,0.07)' : 'none' }}>
@@ -105,7 +105,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how" style={{ padding: '100px 32px' }}>
+      <section id="how" style={{ padding: '100px 32px', background: '#fff', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ marginBottom: 64 }}>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>SYSTEM ARCHITECTURE</div>
@@ -124,7 +124,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── PRICING ── */}
-      <section id="pricing" style={{ borderTop: '1px solid rgba(0,0,0,0.07)', background: '#FAFAFA' }}>
+      <section id="pricing" style={{ borderTop: '1px solid rgba(0,0,0,0.07)', background: '#FAFAFA', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
           <div style={{ marginBottom: 64 }}>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>ACCESS TIERS</div>
@@ -160,7 +160,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section style={{ background: crimson, padding: '100px 32px', textAlign: 'center' }}>
+      <section style={{ background: crimson, padding: '100px 32px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>THE MISSION STARTS HERE</div>
           <h2 style={{ fontSize: 'clamp(30px, 4vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, margin: '0 0 20px' }}>
@@ -176,7 +176,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ borderTop: '1px solid rgba(0,0,0,0.08)', padding: '48px 32px' }}>
+      <footer style={{ borderTop: '1px solid rgba(0,0,0,0.08)', padding: '48px 32px', background: '#fff', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: crimson, fontSize: 20, fontWeight: 700 }}>ᛁ</span>
