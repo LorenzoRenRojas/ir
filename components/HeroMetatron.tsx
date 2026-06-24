@@ -98,19 +98,20 @@ export default function HeroMetatron() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      overflow: 'hidden',
-      background: '#ffffff',
+      background: 'transparent',
     }}>
-      {/* Cube — subtle on white */}
+      {/* Cube — fixed behind the whole page, stays put while content scrolls */}
       <svg
         ref={svgRef}
         viewBox="-400 -400 800 800"
         style={{
-          position: 'absolute',
+          position: 'fixed',
           inset: 0,
           width: '100%',
           height: '100%',
-          opacity: 0.55,
+          opacity: 0.72,
+          zIndex: 0,
+          pointerEvents: 'none',
         }}
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -119,25 +120,25 @@ export default function HeroMetatron() {
           {INIT_PTS.map((p, i) => (
             <circle key={`c${i}`} data-mc="circle"
               cx={p.x.toFixed(1)} cy={p.y.toFixed(1)}
-              r="66" strokeOpacity="0.07" strokeWidth="0.8" />
+              r="66" strokeOpacity="0.1" strokeWidth="1.0" />
           ))}
           {/* All 78 connecting lines */}
           {initLines.map((l, i) => (
             <line key={`l${i}`} data-mc="line"
               x1={l.x1.toFixed(1)} y1={l.y1.toFixed(1)}
               x2={l.x2.toFixed(1)} y2={l.y2.toFixed(1)}
-              strokeWidth="0.6" strokeOpacity="0.18" />
+              strokeWidth="1.0" strokeOpacity="0.25" />
           ))}
           {/* Node dots */}
           {INIT_PTS.map((p, i) => (
             <circle key={`n${i}`} data-mc="node"
               cx={p.x.toFixed(1)} cy={p.y.toFixed(1)}
-              r="3" fill={crimson} stroke="none" fillOpacity="0.5" />
+              r="4" fill={crimson} stroke="none" fillOpacity="0.65" />
           ))}
         </g>
       </svg>
 
-      {/* Centered text */}
+      {/* Centered text — sits above the fixed cube */}
       <div style={{
         position: 'relative',
         zIndex: 10,
