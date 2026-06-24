@@ -415,24 +415,31 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
   }
 
-  const toDate = new Date()
-  const fromDate = new Date()
-  fromDate.setDate(fromDate.getDate() - 180) // 6 month window to catch older saved contracts
-  const fmt = (d: Date) =>
-    `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
-
-  const baseParams = new URLSearchParams({
-    api_key: apiKey,
-    postedFrom: fmt(fromDate),
-    postedTo: fmt(toDate),
-    limit: '1',
-  })
-
-  // Try direct noticeId lookup first
+  // Check the cached list first — this is the same data the dashboard shows,
+  // so if the user clicked it, it's definitely here
   try {
-    baseParams.set('noticeid', noticeId)
+    const cached = await getCachedContracts()
+    const match = cached.find(c => c.id === noticeId || c.noticeId === noticeId)
+    if (match) return match
+  } catch { /* fall through to direct lookup */ }
+
+  // Direct SAM.gov lookup as fallback (e.g. saved contracts not in current cache window)
+  try {
+    const toDate = new Date()
+    const fromDate = new Date()
+    fromDate.setDate(fromDate.getDate() - 365)
+    const fmt = (d: Date) =>
+      `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+
+    const params = new URLSearchParams({
+      api_key: apiKey,
+      noticeid: noticeId,
+      postedFrom: fmt(fromDate),
+      postedTo: fmt(toDate),
+      limit: '1',
+    })
     const response = await fetch(
-      `https://api.sam.gov/opportunities/v2/search?${baseParams.toString()}`,
+      `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
       { next: { revalidate: 3600 } }
     )
     if (response.ok) {
@@ -440,13 +447,6 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
       const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
       if (opportunities.length > 0) return transformSamOpportunity(opportunities[0])
     }
-  } catch { /* fall through */ }
-
-  // Fallback: search cached contract list
-  try {
-    const cached = await getCachedContracts()
-    const match = cached.find(c => c.id === noticeId || c.noticeId === noticeId)
-    if (match) return match
   } catch { /* fall through */ }
 
   return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
