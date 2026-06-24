@@ -1,13 +1,7 @@
 import { createClient } from '@libsql/client'
 import { NextResponse } from 'next/server'
 
-const MIGRATION_KEY = process.env.MIGRATION_KEY
-
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  if (searchParams.get('key') !== MIGRATION_KEY || !MIGRATION_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+export async function GET() {
 
   const client = createClient({
     url: process.env.DATABASE_URL!.split('?')[0],
