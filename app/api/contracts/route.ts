@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { fetchContracts, MOCK_CONTRACTS } from '@/lib/sam-api'
 import { calculateMatchScore } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
+import { fetchIncumbent } from '@/lib/usaspending'
 import {
   isEmbeddingEnabled,
   embedTexts,
@@ -96,6 +97,12 @@ export async function GET(req: NextRequest) {
     }
 
     contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+
+    // Fetch incumbent data in parallel for all contracts (cached 24h per NAICS+agency combo)
+    const incumbents = await Promise.all(
+      contracts.map((c) => fetchIncumbent(c.naicsCode, c.agency))
+    )
+    contracts = contracts.map((c, i) => ({ ...c, incumbent: incumbents[i] }))
 
     return NextResponse.json({ contracts })
   } catch (err) {
