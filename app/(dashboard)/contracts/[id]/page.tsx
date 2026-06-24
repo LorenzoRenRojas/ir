@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
 import { SaveContractButton } from '@/components/contracts/save-contract-button'
+import { fetchIncumbent } from '@/lib/usaspending'
 
 function formatValue(v?: number): string {
   if (!v) return 'TBD'
@@ -44,6 +45,10 @@ export default async function ContractDetailPage({
   if (!contract) {
     notFound()
   }
+
+  const incumbent = contract.naicsCode && contract.agency
+    ? await fetchIncumbent(contract.naicsCode, contract.agency)
+    : null
 
   const session = await auth()
   let breakdown = null
@@ -138,6 +143,26 @@ export default async function ContractDetailPage({
                 {Object.values(breakdown.details).map((detail, i) => (
                   <div key={i} style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', lineHeight: 1.5 }}>• {detail}</div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Incumbent */}
+          {incumbent && (
+            <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>INCUMBENT</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 8 }}>{incumbent.awardee}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div>
+                  <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', marginBottom: 2 }}>LAST AWARD VALUE</div>
+                  <div style={{ fontSize: 12, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{formatValue(incumbent.amount)}</div>
+                </div>
+                {incumbent.periodOfPerformanceEnd && (
+                  <div>
+                    <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', marginBottom: 2 }}>CONTRACT ENDS</div>
+                    <div style={{ fontSize: 12, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{formatDate(incumbent.periodOfPerformanceEnd)}</div>
+                  </div>
+                )}
               </div>
             </div>
           )}
