@@ -187,7 +187,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
           {isSaved ? '♥ SAVED' : '♡ SAVE'}
         </button>
         <Link
-          href={`/contracts/${contract.id}`}
+          href={`/contracts/${encodeURIComponent(contract.id)}`}
           style={{ flex: 1, textAlign: 'center', padding: '7px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', transition: 'background 0.15s', opacity: hovered ? 0.9 : 1 }}
         >
           VIEW →

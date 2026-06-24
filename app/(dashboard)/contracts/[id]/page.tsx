@@ -40,7 +40,7 @@ export default async function ContractDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const contract = await fetchContractById(id)
+  const contract = await fetchContractById(decodeURIComponent(id))
 
   if (!contract) {
     notFound()
