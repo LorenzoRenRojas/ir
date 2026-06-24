@@ -34,6 +34,9 @@ export async function GET() {
     `ALTER TABLE "CompanyProfile" ADD COLUMN "contractVehicles" TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE "CompanyProfile" ADD COLUMN "capabilityStatement" TEXT`,
     `ALTER TABLE "CompanyProfile" ADD COLUMN "pastPerformance" TEXT`,
+    // New profile fields for win probability
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "annualRevenue" TEXT`,
+    `ALTER TABLE "CompanyProfile" ADD COLUMN "agencyHistory" TEXT NOT NULL DEFAULT '[]'`,
     // Semantic learning tables
     `CREATE TABLE IF NOT EXISTS "ContractEmbedding" ("noticeId" TEXT NOT NULL PRIMARY KEY,"embedding" TEXT NOT NULL,"model" TEXT NOT NULL DEFAULT 'voyage-3-lite',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS "UserEmbedding" ("userId" TEXT NOT NULL PRIMARY KEY,"preferenceEmbedding" TEXT NOT NULL,"saveCount" INTEGER NOT NULL DEFAULT 0,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "UserEmbedding_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,

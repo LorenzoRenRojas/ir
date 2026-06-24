@@ -11,50 +11,39 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      companyName,
-      uei,
-      website,
-      yearFounded,
-      businessTypes,
-      naicsCodes,
-      contractSizePrefs,
-      contractTypePrefs,
-      geoPrefs,
-      certifications,
+      companyName, uei, website, yearFounded,
+      businessTypes, naicsCodes, contractSizePrefs, contractTypePrefs,
+      geoPrefs, certifications, contractVehicles, capabilityStatement,
+      pastPerformance, annualRevenue, orgSize, agencyHistory,
     } = body
 
     if (!companyName?.trim()) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 })
     }
 
-    // Upsert company profile
+    const profileData = {
+      companyName: companyName.trim(),
+      uei: uei ?? null,
+      website: website ?? null,
+      yearFounded: yearFounded ?? null,
+      businessTypes: JSON.stringify(businessTypes ?? []),
+      naicsCodes: JSON.stringify(naicsCodes ?? []),
+      contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),
+      contractTypePrefs: JSON.stringify(contractTypePrefs ?? []),
+      geoPrefs: JSON.stringify(geoPrefs ?? []),
+      certifications: JSON.stringify(certifications ?? []),
+      contractVehicles: JSON.stringify(contractVehicles ?? []),
+      capabilityStatement: capabilityStatement ?? null,
+      pastPerformance: pastPerformance ?? null,
+      annualRevenue: annualRevenue ?? null,
+      orgSize: orgSize ?? null,
+      agencyHistory: JSON.stringify(agencyHistory ?? []),
+    }
+
     await prisma.companyProfile.upsert({
       where: { userId: session.user.id },
-      update: {
-        companyName: companyName.trim(),
-        uei: uei ?? null,
-        website: website ?? null,
-        yearFounded: yearFounded ?? null,
-        businessTypes: JSON.stringify(businessTypes ?? []),
-        naicsCodes: JSON.stringify(naicsCodes ?? []),
-        contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),
-        contractTypePrefs: JSON.stringify(contractTypePrefs ?? []),
-        geoPrefs: JSON.stringify(geoPrefs ?? []),
-        certifications: JSON.stringify(certifications ?? []),
-      },
-      create: {
-        userId: session.user.id,
-        companyName: companyName.trim(),
-        uei: uei ?? null,
-        website: website ?? null,
-        yearFounded: yearFounded ?? null,
-        businessTypes: JSON.stringify(businessTypes ?? []),
-        naicsCodes: JSON.stringify(naicsCodes ?? []),
-        contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),
-        contractTypePrefs: JSON.stringify(contractTypePrefs ?? []),
-        geoPrefs: JSON.stringify(geoPrefs ?? []),
-        certifications: JSON.stringify(certifications ?? []),
-      },
+      update: profileData,
+      create: { userId: session.user.id, ...profileData },
     })
 
     // Mark onboarding as done
