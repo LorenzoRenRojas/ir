@@ -42,5 +42,8 @@ next-env.d.ts
 
 /app/generated/prisma
 .claude/
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/**
 prisma/dev.db
 prisma/*.db
