@@ -77,6 +77,8 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
     contract.setAsideDescription === 'NONE'
 
   const incumbent = (contract as Contract & { incumbent?: { awardee: string; amount: number } | null }).incumbent
+  const winProb = (contract as Contract & { winProbability?: { score: number; label: string; topFactor: string } | null }).winProbability
+  const winColor = winProb?.label === 'HIGH' ? '#16a34a' : winProb?.label === 'MEDIUM' ? '#b45309' : winProb?.label === 'INELIGIBLE' ? '#64748b' : '#C41230'
 
   const prevValue = incumbent?.amount
     ? incumbent.amount >= 1_000_000
@@ -104,8 +106,17 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
         cursor: 'default',
       }}
     >
-      {/* Match bar + badges row */}
+      {/* Win probability + match bar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {winProb && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)' }}>WIN PROBABILITY</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: winColor, fontFamily: 'var(--font-geist-mono, monospace)', padding: '1px 6px', border: `1px solid ${winColor}`, opacity: 0.9 }}>{winProb.label}</span>
+            </div>
+            <span style={{ fontSize: 9, color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)', fontStyle: 'italic' }}>{winProb.topFactor}</span>
+          </div>
+        )}
         {hasScore && <MatchBar score={score} />}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
           {!noSetAside && (

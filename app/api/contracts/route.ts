@@ -4,6 +4,7 @@ import { fetchContracts, MOCK_CONTRACTS } from '@/lib/sam-api'
 import { calculateMatchScore } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
 import { fetchIncumbents } from '@/lib/usaspending'
+import { calculateWinProbability } from '@/lib/win-probability'
 import {
   isEmbeddingEnabled,
   embedTexts,
@@ -101,6 +102,22 @@ export async function GET(req: NextRequest) {
     // Fetch incumbent data, deduped by NAICS+agency, cached 24h
     const incumbents = await fetchIncumbents(contracts)
     contracts = contracts.map((c, i) => ({ ...c, incumbent: incumbents[i] }))
+
+    // Calculate win probability if we have a profile
+    if (profile && dbProfile) {
+      const winProfile = {
+        businessTypes: profile.businessTypes,
+        naicsCodes: profile.naicsCodes,
+        certifications: profile.certifications,
+        contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
+        annualRevenue: dbProfile.annualRevenue ?? null,
+        agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+      }
+      contracts = contracts.map((c, i) => ({
+        ...c,
+        winProbability: calculateWinProbability(c, winProfile, incumbents[i]),
+      }))
+    }
 
     return NextResponse.json({ contracts })
   } catch (err) {
