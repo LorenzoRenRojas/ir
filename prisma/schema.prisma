@@ -79,6 +79,8 @@ model CompanyProfile {
   certifications    String   @default("[]")
   clearanceLevel       String?
   orgSize              String?
+  annualRevenue        String?
+  agencyHistory        String   @default("[]")
   contractVehicles     String   @default("[]")
   capabilityStatement  String?
   pastPerformance      String?

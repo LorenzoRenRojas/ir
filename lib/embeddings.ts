@@ -92,15 +92,21 @@ export function profileToText(profile: {
   contractVehicles?: string[]
   capabilityStatement?: string | null
   pastPerformance?: string | null
+  annualRevenue?: string | null
+  orgSize?: string | null
+  agencyHistory?: string[]
 }): string {
   return [
     profile.companyName ? `Company: ${profile.companyName}` : null,
-    profile.naicsCodes.length ? `NAICS specializations: ${profile.naicsCodes.join(', ')}` : null,
     profile.businessTypes.length ? `Business type: ${profile.businessTypes.join(', ')}` : null,
-    profile.certifications.length ? `Certifications: ${profile.certifications.join(', ')}` : null,
-    profile.geoPrefs.length ? `Geography: ${profile.geoPrefs.join(', ')}` : null,
-    profile.contractVehicles?.length ? `Contract vehicles: ${profile.contractVehicles.join(', ')}` : null,
-    profile.capabilityStatement || null,
-    profile.pastPerformance || null,
+    profile.naicsCodes.length ? `NAICS specializations: ${profile.naicsCodes.join(', ')}` : null,
+    profile.certifications.length ? `Certifications and clearances: ${profile.certifications.join(', ')}` : null,
+    profile.geoPrefs.length ? `Geographic preference: ${profile.geoPrefs.join(', ')}` : null,
+    profile.contractVehicles?.length ? `Contract vehicles held: ${profile.contractVehicles.join(', ')}` : null,
+    profile.annualRevenue ? `Annual revenue: ${profile.annualRevenue}` : null,
+    profile.orgSize ? `Company size: ${profile.orgSize} employees` : null,
+    profile.agencyHistory?.length ? `Prior agency experience: ${profile.agencyHistory.join(', ')}` : null,
+    profile.capabilityStatement ? `Capabilities: ${profile.capabilityStatement}` : null,
+    profile.pastPerformance ? `Past performance: ${profile.pastPerformance}` : null,
   ].filter(Boolean).join('\n')
 }
