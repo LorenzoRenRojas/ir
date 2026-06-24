@@ -100,7 +100,7 @@ export default function HeroMetatron() {
       justifyContent: 'center',
       background: 'transparent',
     }}>
-      {/* Cube — fixed behind the whole page, stays put while content scrolls */}
+      {/* Cube — fixed watermark, never moves, always visible through every section */}
       <svg
         ref={svgRef}
         viewBox="-400 -400 800 800"
@@ -109,7 +109,7 @@ export default function HeroMetatron() {
           inset: 0,
           width: '100%',
           height: '100%',
-          opacity: 0.72,
+          opacity: 0.38,
           zIndex: 0,
           pointerEvents: 'none',
         }}
