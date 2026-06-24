@@ -201,7 +201,7 @@ type Question = {
 const QUESTIONS: Question[] = [
   {
     id: 'companyName',
-    ask: "Hi, I'm IR. What's your company name?",
+    ask: "Welcome to IR. What's your company name?",
     type: 'text',
     hint: 'Legal name or DBA is fine.',
   },
@@ -289,6 +289,55 @@ const QUESTIONS: Question[] = [
     type: 'review',
   },
 ]
+
+// ── Metatron's Cube avatar ────────────────────────────────────────────────────
+
+function MetatronCube() {
+  const R = 18   // center
+  const r1 = 14  // outer circle radius (fruit of life)
+  const r2 = 7   // inner hex radius
+  const r3 = 13  // connecting circle radius
+
+  // 6 outer points of hexagon (fruit of life)
+  const hex = Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 3) * i - Math.PI / 6
+    return { x: R + r3 * Math.cos(a), y: R + r3 * Math.sin(a) }
+  })
+
+  // Lines from center to each outer point + all outer point pairs
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = []
+  hex.forEach((p) => lines.push({ x1: R, y1: R, x2: p.x, y2: p.y }))
+  for (let i = 0; i < 6; i++) {
+    for (let j = i + 1; j < 6; j++) {
+      lines.push({ x1: hex[i].x, y1: hex[i].y, x2: hex[j].x, y2: hex[j].y })
+    }
+  }
+
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}>
+      <g className="metatron-outer" style={{ transformOrigin: '18px 18px', transformBox: 'fill-box' }}>
+        {/* Outer bounding circle */}
+        <circle cx={R} cy={R} r={r1} stroke="#C41230" strokeWidth="0.5" strokeOpacity="0.5" fill="none" />
+        {/* Inner hex circle */}
+        <circle cx={R} cy={R} r={r2} stroke="#C41230" strokeWidth="0.5" strokeOpacity="0.4" fill="none" />
+        {/* Center dot */}
+        <circle cx={R} cy={R} r="1.2" fill="#C41230" />
+        {/* Fruit-of-life small circles */}
+        {hex.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="2.6" stroke="#C41230" strokeWidth="0.4" strokeOpacity="0.45" fill="rgba(196,18,48,0.07)" />
+        ))}
+        {/* Inner spinning star lines */}
+        <g className="metatron-inner">
+          {lines.map((l, i) => (
+            <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+              stroke="#C41230" strokeWidth="0.35" strokeOpacity={i < 6 ? 0.9 : 0.35} />
+          ))}
+        </g>
+      </g>
+    </svg>
+  )
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -390,13 +439,12 @@ export default function OnboardingPage() {
       {/* Chat area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 680, width: '100%', margin: '0 auto', padding: '48px 24px 32px' }}>
 
-        {/* IR message */}
+        {/* Metatron message */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 32, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#C41230', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>ᛁ</span>
+          <div style={{ width: 36, height: 36, flexShrink: 0, marginTop: 2 }}>
+            <MetatronCube />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.25)', marginBottom: 8 }}>IR</div>
             <div style={{ fontSize: 16, fontWeight: 500, color: '#ffffff', lineHeight: 1.6, fontFamily: 'var(--font-geist-sans, sans-serif)', minHeight: 28 }}>
               {displayed}
               {!done && <span style={{ opacity: 0.5, animation: 'blink 1s step-end infinite' }}>|</span>}
@@ -562,6 +610,23 @@ export default function OnboardingPage() {
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
         @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+        @keyframes cubeRotate {
+          0%   { transform: rotate(0deg) scale(1); }
+          25%  { transform: rotate(90deg) scale(1.08); }
+          50%  { transform: rotate(180deg) scale(0.94); }
+          75%  { transform: rotate(270deg) scale(1.05); }
+          100% { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes cubePulse {
+          0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px #C41230) drop-shadow(0 0 8px #C41230); }
+          50%       { opacity: 0.7; filter: drop-shadow(0 0 10px #ff2244) drop-shadow(0 0 20px #C41230); }
+        }
+        @keyframes innerSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(-360deg); }
+        }
+        .metatron-outer { animation: cubeRotate 8s linear infinite, cubePulse 3s ease-in-out infinite; }
+        .metatron-inner { animation: innerSpin 6s linear infinite; transform-origin: 18px 18px; transform-box: fill-box; }
         input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.2); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
