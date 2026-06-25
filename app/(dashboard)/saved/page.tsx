@@ -100,7 +100,7 @@ export default function SavedContractsPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <Link href={`/contracts/${c.contractId}`} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+                <Link href={`/contracts/${encodeURIComponent(c.contractId)}`} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}>
                   VIEW →
                 </Link>
                 <button
