@@ -3,11 +3,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params
+    const session = await auth()
 
     const invite = await prisma.teamInvite.findUnique({
       where: { token },
@@ -26,9 +27,15 @@ export async function GET(
       return NextResponse.json({ error: 'Invite has expired' }, { status: 410 })
     }
 
+    // Only return the full email to authenticated users — unauthenticated callers
+    // just get a masked hint so the page can tell them which address to sign in with
+    const emailHint = session?.user
+      ? invite.email
+      : invite.email.replace(/^(.{2}).*(@.*)$/, '$1***$2')
+
     return NextResponse.json({
       invite: {
-        email: invite.email,
+        email: emailHint,
         teamName: invite.team.name,
         role: invite.role,
         expiresAt: invite.expiresAt,
