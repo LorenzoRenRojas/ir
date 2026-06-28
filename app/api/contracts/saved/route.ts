@@ -53,14 +53,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Find user's team to include all team members' saved contracts
+    // Find user's team membership, checking watchlist permission
     const membership = await prisma.teamMember.findFirst({
       where: { userId: session.user.id },
       include: { team: { include: { members: true } } },
     })
-    const teamUserIds = membership
-      ? membership.team.members.map((m: { userId: string }) => m.userId)
-      : [session.user.id]
+
+    let teamUserIds: string[]
+    if (!membership) {
+      teamUserIds = [session.user.id]
+    } else {
+      const perms = JSON.parse(membership.permissions as string) as { canManageWatchlist?: boolean }
+      if (perms.canManageWatchlist === false) {
+        // No watchlist access — only show their own saves
+        teamUserIds = [session.user.id]
+      } else {
+        teamUserIds = membership.team.members.map((m: { userId: string }) => m.userId)
+      }
+    }
 
     const saved = await prisma.savedContract.findMany({
       where: { userId: { in: teamUserIds } },

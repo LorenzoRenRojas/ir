@@ -293,7 +293,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/contracts/saved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore }),
+        body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore, contractText: [contract.title, contract.agency, contract.naicsCode, contract.description].filter(Boolean).join('\n') }),
       })
       if (res.ok) setSavedIds((prev) => new Set([...prev, contract.id]))
     } catch (err) {
