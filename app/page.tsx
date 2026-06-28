@@ -24,10 +24,10 @@ const METATRON_LINES = ALL_PTS.flatMap((p, i) =>
 
 // ─── Content ───────────────────────────────────────────────────────────────
 const STATS = [
-  { value: '24,629', label: 'ACTIVE OPPORTUNITIES', sub: 'updated daily from SAM.gov' },
-  { value: '$847B',  label: 'CONTRACT VALUE',        sub: 'tracked annually' },
-  { value: '100ms',  label: 'MATCH LATENCY',          sub: 'average scoring time' },
-  { value: '94%',    label: 'MATCH ACCURACY',         sub: 'NAICS + set-aside scoring' },
+  { value: '$755B',  label: 'ANNUAL MARKET',      sub: 'U.S. federal procurement, FY2025' },
+  { value: '261K+',  label: 'ACTIVE NOTICES',     sub: 'live solicitations on SAM.gov' },
+  { value: '400+',   label: 'FEDERAL AGENCIES',   sub: 'posting opportunities across all branches' },
+  { value: '5',      label: 'WIN FACTORS SCORED', sub: 'per opportunity, per company profile' },
 ]
 
 const HOW = [
@@ -164,7 +164,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>THE MISSION STARTS HERE</div>
           <h2 style={{ fontSize: 'clamp(30px, 4vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, margin: '0 0 20px' }}>
-            24,629 contracts.<br />How many match your company?
+            $755 billion in federal contracts.<br />How many match your company?
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', margin: '0 0 48px', lineHeight: 1.7 }}>
             Profile takes 4 minutes. First matches appear in under 60 seconds.
