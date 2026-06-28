@@ -109,12 +109,15 @@ model SavedContract {
 }
 
 model GeneratedDocument {
-  id        String   @id @default(cuid())
-  userId    String
-  type      String
-  title     String
-  content   String
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   @default("proposal")
+  title         String
+  content       String
+  noticeId      String?
+  contractTitle String?
+  agencyName    String?
+  createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
