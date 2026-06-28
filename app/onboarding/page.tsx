@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import MetatronAvatar from '@/components/MetatronAvatar'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -290,65 +291,6 @@ const QUESTIONS: Question[] = [
   },
 ]
 
-// ── Metatron's Cube avatar ────────────────────────────────────────────────────
-
-function MetatronCube() {
-  const C = 50
-  const R = 16   // inner hex radius
-  const R2 = 32  // outer hex radius — max extent = 50+32 = 82, well within 100
-
-  function polar(deg: number, r: number): [number, number] {
-    const rad = (deg - 90) * Math.PI / 180
-    return [C + r * Math.cos(rad), C + r * Math.sin(rad)]
-  }
-
-  const innerPts: [number, number][] = [0, 60, 120, 180, 240, 300].map(a => polar(a, R))
-  const outerPts: [number, number][] = [0, 60, 120, 180, 240, 300].map(a => polar(a, R2))
-  const allPts: [number, number][] = [[C, C], ...innerPts, ...outerPts]
-
-  const lines = allPts.flatMap((p, i) =>
-    allPts.slice(i + 1).map(q => ({ x1: p[0], y1: p[1], x2: q[0], y2: q[1] }))
-  )
-
-  return (
-    <svg width="90" height="90" viewBox="0 0 100 100" fill="none"
-      overflow="visible" style={{ display: 'block' }}>
-
-      {/* Outer decorative dashed ring — spins CW slow */}
-      <g className="mc-ring" style={{ transformOrigin: '50px 50px', transformBox: 'fill-box' }}>
-        <circle cx={C} cy={C} r={R2 + 8} stroke="#C41230" strokeWidth="0.4" strokeOpacity="0.2" strokeDasharray="2 6" fill="none" />
-      </g>
-
-      {/* All 78 Metatron lines — static */}
-      {lines.map((l, i) => (
-        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-          stroke="#C41230" strokeWidth="0.22" strokeOpacity="0.18" />
-      ))}
-
-      {/* Outer hex circles — counter-rotate */}
-      <g className="mc-outer" style={{ transformOrigin: '50px 50px', transformBox: 'fill-box' }}>
-        {outerPts.map(([cx, cy], i) => (
-          <circle key={i} cx={cx} cy={cy} r={R} stroke="#C41230" strokeWidth="0.5" strokeOpacity="0.25" fill="none" />
-        ))}
-        <polygon points={outerPts.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="#C41230" strokeWidth="0.4" strokeOpacity="0.2" />
-      </g>
-
-      {/* Inner hex circles — co-rotate slowly */}
-      <g className="mc-inner" style={{ transformOrigin: '50px 50px', transformBox: 'fill-box' }}>
-        {innerPts.map(([cx, cy], i) => (
-          <circle key={i} cx={cx} cy={cy} r={R} stroke="#C41230" strokeWidth="0.7" strokeOpacity="0.5" fill="none" />
-        ))}
-        <polygon points={innerPts.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="#C41230" strokeWidth="0.6" strokeOpacity="0.35" />
-      </g>
-
-      {/* Center circle + dot */}
-      <circle cx={C} cy={C} r={R} stroke="#C41230" strokeWidth="0.9" strokeOpacity="0.55" fill="none"
-        className="mc-pulse" />
-      <circle cx={C} cy={C} r="2.5" fill="#C41230" />
-    </svg>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
@@ -452,7 +394,7 @@ export default function OnboardingPage() {
         {/* Metatron message */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 32, animation: 'fadeIn 0.3s ease' }}>
           <div style={{ width: 90, height: 90, flexShrink: 0, marginTop: 0 }}>
-            <MetatronCube />
+            <MetatronAvatar size={90} />
           </div>
           <div style={{ flex: 1 }}>
             <div className="matrix-font" style={{ fontSize: 16, color: '#e0e0e0', lineHeight: 1.7, minHeight: 28, letterSpacing: '0.02em' }}>
@@ -622,18 +564,6 @@ export default function OnboardingPage() {
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
         @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
-
-        @keyframes spinCW  { from { transform: rotate(0deg);   } to { transform: rotate(360deg);  } }
-        @keyframes spinCCW { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
-        @keyframes mcPulse {
-          0%, 100% { stroke-opacity: 0.55; }
-          50%       { stroke-opacity: 0.9; }
-        }
-
-        .mc-ring  { animation: spinCW  20s linear infinite; }
-        .mc-outer { animation: spinCCW 18s linear infinite; }
-        .mc-inner { animation: spinCW  14s linear infinite; }
-        .mc-pulse { animation: mcPulse  3s ease-in-out infinite; }
 
         .matrix-font { font-family: 'Share Tech Mono', 'Courier New', monospace !important; }
 
