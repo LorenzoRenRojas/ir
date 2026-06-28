@@ -14,9 +14,30 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'IR — Government Contract Intelligence',
-  description: 'Find your perfect government contract match',
-  keywords: 'government contracts, SAM.gov, federal contracts, small business, NAICS, set-aside',
+  metadataBase: new URL('https://ir-gov.app'),
+  title: {
+    default: 'IR — Government Contract Intelligence',
+    template: '%s — IR',
+  },
+  description: 'AI-matched federal contract opportunities from SAM.gov, scored against your company profile. Built for small businesses and set-aside firms.',
+  keywords: 'government contracts, SAM.gov, federal contracts, small business, NAICS, set-aside, 8a, SDVOSB, WOSB, HUBZone, GovCon, contract intelligence',
+  authors: [{ name: 'IR GovCon Intelligence' }],
+  openGraph: {
+    type: 'website',
+    siteName: 'IR — GovCon Intelligence',
+    title: 'IR — Government Contract Intelligence',
+    description: 'AI-matched federal contract opportunities from SAM.gov, scored against your company profile. Built for small businesses and set-aside firms.',
+    url: 'https://ir-gov.app',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'IR — Government Contract Intelligence',
+    description: 'AI-matched federal contract opportunities from SAM.gov, scored against your company profile.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({
