@@ -127,6 +127,69 @@ export async function sendPasswordResetEmail(
   await send(email, 'Reset your IR password', html)
 }
 
+export async function sendProposalEmail(
+  to: string,
+  senderName: string,
+  proposalTitle: string,
+  contractTitle: string,
+  agencyName: string,
+  content: string,
+  viewUrl: string
+): Promise<void> {
+  const previewLines = content.split('\n').slice(0, 8).join('\n')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 48px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">GOVCON INTELLIGENCE</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px 28px;">
+            <p style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">PROPOSAL SHARED WITH YOUR TEAM</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${contractTitle}</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 28px;font-family:sans-serif;">${agencyName}</p>
+            <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 28px;font-family:sans-serif;">
+              <strong style="color:#ffffff;">${senderName}</strong> has generated a proposal for this opportunity
+              and shared it with your organization on IR.
+            </p>
+            <a href="${viewUrl}"
+               style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;margin-bottom:32px;">
+              VIEW PROPOSAL IN IR →
+            </a>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:20px;margin-bottom:8px;">
+              <p style="color:rgba(255,255,255,0.2);font-size:9px;letter-spacing:0.14em;margin:0 0 12px;">PROPOSAL PREVIEW</p>
+              <pre style="color:rgba(255,255,255,0.45);font-size:10px;line-height:1.7;margin:0;white-space:pre-wrap;overflow:hidden;">${previewLines}</pre>
+              <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:12px 0 0;">... full proposal available in IR</p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 48px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:0;line-height:1.6;">
+              You received this because you are a member of an IR organization.<br>
+              <a href="${viewUrl}" style="color:#C41230;">ir-gov.app</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(to, `[IR Proposal] ${contractTitle} — ${agencyName}`, html)
+}
+
 export async function sendTeamInviteEmail(
   email: string,
   teamName: string,

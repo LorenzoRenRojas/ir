@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { generateProposal } from '@/lib/documents'
-import type { CompanyData, ProposalContext } from '@/lib/documents'
+import { generateFullProposal } from '@/lib/documents'
+import type { CompanyData, FullProposalQuestionnaire } from '@/lib/documents'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,20 +13,17 @@ export async function POST(req: NextRequest) {
 
     const subscriptionTier = session.user.subscriptionTier ?? 'free'
     if (subscriptionTier === 'free') {
-      return NextResponse.json(
-        { error: 'Upgrade your plan to generate proposals.' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Upgrade your plan to generate proposals.' }, { status: 403 })
     }
 
     if (subscriptionTier === 'starter') {
       const startOfMonth = new Date()
       startOfMonth.setDate(1)
       startOfMonth.setHours(0, 0, 0, 0)
-      const monthlyCount = await prisma.generatedDocument.count({
+      const count = await prisma.generatedDocument.count({
         where: { userId: session.user.id, createdAt: { gte: startOfMonth } },
       })
-      if (monthlyCount >= 3) {
+      if (count >= 3) {
         return NextResponse.json(
           { error: "You've reached your monthly proposal limit. Upgrade to Pro for unlimited proposals." },
           { status: 403 }
@@ -34,10 +31,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const body = await req.json()
-    const { contractTitle, agencyName, solicitationNumber, issuingOffice, responseDeadline, estimatedValue, placeOfPerformance, noticeId } = body
+    const questionnaire = (await req.json()) as FullProposalQuestionnaire
 
-    if (!contractTitle || !agencyName) {
+    if (!questionnaire.contractTitle || !questionnaire.agencyName) {
       return NextResponse.json({ error: 'Contract title and agency name are required.' }, { status: 400 })
     }
 
@@ -59,54 +55,23 @@ export async function POST(req: NextRequest) {
       contactEmail: user?.email ?? undefined,
     }
 
-    const ctx: ProposalContext = {
-      contractTitle,
-      agencyName,
-      solicitationNumber: solicitationNumber || undefined,
-      issuingOffice: issuingOffice || undefined,
-      responseDeadline: responseDeadline || undefined,
-      estimatedValue: estimatedValue || undefined,
-      placeOfPerformance: placeOfPerformance || undefined,
-    }
-
-    const content = generateProposal(companyData, ctx)
-    const title = `Proposal — ${contractTitle}`
+    const content = generateFullProposal(companyData, questionnaire)
 
     const doc = await prisma.generatedDocument.create({
       data: {
         userId: session.user.id,
-        type: 'proposal',
-        title,
+        type: 'proposal_full',
+        title: `Proposal — ${questionnaire.contractTitle}`,
         content,
-        noticeId: noticeId || null,
-        contractTitle,
-        agencyName,
+        contractTitle: questionnaire.contractTitle,
+        agencyName: questionnaire.agencyName,
+        noticeId: null,
       },
     })
 
     return NextResponse.json({ document: doc, content })
   } catch (err) {
-    console.error('Proposal generate error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function GET(req: NextRequest) {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const docs = await prisma.generatedDocument.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, type: true, title: true, contractTitle: true, agencyName: true, noticeId: true, createdAt: true } as const,
-    })
-
-    return NextResponse.json({ documents: docs })
-  } catch (err) {
-    console.error('Proposals GET error:', err)
+    console.error('Full proposal generate error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
