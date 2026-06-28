@@ -1,3 +1,348 @@
+// ─── Full questionnaire data for 99%-complete proposals ───────────────────────
+
+export interface FullProposalQuestionnaire {
+  // Opportunity
+  contractTitle: string
+  agencyName: string
+  solicitationNumber: string
+  issuingOffice: string
+  responseDeadline: string
+  estimatedValue: string
+  contractType: string
+  naicsCode: string
+  placeOfPerformance: string
+  requirementSummary: string
+  keyObjectives: string
+
+  // Technical approach
+  overallApproach: string
+  phase1: { name: string; timeline: string; deliverables: string; approach: string }
+  phase2: { name: string; timeline: string; deliverables: string; approach: string }
+  phase3: { name: string; timeline: string; deliverables: string; approach: string }
+  toolsTechnologies: string
+  qualityApproach: string
+  risks: Array<{ description: string; likelihood: string; impact: string; mitigation: string }>
+
+  // Team
+  pm: { name: string; title: string; clearance: string; experience: string; quals: string }
+  techLead: { name: string; title: string; clearance: string; experience: string; quals: string }
+  additionalPersonnel: string
+  subName: string
+  subRole: string
+  subPercent: string
+  primePercent: string
+
+  // Past performance (3 contracts)
+  pp: Array<{
+    title: string; agency: string; contractNumber: string; contractType: string
+    value: string; startDate: string; endDate: string
+    description: string; relevance: string; outcomes: string
+    refName: string; refTitle: string; refPhone: string; refEmail: string
+  }>
+
+  // Pricing
+  baseYear: string
+  oy1: string; oy2: string; oy3: string; oy4: string
+  totalPrice: string
+  amendments: string
+}
+
+export function generateFullProposal(company: CompanyData, q: FullProposalQuestionnaire): string {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const businessTypes = company.businessTypes.join(', ') || 'Small Business'
+  const certs = company.certifications.join(', ') || 'None'
+  const clearance = company.clearanceLevel ? `\nSecurity Clearance: ${company.clearanceLevel}` : ''
+
+  const ppSection = q.pp.map((p, i) => `
+──────────────────────────────────────────────────────────────────────────────
+CONTRACT ${i + 1}
+──────────────────────────────────────────────────────────────────────────────
+Contract Title:          ${p.title}
+Contracting Agency:      ${p.agency}
+Contract Number:         ${p.contractNumber}
+Contract Type:           ${p.contractType}
+Total Contract Value:    ${p.value}
+Period of Performance:   ${p.startDate} – ${p.endDate}
+NAICS Code:              ${q.naicsCode || company.naicsCodes[0] || '[NAICS]'}
+Place of Performance:    ${q.placeOfPerformance}
+Prime or Sub:            Prime
+
+Description of Work:
+  ${p.description}
+
+Relevance to This Requirement:
+  ${p.relevance}
+
+Outcomes and Achievements:
+${p.outcomes.split('\n').map((l: string) => `  • ${l.trim()}`).filter((l: string) => l.trim() !== '•').join('\n')}
+`).join('')
+
+  const ppRefs = q.pp.map((p, i) => `
+Reference ${i + 1} — ${p.title}
+  Name:    ${p.refName}
+  Title:   ${p.refTitle}
+  Agency:  ${p.agency}
+  Phone:   ${p.refPhone}
+  Email:   ${p.refEmail}`).join('\n')
+
+  const riskRows = q.risks.filter(r => r.description).map(r => `
+  RISK:        ${r.description}
+  LIKELIHOOD:  ${r.likelihood || 'Medium'}
+  IMPACT:      ${r.impact || 'Medium'}
+  MITIGATION:  ${r.mitigation}`).join('\n')
+
+  const subSection = q.subName
+    ? `${company.companyName} will team with ${q.subName} to provide ${q.subRole}. ${q.subName} will perform approximately ${q.subPercent}% of the contract work.`
+    : `${company.companyName} will perform 100% of contract work using our own resources.`
+
+  const additionalPersonnel = q.additionalPersonnel
+    ? `\n\nAdditional Key Personnel:\n${q.additionalPersonnel}`
+    : ''
+
+  const computedTotal = q.totalPrice || (() => {
+    const vals = [q.baseYear, q.oy1, q.oy2, q.oy3, q.oy4]
+      .map(v => parseFloat(v.replace(/[$,]/g, '')) || 0)
+    const t = vals.reduce((a, b) => a + b, 0)
+    return t > 0 ? `$${t.toLocaleString()}` : '[TOTAL]'
+  })()
+
+  return `================================================================================
+                           TECHNICAL AND MANAGEMENT PROPOSAL
+================================================================================
+
+CONTRACT TITLE:      ${q.contractTitle}
+SOLICITATION NO.:    ${q.solicitationNumber || '[SOLICITATION NUMBER]'}
+ISSUING AGENCY:      ${q.agencyName}
+ISSUING OFFICE:      ${q.issuingOffice || '[ISSUING OFFICE]'}
+SUBMITTED BY:        ${company.companyName}
+DATE:                ${today}
+RESPONSE DEADLINE:   ${q.responseDeadline || '[RESPONSE DEADLINE]'}
+
+================================================================================
+                              OFFEROR INFORMATION
+================================================================================
+
+Legal Business Name:   ${company.companyName}
+UEI (SAM.gov):         ${company.uei || '[UEI]'}
+CAGE Code:             ${company.cageCode || '[CAGE CODE]'}
+Business Address:      ${company.address || '[ADDRESS]'}
+Website:               ${company.website || '[WEBSITE]'}
+Business Type(s):      ${businessTypes}
+Primary NAICS Code:    ${q.naicsCode || company.naicsCodes[0] || '[NAICS]'}
+Certifications:        ${certs}${clearance}
+${company.yearFounded ? `Year Established:      ${company.yearFounded}` : ''}
+
+Point of Contact:
+  Name:    ${company.contactName || '[POC NAME]'}
+  Email:   ${company.contactEmail || '[EMAIL]'}
+  Phone:   ${company.contactPhone || '[PHONE]'}
+
+================================================================================
+                            TABLE OF CONTENTS
+================================================================================
+
+  VOLUME I  — TECHNICAL APPROACH
+    Section 1.0    Executive Summary
+    Section 2.0    Understanding of the Requirement
+    Section 3.0    Technical Approach and Methodology
+    Section 4.0    Quality Assurance and Risk Management
+
+  VOLUME II — MANAGEMENT APPROACH
+    Section 5.0    Management Structure and Key Personnel
+    Section 6.0    Staffing Plan and Subcontracting
+    Section 7.0    Transition Plan
+
+  VOLUME III — PAST PERFORMANCE
+    Section 8.0    Relevant Past Performance
+    Section 9.0    References
+
+  VOLUME IV — PRICE/COST SUMMARY
+    Section 10.0   Price/Cost Cover Sheet
+
+================================================================================
+                     VOLUME I — TECHNICAL APPROACH
+================================================================================
+
+SECTION 1.0  EXECUTIVE SUMMARY
+───────────────────────────────
+
+${company.companyName} is pleased to submit this proposal in response to the
+${q.agencyName} solicitation for ${q.contractTitle}${q.solicitationNumber ? ` (${q.solicitationNumber})` : ''}.
+
+We are a ${businessTypes}${company.yearFounded ? `, established in ${company.yearFounded},` : ''} with proven
+expertise delivering high-quality solutions to federal government clients.
+
+Key Strengths We Bring to This Requirement:
+${q.overallApproach.split('\n').slice(0, 3).map((l: string) => `  • ${l.trim()}`).filter((l: string) => l !== '  •').join('\n')}
+  • ${certs !== 'None' ? `Active certifications: ${certs}` : `Registered ${businessTypes} in SAM.gov`}
+  • Proven past performance with similar federal requirements${q.pp[0]?.agency ? ` (including ${q.pp[0].agency})` : ''}
+
+───────────────────────────────
+SECTION 2.0  UNDERSTANDING OF THE REQUIREMENT
+───────────────────────────────
+
+${q.requirementSummary || `${company.companyName} has thoroughly reviewed the solicitation and all attachments. We understand that ${q.agencyName} requires the services described in ${q.contractTitle}.`}
+
+Primary Objectives:
+${q.keyObjectives.split('\n').map((l: string, i: number) => `  ${i + 1}. ${l.trim()}`).filter((l: string) => l.trim().match(/^\s*\d+\.\s+\S/)).join('\n') || `  1. [KEY OBJECTIVE 1]\n  2. [KEY OBJECTIVE 2]\n  3. [KEY OBJECTIVE 3]`}
+
+───────────────────────────────
+SECTION 3.0  TECHNICAL APPROACH AND METHODOLOGY
+───────────────────────────────
+
+3.1  Overall Approach
+
+${q.overallApproach}
+
+3.2  ${q.phase1.name || 'Phase 1 — Mobilization and Planning'}
+
+Timeline: ${q.phase1.timeline || '[TIMELINE]'}
+
+Deliverables:
+${q.phase1.deliverables.split('\n').map((l: string) => `  • ${l.trim()}`).filter((l: string) => l !== '  •').join('\n') || '  • [DELIVERABLE]'}
+
+Approach:
+${q.phase1.approach}
+
+3.3  ${q.phase2.name || 'Phase 2 — Execution'}
+
+Timeline: ${q.phase2.timeline || '[TIMELINE]'}
+
+Deliverables:
+${q.phase2.deliverables.split('\n').map((l: string) => `  • ${l.trim()}`).filter((l: string) => l !== '  •').join('\n') || '  • [DELIVERABLE]'}
+
+Approach:
+${q.phase2.approach}
+
+${q.phase3.name ? `3.4  ${q.phase3.name}
+
+Timeline: ${q.phase3.timeline || '[TIMELINE]'}
+
+Deliverables:
+${q.phase3.deliverables.split('\n').map((l: string) => `  • ${l.trim()}`).filter((l: string) => l !== '  •').join('\n')}
+
+Approach: ${q.phase3.approach}
+
+` : ''}3.5  Tools, Technologies, and Systems
+
+${q.toolsTechnologies || '[LIST TOOLS AND TECHNOLOGIES]'}
+
+3.6  Place of Performance
+  ${q.placeOfPerformance || '[PLACE OF PERFORMANCE]'}
+
+───────────────────────────────
+SECTION 4.0  QUALITY ASSURANCE AND RISK MANAGEMENT
+───────────────────────────────
+
+4.1  Quality Control Plan
+
+${q.qualityApproach || '[DESCRIBE QUALITY CONTROL APPROACH]'}
+
+4.2  Risk Management
+${riskRows || '\n  [RISK REGISTER — DESCRIBE IDENTIFIED RISKS AND MITIGATIONS]'}
+
+================================================================================
+                    VOLUME II — MANAGEMENT APPROACH
+================================================================================
+
+SECTION 5.0  MANAGEMENT STRUCTURE AND KEY PERSONNEL
+───────────────────────────────
+
+Program Manager: ${q.pm.name}
+  Title:       ${q.pm.title}
+  Clearance:   ${q.pm.clearance || 'N/A'}
+  Experience:  ${q.pm.experience} years of relevant experience
+  Qualifications: ${q.pm.quals}
+
+Technical Lead: ${q.techLead.name}
+  Title:       ${q.techLead.title}
+  Clearance:   ${q.techLead.clearance || 'N/A'}
+  Experience:  ${q.techLead.experience} years of relevant experience
+  Qualifications: ${q.techLead.quals}
+${additionalPersonnel}
+
+───────────────────────────────
+SECTION 6.0  STAFFING PLAN AND SUBCONTRACTING
+───────────────────────────────
+
+${subSection}
+
+Prime contractor share of work: ${q.primePercent || '100'}%
+
+───────────────────────────────
+SECTION 7.0  TRANSITION PLAN
+───────────────────────────────
+
+${company.companyName} will execute a structured transition to ensure continuity
+of operations from contract award through full operational capability.
+
+  Week 1–2:   Kickoff meeting, access provisioning, documentation review
+  Week 3–4:   Staff on-boarding, system familiarization, process handoff
+  Day 30:     Full operational capability confirmed with ${q.agencyName} COR
+
+================================================================================
+                    VOLUME III — PAST PERFORMANCE
+================================================================================
+
+SECTION 8.0  RELEVANT PAST PERFORMANCE
+───────────────────────────────
+${ppSection}
+
+───────────────────────────────
+SECTION 9.0  REFERENCES
+───────────────────────────────
+${ppRefs}
+
+================================================================================
+                    VOLUME IV — PRICE / COST SUMMARY
+================================================================================
+
+SECTION 10.0  PRICE / COST COVER SHEET
+───────────────────────────────
+
+  Offeror:           ${company.companyName}
+  Solicitation No.:  ${q.solicitationNumber || '[SOLICITATION NUMBER]'}
+  Date:              ${today}
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                      TOTAL PROPOSED PRICE SUMMARY                      │
+  ├──────────────────────────────────┬──────────────────────────────────────┤
+  │  Base Year                       │  ${(q.baseYear || '[TBD]').padEnd(36)}│
+  │  Option Year 1                   │  ${(q.oy1 || '[TBD]').padEnd(36)}│
+  │  Option Year 2                   │  ${(q.oy2 || '[TBD]').padEnd(36)}│
+  │  Option Year 3                   │  ${(q.oy3 || '[TBD]').padEnd(36)}│
+  │  Option Year 4                   │  ${(q.oy4 || '[TBD]').padEnd(36)}│
+  ├──────────────────────────────────┼──────────────────────────────────────┤
+  │  TOTAL (All Periods)             │  ${computedTotal.padEnd(36)}│
+  └──────────────────────────────────┴──────────────────────────────────────┘
+
+  Acknowledgment of Amendments:  ${q.amendments || 'None'}
+
+  Authorized Signature:  ________________________________
+  Name:                  ${company.contactName || '[AUTHORIZED REPRESENTATIVE]'}
+  Title:                 [TITLE]
+  Date:                  ${today}
+
+================================================================================
+                        CERTIFICATIONS AND REPRESENTATIONS
+================================================================================
+
+${company.companyName} certifies that the information in this proposal is
+accurate and complete, that prices were arrived at independently and without
+collusion, and that we are registered and active in SAM.gov.
+
+  Business Type:  ${businessTypes}
+  UEI:            ${company.uei || '[UEI]'}
+  CAGE:           ${company.cageCode || '[CAGE CODE]'}
+
+________________________________________________________________________________
+Generated by IR — Government Contract Intelligence | ir-gov.app
+================================================================================
+`
+}
+
+// ─── Basic company data ────────────────────────────────────────────────────────
+
 export interface CompanyData {
   companyName: string
   uei?: string

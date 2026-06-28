@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 interface Proposal {
   id: string
@@ -198,12 +199,20 @@ export default function ProposalsPage() {
             Generate a fully structured government contract proposal ready for attorney review.
           </p>
         </div>
-        <button
-          onClick={openBlank}
-          style={{ padding: '11px 20px', background: '#C41230', color: '#fff', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', flexShrink: 0 }}
-        >
-          + NEW PROPOSAL
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <button
+            onClick={openBlank}
+            style={{ padding: '11px 16px', background: 'transparent', color: '#0A0A0A', border: '1px solid rgba(0,0,0,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
+          >
+            QUICK DRAFT
+          </button>
+          <Link
+            href="/proposals/new"
+            style={{ padding: '11px 20px', background: '#C41230', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', display: 'inline-block' }}
+          >
+            + FULL QUESTIONNAIRE →
+          </Link>
+        </div>
       </div>
 
       {/* Saved contracts — quick start */}
