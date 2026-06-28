@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
+// Set to true to show coming soon page to the public
+const COMING_SOON = true
+
+// Pages that bypass the coming soon gate (auth flows still work)
+const COMING_SOON_BYPASS = [
+  '/coming-soon',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/terms',
+  '/privacy',
+]
+
 // Pages that require authentication
 const AUTH_REQUIRED = [
   '/dashboard',
@@ -17,6 +32,19 @@ const ALLOWED_UNVERIFIED = ['/onboarding', '/verify-email']
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  // Coming soon gate — redirect public traffic, let auth flows through
+  if (COMING_SOON) {
+    const bypassed = COMING_SOON_BYPASS.some(
+      (p) => pathname === p || pathname.startsWith(p + '/')
+    )
+    if (!bypassed) {
+      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+      if (!token) {
+        return NextResponse.redirect(new URL('/coming-soon', req.url))
+      }
+    }
+  }
 
   const needsAuth = AUTH_REQUIRED.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
