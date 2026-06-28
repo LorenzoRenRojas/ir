@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { fetchContracts, MOCK_CONTRACTS } from '@/lib/sam-api'
+import { rateLimit, ipKey } from '@/lib/rate-limit'
 import { calculateMatchScore } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
 import { fetchIncumbents } from '@/lib/usaspending'
@@ -16,8 +17,19 @@ import {
 } from '@/lib/embeddings'
 
 export async function GET(req: NextRequest) {
+  // 60 requests per minute per IP
+  const { allowed } = rateLimit(ipKey(req, 'contracts'), 60, 60_000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   try {
     const session = await auth()
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
 
     const q = searchParams.get('q') ?? ''
