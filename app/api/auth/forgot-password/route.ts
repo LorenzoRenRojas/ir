@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       data: { identifier: `reset:${email}`, token, expires },
     })
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
     await sendPasswordResetEmail(email, token, baseUrl)
 
     return NextResponse.json({ success: true })

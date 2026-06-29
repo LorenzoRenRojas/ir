@@ -36,8 +36,13 @@ export async function POST(req: NextRequest) {
       data: { identifier: user.email, token, expires },
     })
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-    await sendVerificationEmail(user.email, token, baseUrl)
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
+    try {
+      await sendVerificationEmail(user.email, token, baseUrl)
+    } catch (emailErr) {
+      console.error('Verification email send failed:', emailErr)
+      return NextResponse.json({ error: 'Failed to send verification email. Please try again later.' }, { status: 502 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
