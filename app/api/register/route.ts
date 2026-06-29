@@ -6,7 +6,6 @@ import { sendVerificationEmail } from '@/lib/email'
 import { rateLimit, ipKey } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
-  // 5 registration attempts per 15 minutes per IP
   const { allowed } = rateLimit(ipKey(req, 'register'), 5, 15 * 60_000)
   if (!allowed) {
     return NextResponse.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 })
@@ -32,26 +31,23 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
-      data: {
-        name: name ?? null,
-        email,
-        password: hashedPassword,
-      },
+      data: { name: name ?? null, email, password: hashedPassword },
       select: { id: true, email: true, name: true },
     })
 
-    // Create verification token and send email (non-blocking — don't fail registration if email fails)
+    let emailSent = false
     try {
       const token = crypto.randomBytes(32).toString('hex')
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
       await prisma.verificationToken.create({ data: { identifier: email, token, expires } })
-      const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
       await sendVerificationEmail(email, token, baseUrl)
+      emailSent = true
     } catch (emailErr) {
-      console.error('Verification email failed (non-fatal):', emailErr)
+      console.error('Verification email failed:', emailErr)
     }
 
-    return NextResponse.json({ user }, { status: 201 })
+    return NextResponse.json({ user, emailSent }, { status: 201 })
   } catch (err) {
     console.error('Register error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

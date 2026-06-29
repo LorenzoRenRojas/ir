@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendTeamInviteEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +21,7 @@ export async function POST(req: NextRequest) {
     // Must be team admin
     const membership = await prisma.teamMember.findFirst({
       where: { userId: session.user.id, role: 'admin' },
+      include: { team: { select: { name: true } } },
     })
     if (!membership) {
       return NextResponse.json({ error: 'You must be a team admin to invite members' }, { status: 403 })
@@ -54,14 +57,21 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Send invite email
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
+      await sendTeamInviteEmail(email, membership.team.name, invite.token, baseUrl)
+    } catch (emailErr) {
+      console.error('Team invite email failed:', emailErr)
+      // Invite was created — don't fail the request, but surface the warning
+      return NextResponse.json({
+        invite: { id: invite.id, token: invite.token, email: invite.email, role: invite.role, expiresAt: invite.expiresAt },
+        warning: 'Invite created but email could not be sent. Check RESEND_API_KEY.',
+      })
+    }
+
     return NextResponse.json({
-      invite: {
-        id: invite.id,
-        token: invite.token,
-        email: invite.email,
-        role: invite.role,
-        expiresAt: invite.expiresAt,
-      },
+      invite: { id: invite.id, token: invite.token, email: invite.email, role: invite.role, expiresAt: invite.expiresAt },
     })
   } catch (err) {
     console.error('POST /api/team/invite error:', err)
