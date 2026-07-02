@@ -3,5 +3,9 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    { "path": "/api/cron/daily-digest", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/deadline-reminders", "schedule": "0 13 * * *" }
+  ]
 }

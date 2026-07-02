@@ -190,6 +190,172 @@ export async function sendProposalEmail(
   await send(to, `[IR Proposal] ${contractTitle} — ${agencyName}`, html)
 }
 
+export interface DigestMatch {
+  title: string
+  agency: string
+  valueFormatted: string
+  setAsideDescription: string
+  responseDeadline: string
+  matchScore: number
+  link: string
+}
+
+export async function sendDailyDigestEmail(
+  email: string,
+  name: string | null,
+  matches: DigestMatch[],
+  baseUrl: string
+): Promise<void> {
+  const rows = matches
+    .map(
+      m => `
+        <tr>
+          <td style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <a href="${m.link}" style="color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;font-family:sans-serif;">${m.title}</a>
+                  <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:6px 0 0;font-family:sans-serif;">
+                    ${m.agency} · ${m.valueFormatted} · ${m.setAsideDescription}
+                  </p>
+                  <p style="color:rgba(255,255,255,0.3);font-size:10px;margin:4px 0 0;font-family:sans-serif;">
+                    Deadline: ${new Date(m.responseDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </td>
+                <td align="right" valign="top" style="white-space:nowrap;padding-left:16px;">
+                  <span style="color:#C41230;font-size:16px;font-weight:700;">${m.matchScore}</span>
+                  <span style="color:rgba(255,255,255,0.25);font-size:9px;letter-spacing:0.1em;"> MATCH</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`
+    )
+    .join('')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 48px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">GOVCON INTELLIGENCE</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px;">
+            <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">DAILY MATCH REPORT</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${matches.length} new ${matches.length === 1 ? 'opportunity matches' : 'opportunities match'} your profile.</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${name ? `${name}, these` : 'These'} were posted in the last 24 hours and scored against your company profile.</p>
+            <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+            <a href="${baseUrl}/dashboard"
+               style="display:inline-block;margin-top:28px;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
+              VIEW ALL MATCHES →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 48px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:0;line-height:1.6;">
+              You receive this because you have an active IR company profile.<br>
+              Manage notifications in <a href="${baseUrl}/settings" style="color:#C41230;">settings</a>.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(email, `[IR] ${matches.length} new contract ${matches.length === 1 ? 'match' : 'matches'} for your profile`, html)
+}
+
+export async function sendDeadlineReminderEmail(
+  email: string,
+  name: string | null,
+  contractTitle: string,
+  agency: string,
+  deadline: Date,
+  daysLeft: number,
+  baseUrl: string
+): Promise<void> {
+  const urgency = daysLeft <= 1 ? 'DUE IN 24 HOURS' : `${daysLeft} DAYS REMAINING`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 48px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px;">
+            <p style="color:#C41230;font-size:9px;letter-spacing:0.18em;margin:0 0 16px;font-weight:700;">⏱ ${urgency}</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${contractTitle}</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${agency}</p>
+            <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 28px;font-family:sans-serif;">
+              ${name ? `${name}, a` : 'A'} contract you saved has a response deadline of
+              <strong style="color:#ffffff;">${deadline.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong>.
+              If you're bidding, your proposal needs to be submitted before then.
+            </p>
+            <a href="${baseUrl}/saved"
+               style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
+              OPEN SAVED CONTRACTS →
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(email, `[IR] Deadline ${daysLeft <= 1 ? 'tomorrow' : `in ${daysLeft} days`}: ${contractTitle}`, html)
+}
+
+export async function sendAdminAlertEmail(
+  adminEmail: string,
+  subject: string,
+  problems: string[]
+): Promise<void> {
+  const items = problems.map(p => `<li style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.8;font-family:monospace;">${p}</li>`).join('')
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid #C41230;">
+        <tr>
+          <td style="padding:36px 48px;">
+            <p style="color:#C41230;font-size:9px;letter-spacing:0.18em;margin:0 0 16px;font-weight:700;">⚠ SYSTEM ALERT</p>
+            <h1 style="color:#ffffff;font-size:20px;font-weight:700;margin:0 0 20px;font-family:sans-serif;">${subject}</h1>
+            <ul style="margin:0;padding-left:20px;">${items}</ul>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+  await send(adminEmail, `[IR ALERT] ${subject}`, html)
+}
+
 export async function sendTeamInviteEmail(
   email: string,
   teamName: string,
