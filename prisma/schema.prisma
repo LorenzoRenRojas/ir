@@ -122,6 +122,24 @@ model GeneratedDocument {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Every outbound email attempt is recorded here so failures are visible
+// in the admin dashboard instead of dying silently in serverless logs.
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  status    String // sent | failed | skipped_no_key
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+// Coming-soon page email captures
+model Waitlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Team {
   id        String   @id @default(cuid())
   name      String

@@ -133,27 +133,59 @@ function EmailCapture() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleGoogle() {
     setGoogleLoading(true)
     await signIn('google', { callbackUrl: '/onboarding' })
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setDone(true)
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (res.ok) {
+        setDone(true)
+      } else {
+        const data = await res.json()
+        setError(data.error ?? 'Something went wrong. Please try again.')
+      }
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (done) {
     return (
-      <div style={{ fontSize: 10, letterSpacing: '0.1em', color: '#4ADE80', fontFamily: mono }}>
-        YOU'RE ON THE LIST ✓
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.1em', color: '#4ADE80', fontFamily: mono }}>
+          YOU'RE ON THE LIST ✓
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: mono, letterSpacing: '0.06em' }}>
+          3 MONTHS OF PRO — LOCKED IN AT LAUNCH
+        </div>
       </div>
     )
   }
 
   return (
     <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Incentive */}
+      <div style={{ textAlign: 'center', padding: '10px 16px', border: '1px solid rgba(196,18,48,0.35)', background: 'rgba(196,18,48,0.06)' }}>
+        <span style={{ fontSize: 9, letterSpacing: '0.14em', color: crimson, fontFamily: mono, fontWeight: 700 }}>
+          FIRST 100 SIGNUPS GET 3 MONTHS OF PRO FREE
+        </span>
+      </div>
+
       {/* Google */}
       <button
         onClick={handleGoogle}
@@ -209,6 +241,7 @@ function EmailCapture() {
         />
         <button
           type="submit"
+          disabled={submitting}
           style={{
             padding: '12px 20px',
             background: crimson,
@@ -217,14 +250,18 @@ function EmailCapture() {
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.1em',
-            cursor: 'pointer',
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            opacity: submitting ? 0.6 : 1,
             fontFamily: mono,
             whiteSpace: 'nowrap',
           }}
         >
-          NOTIFY ME →
+          {submitting ? '…' : 'NOTIFY ME →'}
         </button>
       </form>
+      {error && (
+        <div style={{ fontSize: 10, color: '#f87171', fontFamily: mono, textAlign: 'center' }}>{error}</div>
+      )}
     </div>
   )
 }

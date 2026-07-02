@@ -1,10 +1,10 @@
 import { createClient } from '@libsql/client'
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/admin'
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'admin') {
+  const session = await requireAdmin()
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -44,6 +44,15 @@ export async function GET() {
     `ALTER TABLE "CompanyProfile" ADD COLUMN "agencyHistory" TEXT NOT NULL DEFAULT '[]'`,
     // Semantic learning tables
     `CREATE TABLE IF NOT EXISTS "ContractEmbedding" ("noticeId" TEXT NOT NULL PRIMARY KEY,"embedding" TEXT NOT NULL,"model" TEXT NOT NULL DEFAULT 'voyage-3-lite',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    // Proposal system: link generated documents to contracts
+    `ALTER TABLE "GeneratedDocument" ADD COLUMN "noticeId" TEXT`,
+    `ALTER TABLE "GeneratedDocument" ADD COLUMN "contractTitle" TEXT`,
+    `ALTER TABLE "GeneratedDocument" ADD COLUMN "agencyName" TEXT`,
+    // Email observability
+    `CREATE TABLE IF NOT EXISTS "EmailLog" ("id" TEXT NOT NULL PRIMARY KEY,"to" TEXT NOT NULL,"subject" TEXT NOT NULL,"status" TEXT NOT NULL,"error" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    // Coming-soon waitlist
+    `CREATE TABLE IF NOT EXISTS "Waitlist" ("id" TEXT NOT NULL PRIMARY KEY,"email" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "Waitlist_email_key" ON "Waitlist"("email")`,
     `CREATE TABLE IF NOT EXISTS "UserEmbedding" ("userId" TEXT NOT NULL PRIMARY KEY,"preferenceEmbedding" TEXT NOT NULL,"saveCount" INTEGER NOT NULL DEFAULT 0,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "UserEmbedding_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
   ]
 

@@ -21,6 +21,7 @@ export interface Contract {
   placeOfPerformance: string
   description: string
   link: string
+  pointsOfContact?: { name: string; email: string; phone?: string; type?: string }[]
   matchScore?: number
   winProbability?: { score: number; label: string; topFactor: string } | null
   incumbent?: { awardee: string; amount: number } | null
@@ -60,6 +61,13 @@ interface SamGovOpportunity {
   }
   description?: string
   uiLink?: string
+  pointOfContact?: {
+    fullName?: string
+    email?: string
+    phone?: string
+    type?: string
+    title?: string
+  }[]
 }
 
 // Mock data for when API key is not available
@@ -350,6 +358,14 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
     ].filter(Boolean).join(', ') || 'TBD',
     description: opp.description || '',
     link: opp.uiLink || `https://sam.gov/opp/${opp.noticeId}`,
+    pointsOfContact: (opp.pointOfContact ?? [])
+      .filter(poc => poc.email)
+      .map(poc => ({
+        name: poc.fullName || poc.title || 'Contracting Officer',
+        email: poc.email!,
+        phone: poc.phone,
+        type: poc.type,
+      })),
   }
 }
 

@@ -398,6 +398,45 @@ function ProposalRow({ proposal }: { proposal: Proposal }) {
   const [expanded, setExpanded] = useState(false)
   const [content, setContent] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sendingPO, setSendingPO] = useState(false)
+  const [poStatus, setPoStatus] = useState('')
+
+  async function handleSendToOfficer() {
+    setSendingPO(true)
+    setPoStatus('')
+    try {
+      // Step 1: resolve the contracting officer from SAM.gov (no send yet)
+      const preview = await fetch('/api/proposals/send-to-officer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: proposal.id, dryRun: true }),
+      })
+      const previewData = await preview.json()
+      if (!preview.ok) {
+        setPoStatus(previewData.error ?? 'Could not find a contracting officer for this notice.')
+        return
+      }
+
+      // Step 2: explicit confirmation before anything leaves the platform
+      const c = previewData.contact
+      const ok = window.confirm(
+        `Send this proposal to the government point of contact?\n\n${c.name}\n${c.email}\n\nReplies will go to your email. This cannot be undone.`
+      )
+      if (!ok) return
+
+      const res = await fetch('/api/proposals/send-to-officer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: proposal.id }),
+      })
+      const data = await res.json()
+      setPoStatus(res.ok ? `SENT TO ${data.to} ✓` : (data.error ?? 'Send failed.'))
+    } catch {
+      setPoStatus('Network error. Please try again.')
+    } finally {
+      setSendingPO(false)
+    }
+  }
 
   async function handleView() {
     if (expanded) { setExpanded(false); return }
@@ -433,7 +472,17 @@ function ProposalRow({ proposal }: { proposal: Proposal }) {
             {new Date(proposal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {poStatus && (
+            <span style={{ fontSize: 9, letterSpacing: '0.05em', color: poStatus.endsWith('✓') ? '#16A34A' : '#C41230', fontFamily: 'var(--font-geist-mono, monospace)', maxWidth: 260 }}>
+              {poStatus}
+            </span>
+          )}
+          {proposal.noticeId && !poStatus.endsWith('✓') && (
+            <button onClick={handleSendToOfficer} disabled={sendingPO} style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(196,18,48,0.35)', color: '#C41230', cursor: sendingPO ? 'not-allowed' : 'pointer', opacity: sendingPO ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              {sendingPO ? 'SENDING…' : 'SEND TO PO →'}
+            </button>
+          )}
           {content && (
             <button onClick={handleDownload} style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
               ↓ DOWNLOAD

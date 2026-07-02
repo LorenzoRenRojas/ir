@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/admin'
 
 export async function GET(req: Request) {
-  // Must be an existing admin session — key alone is not sufficient
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'admin') {
+  // Must be an admin session (DB role or ADMIN_EMAIL bootstrap) — key alone is not sufficient
+  const session = await requireAdmin()
+  if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

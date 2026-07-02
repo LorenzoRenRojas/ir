@@ -14,6 +14,9 @@ const COMING_SOON_BYPASS = [
   '/verify-email',
   '/terms',
   '/privacy',
+  '/naics',
+  '/sitemap.xml',
+  '/robots.txt',
 ]
 
 // Pages that require authentication
@@ -25,6 +28,7 @@ const AUTH_REQUIRED = [
   '/documents',
   '/contracts',
   '/onboarding',
+  '/admin',
 ]
 
 // Pages that a logged-in but unverified user is allowed to see

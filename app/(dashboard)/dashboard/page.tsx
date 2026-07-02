@@ -49,6 +49,40 @@ function topMatchReason(contract: Contract): string | null {
   return top?.text ?? null
 }
 
+// Compact NAICS ✓ · SET-ASIDE ✓ · SIZE ~ · GEO ✗ row so users see WHY a
+// contract scored without clicking into the breakdown.
+function BreakdownBadges({ contract }: { contract: Contract }) {
+  const bd = contract.matchBreakdown
+  if (!bd) return null
+
+  const factors = [
+    { label: 'NAICS', score: bd.naicsScore, max: 40 },
+    { label: 'SET-ASIDE', score: bd.setAsideScore, max: 25 },
+    { label: 'SIZE', score: bd.contractSizeScore, max: 20 },
+    { label: 'GEO', score: bd.geoScore, max: 15 },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {factors.map(f => {
+        const full = f.score >= f.max
+        const none = f.score === 0
+        const mark = full ? '✓' : none ? '✗' : '~'
+        const color = full ? '#16a34a' : none ? 'rgba(0,0,0,0.2)' : '#b45309'
+        return (
+          <span
+            key={f.label}
+            title={`${f.score}/${f.max} points`}
+            style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 6px', color, background: full ? 'rgba(22,163,74,0.06)' : 'rgba(0,0,0,0.02)', border: `1px solid ${full ? 'rgba(22,163,74,0.2)' : 'rgba(0,0,0,0.07)'}`, fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}
+          >
+            {f.label} {mark}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function MatchBar({ score }: { score: number }) {
   const color = score >= 80 ? '#16a34a' : score >= 60 ? '#C41230' : '#94a3b8'
   return (
@@ -118,6 +152,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
           </div>
         )}
         {hasScore && <MatchBar score={score} />}
+        {hasScore && <BreakdownBadges contract={contract} />}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
           {!noSetAside && (
             <span style={{ fontSize: 9, padding: '2px 7px', background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.08)', letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>

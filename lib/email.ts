@@ -3,29 +3,48 @@
 // Free tier: 3,000 emails/month, 100/day.
 // From address must be from a verified domain in your Resend account.
 
+import { prisma } from './prisma'
+
 const FROM = 'IR <noreply@ir-gov.app>'
 const RESEND_API = 'https://api.resend.com/emails'
 
-async function send(to: string, subject: string, html: string): Promise<void> {
+// Best-effort audit trail — must never break the actual send.
+async function logEmail(to: string, subject: string, status: string, error?: string) {
+  try {
+    await prisma.emailLog.create({ data: { to, subject, status, error: error?.slice(0, 1000) } })
+  } catch (logErr) {
+    console.error('[email] Failed to write EmailLog:', logErr)
+  }
+}
+
+async function send(to: string, subject: string, html: string, replyTo?: string): Promise<void> {
   const key = process.env.RESEND_API_KEY
   if (!key) {
-    // In development without a key, log the email instead of failing
-    console.log(`[email] To: ${to} | Subject: ${subject}`)
+    // No key configured — record it so the admin dashboard makes this visible
+    console.log(`[email] SKIPPED (no RESEND_API_KEY) To: ${to} | Subject: ${subject}`)
+    await logEmail(to, subject, 'skipped_no_key', 'RESEND_API_KEY is not set in this environment')
     return
   }
 
-  const res = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: FROM, to: [to], subject, html }),
-  })
+  try {
+    const res = await fetch(RESEND_API, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: FROM, to: [to], subject, html, ...(replyTo ? { reply_to: [replyTo] } : {}) }),
+    })
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`Resend API error ${res.status}: ${body}`)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`Resend API error ${res.status}: ${body}`)
+    }
+
+    await logEmail(to, subject, 'sent')
+  } catch (err) {
+    await logEmail(to, subject, 'failed', err instanceof Error ? err.message : String(err))
+    throw err
   }
 }
 
@@ -354,6 +373,59 @@ export async function sendAdminAlertEmail(
 </body>
 </html>`
   await send(adminEmail, `[IR ALERT] ${subject}`, html)
+}
+
+// Sent to a government point of contact on the user's behalf. Deliberately
+// plain and formal — no dark branding — and replies go to the user, not us.
+export async function sendProposalToOfficerEmail(
+  to: string,
+  contactName: string,
+  senderName: string,
+  senderEmail: string,
+  companyName: string,
+  contractTitle: string,
+  solicitationNumber: string,
+  content: string
+): Promise<void> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Georgia,serif;color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr><td align="center">
+      <table width="640" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:0 24px;">
+            <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">Dear ${contactName},</p>
+            <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">
+              Please find below a proposal submitted by <strong>${companyName}</strong> in response to
+              <strong>${contractTitle}</strong>${solicitationNumber ? ` (Solicitation No. ${solicitationNumber})` : ''}.
+            </p>
+            <p style="font-size:15px;line-height:1.7;margin:0 0 24px;">
+              For any questions regarding this submission, please contact ${senderName} directly at
+              <a href="mailto:${senderEmail}" style="color:#1a1a1a;">${senderEmail}</a> or simply reply to this email.
+            </p>
+            <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 24px;">
+            <pre style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;margin:0 0 24px;">${content}</pre>
+            <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 16px;">
+            <p style="font-size:12px;color:#888888;line-height:1.6;margin:0;">
+              Sent on behalf of ${companyName} via IR (ir-gov.app). Reply-to is set to the sender.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(
+    to,
+    `Proposal Submission — ${contractTitle}${solicitationNumber ? ` (${solicitationNumber})` : ''} — ${companyName}`,
+    html,
+    senderEmail
+  )
 }
 
 export async function sendTeamInviteEmail(
