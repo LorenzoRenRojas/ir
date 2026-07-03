@@ -1,0 +1,340 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+
+const mono = 'var(--font-geist-mono, monospace)'
+const sans = 'var(--font-geist-sans, sans-serif)'
+const crimson = '#C41230'
+const surface = '#0A0A0A'
+
+// ─── In-view hook: animations fire when a section scrolls into frame ─────────
+function useInView<T extends HTMLElement>(threshold = 0.25) {
+  const ref = useRef<T | null>(null)
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect() } },
+      { threshold }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [threshold])
+
+  return { ref, inView }
+}
+
+// ─── Count-up number ──────────────────────────────────────────────────────────
+function CountUp({ to, prefix = '', suffix = '', duration = 1400, started }: { to: number; prefix?: string; suffix?: string; duration?: number; started: boolean }) {
+  const [val, setVal] = useState(0)
+
+  useEffect(() => {
+    if (!started) return
+    let raf: number
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(Math.round(to * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [started, to, duration])
+
+  return <>{prefix}{val.toLocaleString()}{suffix}</>
+}
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+const HERO_STATS = [
+  { to: 755, prefix: '$', suffix: 'B', label: 'FEDERAL MARKET / YEAR' },
+  { to: 3000, suffix: '+', label: 'CONTRACTS SCORED DAILY' },
+  { to: 18, suffix: ' MO', label: 'RECOMPETE RADAR HORIZON' },
+  { to: 5, suffix: ' MIN', label: 'SIGNUP TO FIRST MATCH' },
+]
+
+// Typical reported annual pricing for sales-quoted products; estimates.
+const PRICE_BARS = [
+  { name: 'GOVWIN IQ (DELTEK)', value: 12000, ir: false },
+  { name: 'GOVTRIBE',           value: 4500,  ir: false },
+  { name: 'HIGHERGOV',          value: 3500,  ir: false },
+  { name: 'IR PRO',             value: 2388,  ir: true  },
+  { name: 'EZGOVOPPS',          value: 2100,  ir: false },
+  { name: 'IR STARTER',         value: 948,   ir: true  },
+]
+const PRICE_MAX = 12000
+
+const LOOP_STEPS = [
+  { n: '01', title: 'FIND',   body: 'Every active SAM.gov solicitation scored against your NAICS codes, set-asides, size, and geography.' },
+  { n: '02', title: 'FORESEE', body: 'Recompete Radar surfaces contracts in your space expiring within 18 months — before the RFP exists.' },
+  { n: '03', title: 'TRACK',  body: 'A bid pipeline from first look to award, with dollar totals and automatic deadline alerts.' },
+  { n: '04', title: 'DRAFT',  body: 'A guided questionnaire becomes a formatted 4-volume federal proposal. Capability statements in one click.' },
+  { n: '05', title: 'SEND',   body: 'Proposal delivered to the contracting officer from inside IR — replies go to your inbox.' },
+]
+
+const MATRIX: { feature: string; ir: string; legacy: string; irHas: boolean; legacyHas: boolean }[] = [
+  { feature: 'Profile-scored contract matching',      ir: 'Every posting, daily',        legacy: 'Keyword saved searches',      irHas: true,  legacyHas: true },
+  { feature: 'Match reasoning shown per contract',    ir: 'NAICS · set-aside · size · geo', legacy: 'Black box',               irHas: true,  legacyHas: false },
+  { feature: 'Expiring-contract (pre-RFP) intel',     ir: 'Automated, included',         legacy: 'Human analysts, $10k+ tier',  irHas: true,  legacyHas: true },
+  { feature: 'Proposal drafting',                     ir: '4-volume guided drafts',      legacy: 'Not offered',                 irHas: true,  legacyHas: false },
+  { feature: 'Capability statement generator',        ir: 'One click',                   legacy: 'Not offered',                 irHas: true,  legacyHas: false },
+  { feature: 'Send to contracting officer',           ir: 'Built in, with confirmation', legacy: 'Look it up yourself',         irHas: true,  legacyHas: false },
+  { feature: 'Bid pipeline with $ totals',            ir: 'Included',                    legacy: 'CRM add-on pricing',          irHas: true,  legacyHas: true },
+  { feature: 'Self-serve signup',                     ir: '5 minutes, no sales call',    legacy: 'Demo → quote → contract',     irHas: true,  legacyHas: false },
+]
+
+// ─── Sections ─────────────────────────────────────────────────────────────────
+
+function HeroStats() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.3)
+  return (
+    <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {HERO_STATS.map((s, i) => (
+        <div key={s.label} style={{ background: surface, padding: '36px 28px', opacity: inView ? 1 : 0, transform: inView ? 'translateY(0)' : 'translateY(16px)', transition: `all 0.6s cubic-bezier(0.22,1,0.36,1) ${i * 120}ms` }}>
+          <div style={{ fontSize: 40, fontWeight: 800, color: crimson, letterSpacing: '-0.03em', fontFamily: sans }}>
+            <CountUp to={s.to} prefix={s.prefix ?? ''} suffix={s.suffix ?? ''} started={inView} />
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', marginTop: 8 }}>{s.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CapabilityLoop() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.2)
+  return (
+    <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+      {LOOP_STEPS.map((step, i) => (
+        <div
+          key={step.n}
+          style={{
+            border: '1px solid rgba(255,255,255,0.09)',
+            background: '#111',
+            padding: '28px 24px',
+            position: 'relative',
+            opacity: inView ? 1 : 0,
+            transform: inView ? 'translateY(0)' : 'translateY(20px)',
+            transition: `all 0.55s cubic-bezier(0.22,1,0.36,1) ${i * 160}ms`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute', top: 0, left: 0, height: 2, background: crimson,
+              width: inView ? '100%' : '0%',
+              transition: `width 0.5s ease ${i * 160 + 250}ms`,
+            }}
+          />
+          <div style={{ fontFamily: mono, fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', marginBottom: 14 }}>{step.n}</div>
+          <div style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: crimson, marginBottom: 12 }}>{step.title}</div>
+          <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', margin: 0, fontFamily: sans }}>{step.body}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PriceChart() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.3)
+  const [hovered, setHovered] = useState<string | null>(null)
+
+  return (
+    <div ref={ref}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {PRICE_BARS.map((bar, i) => {
+          const pct = (bar.value / PRICE_MAX) * 100
+          const isHover = hovered === bar.name
+          return (
+            <div
+              key={bar.name}
+              onMouseEnter={() => setHovered(bar.name)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 180px) 1fr', gap: 16, alignItems: 'center', cursor: 'default' }}
+            >
+              <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.1em', color: bar.ir ? '#fff' : 'rgba(255,255,255,0.4)', fontWeight: bar.ir ? 700 : 400, textAlign: 'right' }}>
+                {bar.name}
+              </div>
+              <div style={{ position: 'relative', height: 26 }}>
+                <div
+                  style={{
+                    position: 'absolute', inset: '4px auto 4px 0',
+                    width: inView ? `${pct}%` : '0%',
+                    minWidth: 3,
+                    background: bar.ir ? crimson : 'rgba(255,255,255,0.16)',
+                    borderRadius: '0 4px 4px 0',
+                    transition: `width 0.9s cubic-bezier(0.22,1,0.36,1) ${i * 110}ms, filter 0.15s ease`,
+                    filter: isHover ? 'brightness(1.35)' : 'none',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: `calc(${inView ? pct : 0}% + 10px)`,
+                    top: '50%', transform: 'translateY(-50%)',
+                    fontFamily: mono, fontSize: 11, fontWeight: 700,
+                    color: bar.ir ? '#fff' : 'rgba(255,255,255,0.45)',
+                    whiteSpace: 'nowrap',
+                    transition: `left 0.9s cubic-bezier(0.22,1,0.36,1) ${i * 110}ms`,
+                  }}
+                >
+                  ${bar.value.toLocaleString()}/yr
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p style={{ fontFamily: sans, fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 24, lineHeight: 1.6 }}>
+        Legacy pricing: typical reported annual cost for sales-quoted products; estimates as of 2026.
+        IR Pro includes proposal drafting and Recompete Radar — capabilities legacy tools price into
+        $10k+ tiers or don&apos;t offer at all.
+      </p>
+    </div>
+  )
+}
+
+function Matrix() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.15)
+  return (
+    <div ref={ref} style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '16px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>CAPABILITY</th>
+            <th style={{ textAlign: 'left', padding: '16px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: crimson, borderBottom: `1px solid ${crimson}`, width: '30%' }}>IR</th>
+            <th style={{ textAlign: 'left', padding: '16px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.1)', width: '30%' }}>LEGACY TOOLS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MATRIX.map((row, i) => (
+            <tr key={row.feature} style={{ opacity: inView ? 1 : 0, transition: `opacity 0.4s ease ${i * 80}ms` }}>
+              <td style={{ padding: '14px 20px', fontSize: 13, color: 'rgba(255,255,255,0.6)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontFamily: sans }}>{row.feature}</td>
+              <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 600, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.05)', fontFamily: sans }}>
+                <span style={{ color: '#4ADE80', marginRight: 8, fontFamily: mono }}>{row.irHas ? '✓' : '—'}</span>{row.ir}
+              </td>
+              <td style={{ padding: '14px 20px', fontSize: 13, color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.05)', fontFamily: sans }}>
+                <span style={{ color: row.legacyHas ? 'rgba(255,255,255,0.35)' : crimson, marginRight: 8, fontFamily: mono }}>{row.legacyHas ? '~' : '✗'}</span>{row.legacy}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TimeToValue() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.3)
+  return (
+    <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ background: surface, padding: '44px 36px', opacity: inView ? 1 : 0, transition: 'opacity 0.6s ease' }}>
+        <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>LEGACY TOOLS — SIGNUP TO FIRST VALUE</div>
+        <div style={{ fontSize: 44, fontWeight: 800, color: 'rgba(255,255,255,0.35)', fontFamily: sans, letterSpacing: '-0.03em' }}>2–6 weeks</div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontFamily: sans, lineHeight: 1.7, margin: '14px 0 0' }}>
+          Demo call → pricing negotiation → contract → onboarding sessions → analyst setup.
+        </p>
+      </div>
+      <div style={{ background: surface, padding: '44px 36px', opacity: inView ? 1 : 0, transition: 'opacity 0.6s ease 200ms' }}>
+        <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: crimson, marginBottom: 16 }}>IR — SIGNUP TO FIRST MATCH</div>
+        <div style={{ fontSize: 44, fontWeight: 800, color: '#fff', fontFamily: sans, letterSpacing: '-0.03em' }}>
+          <CountUp to={5} suffix=" minutes" started={inView} duration={900} />
+        </div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontFamily: sans, lineHeight: 1.7, margin: '14px 0 0' }}>
+          Paste your UEI → we pull your official SAM.gov registration → matches scored immediately.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function CapabilitiesClient() {
+  return (
+    <div style={{ minHeight: '100vh', background: surface, color: '#fff', fontFamily: mono }}>
+      {/* Nav */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <span style={{ color: crimson, fontSize: 22, fontWeight: 700 }}>ᛁ</span>
+            <span style={{ color: '#fff', fontSize: 15, fontWeight: 800, letterSpacing: '0.1em' }}>IR</span>
+            <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4 }}>CAPABILITIES</span>
+          </Link>
+          <Link href="/register" style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: crimson, color: '#fff', textDecoration: 'none' }}>
+            START FREE →
+          </Link>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px' }}>
+
+        {/* Hero */}
+        <section style={{ padding: '96px 0 72px' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 20px' }}>CAPABILITIES</p>
+          <h1 style={{ fontSize: 'clamp(34px, 5.5vw, 64px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.08, margin: '0 0 20px', fontFamily: sans }}>
+            One terminal.<br /><span style={{ color: crimson }}>The whole federal market.</span>
+          </h1>
+          <p style={{ fontSize: 17, lineHeight: 1.8, color: 'rgba(255,255,255,0.45)', maxWidth: 640, margin: '0 0 56px', fontFamily: sans }}>
+            IR compresses what legacy GovCon platforms spread across analyst teams, add-on modules,
+            and five-figure contracts into one system your whole company can use on day one.
+          </p>
+          <HeroStats />
+        </section>
+
+        {/* The loop */}
+        <section style={{ padding: '72px 0' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>THE LOOP</p>
+          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 40px', fontFamily: sans }}>
+            Find → Foresee → Track → Draft → Send.
+          </h2>
+          <CapabilityLoop />
+        </section>
+
+        {/* Price chart */}
+        <section style={{ padding: '72px 0' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>ANNUAL COST</p>
+          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+            The same intelligence. <span style={{ color: crimson }}>A fraction of the invoice.</span>
+          </h2>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 560, fontFamily: sans, lineHeight: 1.7 }}>
+            What a year of GovCon intelligence costs, tool by tool.
+          </p>
+          <PriceChart />
+        </section>
+
+        {/* Time to value */}
+        <section style={{ padding: '72px 0' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>TIME TO VALUE</p>
+          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 40px', fontFamily: sans }}>
+            No demo. No quote. No waiting.
+          </h2>
+          <TimeToValue />
+        </section>
+
+        {/* Matrix */}
+        <section style={{ padding: '72px 0' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>CAPABILITY MATRIX</p>
+          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 40px', fontFamily: sans }}>
+            Feature for feature.
+          </h2>
+          <Matrix />
+        </section>
+
+        {/* CTA */}
+        <section style={{ padding: '72px 0 120px', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 16px', fontFamily: sans }}>
+            See your matches in 5 minutes.
+          </h2>
+          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', margin: '0 0 40px', fontFamily: sans }}>
+            Free to start. No sales call. Your UEI does the paperwork.
+          </p>
+          <Link href="/register" style={{ display: 'inline-block', padding: '16px 40px', background: crimson, color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textDecoration: 'none' }}>
+            START FREE →
+          </Link>
+        </section>
+      </div>
+    </div>
+  )
+}
