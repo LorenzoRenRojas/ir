@@ -69,7 +69,13 @@ export function calculateMatchScore(
   if (setAsideCode === '' || setAsideCode === 'NONE' || setAsideCode === 'FULL') {
     // Open competition — everyone qualifies
     setAsideScore = 25
-  } else if (requiredCerts.some(cert => profile.businessTypes.includes(cert) || profile.certifications.includes(cert))) {
+  } else if (
+    // Substring match: profiles store labels like "8(a) Certified" while the
+    // mapping uses the bare cert name ("8(a)") — exact equality missed these
+    requiredCerts.some(cert =>
+      [...profile.businessTypes, ...profile.certifications].some(t => t.includes(cert))
+    )
+  ) {
     setAsideScore = 25
   } else if (requiredCerts.length === 0) {
     setAsideScore = 15

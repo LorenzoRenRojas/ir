@@ -133,6 +133,21 @@ model EmailLog {
   createdAt DateTime @default(now())
 }
 
+// Full-market contract store, refreshed daily by cron from paginated SAM.gov
+// pulls (limit=1000/page). Scoring reads from here instead of a 100-row cache.
+model ContractCache {
+  noticeId   String   @id
+  payload    String // full Contract JSON
+  naicsCode  String   @default("")
+  setAside   String   @default("")
+  postedDate DateTime?
+  deadline   DateTime?
+  updatedAt  DateTime @updatedAt
+
+  @@index([naicsCode])
+  @@index([postedDate])
+}
+
 // Coming-soon page email captures
 model Waitlist {
   id        String   @id @default(cuid())

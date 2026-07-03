@@ -75,6 +75,22 @@ export default function AdminActions() {
           style={btnStyle}
           disabled={!!busy}
           onClick={() =>
+            run('sync', async () => {
+              const res = await fetch('/api/admin/sync-contracts', { method: 'POST' })
+              const data = await res.json()
+              return data.ok
+                ? `Synced ${data.synced} contracts (market total: ${data.total}), pruned ${data.pruned} expired.`
+                : `Sync failed: ${data.error}`
+            })
+          }
+        >
+          {busy === 'sync' ? 'SYNCING…' : 'SYNC CONTRACTS NOW'}
+        </button>
+
+        <button
+          style={btnStyle}
+          disabled={!!busy}
+          onClick={() =>
             run('health', async () => {
               const res = await fetch('/api/cron/health')
               const data = await res.json()

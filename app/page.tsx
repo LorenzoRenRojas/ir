@@ -226,7 +226,7 @@ export default function LandingPage() {
             <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.38)' }}>IR GOVCON INTELLIGENCE</span>
           </div>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            {[['SIGN IN', '/login'], ['REGISTER', '/register'], ['TERMS', '/terms'], ['PRIVACY', '/privacy'], ['CONTACT', 'mailto:hello@ir-gov.app']].map(([label, href]) => (
+            {[['SIGN IN', '/login'], ['REGISTER', '/register'], ['SECURITY', '/security'], ['TERMS', '/terms'], ['PRIVACY', '/privacy'], ['CONTACT', 'mailto:hello@ir-gov.app']].map(([label, href]) => (
               <Link key={label} href={href} style={{ fontFamily: mono, color: 'rgba(0,0,0,0.28)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none' }}>{label}</Link>
             ))}
           </div>

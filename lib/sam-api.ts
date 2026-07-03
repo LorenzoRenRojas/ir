@@ -369,24 +369,23 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
   }
 }
 
-// Throws on failure so unstable_cache never stores error/fallback responses
-async function fetchAllContractsFromSam(): Promise<Contract[]> {
-  const apiKey = process.env.SAM_GOV_API_KEY
-  if (!apiKey) throw new Error('No API key')
+const fmtSamDate = (d: Date) =>
+  `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
 
+// One page from SAM.gov. limit can go up to 1000 per request, so a handful of
+// requests covers the full recent market instead of the old single-100 window.
+async function fetchSamPage(apiKey: string, offset: number, limit: number, daysBack: number): Promise<{ contracts: Contract[]; total: number }> {
   const toDate = new Date()
   const fromDate = new Date()
-  fromDate.setDate(fromDate.getDate() - 30)
-  const fmt = (d: Date) =>
-    `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+  fromDate.setDate(fromDate.getDate() - daysBack)
 
   const params = new URLSearchParams({
     api_key: apiKey,
-    limit: '100',
-    offset: '0',
+    limit: String(limit),
+    offset: String(offset),
     active: 'true',
-    postedFrom: fmt(fromDate),
-    postedTo: fmt(toDate),
+    postedFrom: fmtSamDate(fromDate),
+    postedTo: fmtSamDate(toDate),
   })
 
   const response = await fetch(
@@ -400,14 +399,110 @@ async function fetchAllContractsFromSam(): Promise<Contract[]> {
 
   const data = await response.json()
   const opportunities: SamGovOpportunity[] = data.opportunitiesData || []
-  if (opportunities.length === 0) throw new Error('SAM.gov returned 0 results')
-
-  return opportunities.map(transformSamOpportunity)
+  return {
+    contracts: opportunities.map(transformSamOpportunity),
+    total: typeof data.totalRecords === 'number' ? data.totalRecords : opportunities.length,
+  }
 }
 
-// Cache key v3 — 6hr revalidation, well under SAM.gov free tier daily limit
+// Full-market sync: pull up to maxPages × 1000 recent notices and persist them
+// in ContractCache. Called by the daily cron; a few requests per day keeps us
+// far inside SAM.gov rate limits while scoring thousands of contracts instead
+// of 100.
+export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number; total: number; pruned: number }> {
+  const apiKey = process.env.SAM_GOV_API_KEY
+  if (!apiKey) throw new Error('SAM_GOV_API_KEY is not set')
+
+  const { prisma } = await import('./prisma')
+  const PAGE = 1000
+  const DAYS_BACK = 45
+
+  let synced = 0
+  let total = 0
+
+  for (let page = 0; page < maxPages; page++) {
+    const { contracts, total: reported } = await fetchSamPage(apiKey, page * PAGE, PAGE, DAYS_BACK)
+    total = reported
+    if (contracts.length === 0) break
+
+    for (const c of contracts) {
+      if (!c.noticeId) continue
+      const postedDate = new Date(c.postedDate)
+      const deadline = new Date(c.responseDeadline)
+      await prisma.contractCache.upsert({
+        where: { noticeId: c.noticeId },
+        update: {
+          payload: JSON.stringify(c),
+          naicsCode: c.naicsCode,
+          setAside: c.setAsideType,
+          postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
+          deadline: isNaN(deadline.getTime()) ? null : deadline,
+        },
+        create: {
+          noticeId: c.noticeId,
+          payload: JSON.stringify(c),
+          naicsCode: c.naicsCode,
+          setAside: c.setAsideType,
+          postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
+          deadline: isNaN(deadline.getTime()) ? null : deadline,
+        },
+      })
+      synced++
+    }
+
+    if (contracts.length < PAGE) break // last page
+  }
+
+  // Prune: response window passed, or posting has aged out entirely
+  const now = new Date()
+  const ageCutoff = new Date()
+  ageCutoff.setDate(ageCutoff.getDate() - 90)
+  const { count: pruned } = await prisma.contractCache.deleteMany({
+    where: {
+      OR: [
+        { deadline: { lt: now } },
+        { deadline: null, postedDate: { lt: ageCutoff } },
+      ],
+    },
+  })
+
+  return { synced, total, pruned }
+}
+
+// Read the full market from the DB store. Falls back to a live single-page
+// fetch (cached 6h) before the store's first sync, then to mock data.
+async function readContractsFromDb(): Promise<Contract[] | null> {
+  try {
+    const { prisma } = await import('./prisma')
+    const rows = await prisma.contractCache.findMany({
+      where: { OR: [{ deadline: { gte: new Date() } }, { deadline: null }] },
+      orderBy: { postedDate: 'desc' },
+    })
+    if (rows.length === 0) return null
+    return rows
+      .map((r: { payload: string }) => {
+        try {
+          return JSON.parse(r.payload) as Contract
+        } catch {
+          return null
+        }
+      })
+      .filter((c: Contract | null): c is Contract => c !== null)
+  } catch {
+    // Table missing (pre-migration) or DB unreachable
+    return null
+  }
+}
+
+// Legacy single-page path, kept as the fallback before the first cron sync
 const getCachedContracts = unstable_cache(
-  fetchAllContractsFromSam,
+  async () => {
+    const apiKey = process.env.SAM_GOV_API_KEY
+    if (!apiKey) throw new Error('No API key')
+    const { contracts } = await fetchSamPage(apiKey, 0, 100, 30)
+    if (contracts.length === 0) throw new Error('SAM.gov returned 0 results')
+    return contracts
+  },
   ['sam-gov-contracts-v3'],
   { revalidate: 21600 }
 )
@@ -415,6 +510,9 @@ const getCachedContracts = unstable_cache(
 export async function fetchContracts(profile?: CompanyProfile): Promise<Contract[]> {
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) return MOCK_CONTRACTS
+
+  const fromDb = await readContractsFromDb()
+  if (fromDb && fromDb.length > 0) return fromDb
 
   try {
     return await getCachedContracts()
@@ -431,8 +529,14 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
   }
 
-  // Check the cached list first — this is the same data the dashboard shows,
-  // so if the user clicked it, it's definitely here
+  // Check the DB store first — same data the dashboard shows
+  try {
+    const { prisma } = await import('./prisma')
+    const row = await prisma.contractCache.findUnique({ where: { noticeId } })
+    if (row) return JSON.parse(row.payload) as Contract
+  } catch { /* table missing or bad payload — fall through */ }
+
+  // Then the legacy in-memory cache
   try {
     const cached = await getCachedContracts()
     const match = cached.find(c => c.id === noticeId || c.noticeId === noticeId)

@@ -15,6 +15,7 @@ const COMING_SOON_BYPASS = [
   '/terms',
   '/privacy',
   '/naics',
+  '/security',
   '/sitemap.xml',
   '/robots.txt',
 ]

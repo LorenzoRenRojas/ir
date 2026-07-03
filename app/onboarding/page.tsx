@@ -201,8 +201,17 @@ type Question = {
 
 const QUESTIONS: Question[] = [
   {
+    id: 'uei',
+    ask: "Welcome to IR. Do you have a SAM.gov UEI? Paste it and I'll pull your official registration — company name, NAICS codes, set-aside status — automatically.",
+    type: 'text',
+    optional: true,
+    hint: '12-character Unique Entity Identifier from SAM.gov. Skip if you don\'t have one yet — you can add it later.',
+  },
+  {
     id: 'companyName',
-    ask: "Welcome to IR. What's your company name?",
+    ask: (a) => a.companyName
+      ? `Found it — ${a.companyName}. Confirm your company name, or correct it below.`
+      : "What's your company name?",
     type: 'text',
     hint: 'Legal name or DBA is fine.',
   },
@@ -278,13 +287,6 @@ const QUESTIONS: Question[] = [
     hint: 'E.g. "Delivered $2.1M cybersecurity assessment for DHS, covering 14 field offices. Zero findings at final audit."',
   },
   {
-    id: 'uei',
-    ask: "Last one — your UEI number from SAM.gov. We use this to verify your registrations.",
-    type: 'text',
-    optional: true,
-    hint: '12-character Unique Entity Identifier. Skip if you don\'t have one yet.',
-  },
-  {
     id: 'review',
     ask: (a) => `Perfect. Here's your IR profile, ${a.companyName}. Ready to find your first match?`,
     type: 'review',
@@ -299,6 +301,8 @@ export default function OnboardingPage() {
   const [answers, setAnswers] = useState<Answers>(initial)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [ueiLoading, setUeiLoading] = useState(false)
+  const [ueiNote, setUeiNote] = useState('')
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
 
   const q = QUESTIONS[step]
@@ -322,9 +326,41 @@ export default function OnboardingPage() {
     return String(val).trim().length > 0
   }
 
-  function advance() {
-    if (!canAdvance()) return
+  async function advance() {
+    if (!canAdvance() || ueiLoading) return
     setError('')
+
+    // Leaving the UEI step with a plausible UEI → pull the official SAM.gov
+    // registration and prefill everything we can before the next question.
+    if (q.id === 'uei' && /^[a-zA-Z0-9]{12}$/.test(answers.uei.trim())) {
+      setUeiLoading(true)
+      setUeiNote('')
+      try {
+        const res = await fetch(`/api/profile/uei-lookup?uei=${encodeURIComponent(answers.uei.trim())}`)
+        const data = await res.json()
+        if (res.ok && data.found) {
+          const p = data.profile
+          const mappedTypes: string[] = (p.certifications ?? []).map((c: string) =>
+            c === '8(a)' ? '8(a) Certified' : c
+          )
+          setAnswers(prev => ({
+            ...prev,
+            uei: prev.uei.trim().toUpperCase(),
+            companyName: prev.companyName || p.companyName || '',
+            naicsCodes: Array.from(new Set([...prev.naicsCodes, ...(p.naicsCodes ?? [])])),
+            businessTypes: Array.from(new Set([...prev.businessTypes, ...mappedTypes])),
+          }))
+          setUeiNote(`Pulled ${p.companyName ?? 'your registration'} — ${(p.naicsCodes ?? []).length} NAICS codes, ${mappedTypes.length} set-aside types.`)
+        } else {
+          setUeiNote(data.error ?? 'Lookup failed — no problem, we\'ll fill it in manually.')
+        }
+      } catch {
+        setUeiNote('Lookup failed — no problem, we\'ll fill it in manually.')
+      } finally {
+        setUeiLoading(false)
+      }
+    }
+
     if (step < QUESTIONS.length - 1) {
       setStep((s) => s + 1)
     }
@@ -507,12 +543,19 @@ export default function OnboardingPage() {
               )}
               <button
                 onClick={advance}
-                disabled={!canAdvance()}
-                style={{ padding: '10px 24px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: canAdvance() ? '#C41230' : 'rgba(255,255,255,0.06)', color: canAdvance() ? '#ffffff' : 'rgba(255,255,255,0.2)', border: 'none', cursor: canAdvance() ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-geist-mono, monospace)', transition: 'all 0.15s' }}
+                disabled={!canAdvance() || ueiLoading}
+                style={{ padding: '10px 24px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: canAdvance() && !ueiLoading ? '#C41230' : 'rgba(255,255,255,0.06)', color: canAdvance() && !ueiLoading ? '#ffffff' : 'rgba(255,255,255,0.2)', border: 'none', cursor: canAdvance() && !ueiLoading ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-geist-mono, monospace)', transition: 'all 0.15s' }}
               >
-                {q.optional && !String(answers[q.id as keyof Answers] ?? '').length ? 'SKIP →' : 'CONTINUE →'}
+                {ueiLoading
+                  ? 'PULLING SAM.GOV REGISTRATION…'
+                  : q.optional && !String(answers[q.id as keyof Answers] ?? '').length ? 'SKIP →' : 'CONTINUE →'}
               </button>
             </div>
+            {ueiNote && (
+              <div style={{ marginTop: 12, fontSize: 11, color: '#4ADE80', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.5 }}>
+                {ueiNote}
+              </div>
+            )}
           </div>
         )}
 

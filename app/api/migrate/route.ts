@@ -50,6 +50,10 @@ export async function GET() {
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "agencyName" TEXT`,
     // Email observability
     `CREATE TABLE IF NOT EXISTS "EmailLog" ("id" TEXT NOT NULL PRIMARY KEY,"to" TEXT NOT NULL,"subject" TEXT NOT NULL,"status" TEXT NOT NULL,"error" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    // Full-market contract store
+    `CREATE TABLE IF NOT EXISTS "ContractCache" ("noticeId" TEXT NOT NULL PRIMARY KEY,"payload" TEXT NOT NULL,"naicsCode" TEXT NOT NULL DEFAULT '',"setAside" TEXT NOT NULL DEFAULT '',"postedDate" DATETIME,"deadline" DATETIME,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS "ContractCache_naicsCode_idx" ON "ContractCache"("naicsCode")`,
+    `CREATE INDEX IF NOT EXISTS "ContractCache_postedDate_idx" ON "ContractCache"("postedDate")`,
     // Coming-soon waitlist
     `CREATE TABLE IF NOT EXISTS "Waitlist" ("id" TEXT NOT NULL PRIMARY KEY,"email" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "Waitlist_email_key" ON "Waitlist"("email")`,

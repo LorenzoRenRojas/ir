@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { fetchContracts } from '@/lib/sam-api'
+import { fetchContracts, syncContractsToDb } from '@/lib/sam-api'
 import { calculateMatchScore, type CompanyProfile } from '@/lib/matching'
 import { sendDailyDigestEmail, sendAdminAlertEmail, type DigestMatch } from '@/lib/email'
 import { isAuthorizedCron, ADMIN_EMAIL } from '@/lib/cron'
@@ -30,6 +30,16 @@ export async function GET(req: NextRequest) {
   const problems: string[] = []
   let emailsSent = 0
   let usersProcessed = 0
+
+  // Full-market sync first: a few 1000-row pulls refresh the ContractCache
+  // store, so the digest (and every dashboard view today) scores the whole
+  // recent market instead of a 100-contract window.
+  let syncStats: { synced: number; total: number; pruned: number } | null = null
+  try {
+    syncStats = await syncContractsToDb()
+  } catch (err) {
+    problems.push(`Contract sync failed (digest will use existing data): ${err instanceof Error ? err.message : String(err)}`)
+  }
 
   try {
     const contracts = await fetchContracts()
@@ -100,5 +110,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, problems })
+  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, sync: syncStats, problems })
 }
