@@ -30,6 +30,7 @@ const AUTH_REQUIRED = [
   '/contracts',
   '/onboarding',
   '/admin',
+  '/recompetes',
 ]
 
 // Pages that a logged-in but unverified user is allowed to see

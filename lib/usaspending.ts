@@ -80,3 +80,140 @@ export async function fetchIncumbents(
     })
   )
 }
+
+// ─── Recompete Radar ──────────────────────────────────────────────────────────
+// Every federal contract expires on a known date, and most become recompete
+// solicitations. Surfacing awards in the user's NAICS codes that end in the
+// next 3–18 months gives them the lead 6+ months before SAM.gov shows it.
+
+export interface RecompeteAward {
+  awardId: string
+  internalId: string | null
+  description: string
+  incumbent: string
+  amount: number | null
+  startDate: string | null
+  endDate: string
+  agency: string
+  subAgency: string
+  monthsUntilExpiry: number
+  usaspendingUrl: string | null
+}
+
+interface RecompeteRow {
+  'Award ID'?: string
+  'Recipient Name'?: string
+  'Award Amount'?: number
+  'Description'?: string
+  'Period of Performance Start Date'?: string
+  'Period of Performance Current End Date'?: string
+  'Awarding Agency'?: string
+  'Awarding Sub Agency'?: string
+  generated_internal_id?: string
+}
+
+async function fetchRecompetePage(naicsCodes: string[], page: number): Promise<RecompeteRow[]> {
+  const now = new Date()
+  const fiveYearsAgo = new Date()
+  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5)
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+
+  const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filters: {
+        award_type_codes: ['A', 'B', 'C', 'D'],
+        naics_codes: naicsCodes,
+        time_period: [{ start_date: iso(fiveYearsAgo), end_date: iso(now) }],
+      },
+      fields: [
+        'Award ID', 'Recipient Name', 'Award Amount', 'Description',
+        'Period of Performance Start Date', 'Period of Performance Current End Date',
+        'Awarding Agency', 'Awarding Sub Agency',
+      ],
+      sort: 'Period of Performance Current End Date',
+      order: 'desc',
+      limit: 100,
+      page,
+    }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(20_000),
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`USAspending API error ${res.status}: ${body.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  return data.results ?? []
+}
+
+async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
+  const naicsCodes = naicsKey.split(',').filter(Boolean)
+  if (naicsCodes.length === 0) return []
+
+  const MONTH_MS = 30 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+  const horizon = now + 18 * MONTH_MS
+  const results: RecompeteAward[] = []
+  const seen = new Set<string>()
+
+  // Sorted by end date descending: far-future awards first, then our window,
+  // then already-expired. Page until we cross below "now".
+  const MAX_PAGES = 5
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const rows = await fetchRecompetePage(naicsCodes, page)
+    if (rows.length === 0) break
+
+    let crossedPast = false
+    for (const row of rows) {
+      const endStr = row['Period of Performance Current End Date']
+      if (!endStr) continue
+      const end = new Date(endStr).getTime()
+      if (isNaN(end)) continue
+
+      if (end < now) { crossedPast = true; continue }
+      if (end > horizon) continue
+
+      const id = row['Award ID'] ?? row.generated_internal_id ?? ''
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+
+      results.push({
+        awardId: id,
+        internalId: row.generated_internal_id ?? null,
+        description: row['Description']?.trim() || 'Untitled award',
+        incumbent: row['Recipient Name'] ?? 'Unknown incumbent',
+        amount: typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null,
+        startDate: row['Period of Performance Start Date'] ?? null,
+        endDate: endStr,
+        agency: row['Awarding Agency'] ?? 'Unknown agency',
+        subAgency: row['Awarding Sub Agency'] ?? '',
+        monthsUntilExpiry: Math.max(0, Math.round((end - now) / MONTH_MS)),
+        usaspendingUrl: row.generated_internal_id
+          ? `https://www.usaspending.gov/award/${row.generated_internal_id}`
+          : null,
+      })
+    }
+
+    if (crossedPast) break
+  }
+
+  // Soonest expirations first — most actionable
+  return results.sort((a, b) => a.monthsUntilExpiry - b.monthsUntilExpiry)
+}
+
+// 24h cache; the naicsKey arg is part of the cache key
+const getCachedRecompetes = unstable_cache(
+  _fetchRecompetes,
+  ['usaspending-recompetes-v1'],
+  { revalidate: 86400 }
+)
+
+export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
+  const key = [...new Set(naicsCodes)].sort().join(',')
+  if (!key) return []
+  return getCachedRecompetes(key)
+}

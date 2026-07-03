@@ -6,8 +6,9 @@ import { SignOutButton } from '@/components/ui/sign-out-button'
 
 const NAV = [
   { href: '/dashboard', label: 'CONTRACTS', icon: '◈' },
-  { href: '/saved', label: 'SAVED', icon: '♡' },
-  { href: '/documents', label: 'DOCUMENTS', icon: '☰' },
+  { href: '/recompetes', label: 'RECOMPETES', icon: '◎' },
+  { href: '/saved', label: 'PIPELINE', icon: '♡' },
+  { href: '/documents', label: 'PROPOSALS', icon: '☰' },
   { href: '/settings', label: 'SETTINGS', icon: '⚙' },
 ]
 

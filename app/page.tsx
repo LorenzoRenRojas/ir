@@ -43,12 +43,13 @@ const COMPARE = [
   { dim: 'GETTING STARTED',    them: 'Sales call, demo, contract',   ir: 'Self-serve — matching in 5 minutes' },
   { dim: 'PROPOSAL HELP',      them: 'None — intel only',            ir: 'Full proposal drafts + capability statements' },
   { dim: 'ALERTS',             them: 'Saved searches',               ir: 'Profile-scored daily digest + deadline reminders' },
+  { dim: 'PRE-RFP INTEL',      them: 'Human analyst reports at $10k+', ir: 'Recompete Radar — expiring contracts, automated' },
   { dim: 'CONTRACTING OFFICER',them: 'Look it up yourself',          ir: 'One click — proposal sent, replies to your inbox' },
 ]
 
 const PLANS = [
   { name: 'STARTER',    price: 79,  tier: 'starter',    popular: false, features: ['25 contract matches/month', 'Daily match digest email', 'Deadline alerts', 'Capability statement generator', 'Bid pipeline tracker'] },
-  { name: 'PRO',        price: 199, tier: 'pro',        popular: true,  features: ['Unlimited contract matches', 'Full proposal engine (4-volume drafts)', 'Send-to-contracting-officer', 'Win probability + incumbent intel', 'Priority support'] },
+  { name: 'PRO',        price: 199, tier: 'pro',        popular: true,  features: ['Unlimited contract matches', 'Recompete Radar — expiring-contract intel', 'Full proposal engine (4-volume drafts)', 'Send-to-contracting-officer', 'Win probability + incumbent intel'] },
   { name: 'ENTERPRISE', price: 499, tier: 'enterprise', popular: false, features: ['Everything in Pro', '5 team seats + shared pipeline', 'Proposal sharing across your org', 'White-label documents', 'Dedicated account manager'] },
 ]
 
