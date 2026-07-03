@@ -1,52 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-
-const mono = 'var(--font-geist-mono, monospace)'
-const sans = 'var(--font-geist-sans, sans-serif)'
-const crimson = '#C41230'
-const surface = '#0A0A0A'
-
-// ─── In-view hook: animations fire when a section scrolls into frame ─────────
-function useInView<T extends HTMLElement>(threshold = 0.25) {
-  const ref = useRef<T | null>(null)
-  const [inView, setInView] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect() } },
-      { threshold }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-
-  return { ref, inView }
-}
-
-// ─── Count-up number ──────────────────────────────────────────────────────────
-function CountUp({ to, prefix = '', suffix = '', duration = 1400, started }: { to: number; prefix?: string; suffix?: string; duration?: number; started: boolean }) {
-  const [val, setVal] = useState(0)
-
-  useEffect(() => {
-    if (!started) return
-    let raf: number
-    const t0 = performance.now()
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - t0) / duration)
-      const eased = 1 - Math.pow(1 - p, 3)
-      setVal(Math.round(to * eased))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [started, to, duration])
-
-  return <>{prefix}{val.toLocaleString()}{suffix}</>
-}
+import MetatronBackdrop from '@/components/MetatronBackdrop'
+import { useInView, CountUp, MarketingNav, mono, sans, crimson, surface } from '@/components/marketing'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const HERO_STATS = [
@@ -254,21 +211,10 @@ function TimeToValue() {
 export default function CapabilitiesClient() {
   return (
     <div style={{ minHeight: '100vh', background: surface, color: '#fff', fontFamily: mono }}>
-      {/* Nav */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <span style={{ color: crimson, fontSize: 22, fontWeight: 700 }}>ᛁ</span>
-            <span style={{ color: '#fff', fontSize: 15, fontWeight: 800, letterSpacing: '0.1em' }}>IR</span>
-            <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4 }}>CAPABILITIES</span>
-          </Link>
-          <Link href="/register" style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: crimson, color: '#fff', textDecoration: 'none' }}>
-            START FREE →
-          </Link>
-        </div>
-      </nav>
+      <MetatronBackdrop />
+      <MarketingNav section="CAPABILITIES" />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px', position: 'relative', zIndex: 1 }}>
 
         {/* Hero */}
         <section style={{ padding: '96px 0 72px' }}>

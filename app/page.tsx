@@ -133,6 +133,11 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <Link href="/how-it-works" style={{ display: 'inline-block', padding: '13px 28px', border: `1px solid ${crimson}`, color: crimson, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+              SEE THE FULL SYSTEM BREAKDOWN →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -164,6 +169,11 @@ export default function LandingPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <Link href="/capabilities" style={{ display: 'inline-block', padding: '13px 28px', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+              SEE FULL CAPABILITIES + CHARTS →
+            </Link>
           </div>
         </div>
       </section>
@@ -200,6 +210,11 @@ export default function LandingPage() {
                 </Link>
               </div>
             ))}
+          </div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <Link href="/pricing" style={{ display: 'inline-block', padding: '13px 28px', border: `1px solid ${crimson}`, color: crimson, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+              SEE PLANS, ROI MATH + COST CHARTS →
+            </Link>
           </div>
         </div>
       </section>
