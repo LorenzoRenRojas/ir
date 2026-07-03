@@ -409,18 +409,21 @@ async function fetchSamPage(apiKey: string, offset: number, limit: number, daysB
 // in ContractCache. Called by the daily cron; a few requests per day keeps us
 // far inside SAM.gov rate limits while scoring thousands of contracts instead
 // of 100.
-export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number; total: number; pruned: number }> {
+export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number; total: number; pruned: number; quotaBlocked: boolean }> {
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) throw new Error('SAM_GOV_API_KEY is not set')
 
   const { prisma } = await import('./prisma')
+  const { tryConsumeSamRequests } = await import('./sam-quota')
   const PAGE = 1000
   const DAYS_BACK = 45
 
   let synced = 0
   let total = 0
+  let quotaBlocked = false
 
   for (let page = 0; page < maxPages; page++) {
+    if (!(await tryConsumeSamRequests(1))) { quotaBlocked = true; break }
     const { contracts, total: reported } = await fetchSamPage(apiKey, page * PAGE, PAGE, DAYS_BACK)
     total = reported
     if (contracts.length === 0) break
@@ -466,7 +469,7 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
     },
   })
 
-  return { synced, total, pruned }
+  return { synced, total, pruned, quotaBlocked }
 }
 
 // Read the full market from the DB store. Falls back to a live single-page
@@ -499,6 +502,8 @@ const getCachedContracts = unstable_cache(
   async () => {
     const apiKey = process.env.SAM_GOV_API_KEY
     if (!apiKey) throw new Error('No API key')
+    const { tryConsumeSamRequests } = await import('./sam-quota')
+    if (!(await tryConsumeSamRequests(1))) throw new Error('SAM.gov daily budget reached')
     const { contracts } = await fetchSamPage(apiKey, 0, 100, 30)
     if (contracts.length === 0) throw new Error('SAM.gov returned 0 results')
     return contracts
@@ -543,8 +548,13 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     if (match) return match
   } catch { /* fall through to direct lookup */ }
 
-  // Direct SAM.gov lookup as fallback (e.g. saved contracts not in current cache window)
+  // Direct SAM.gov lookup as fallback (e.g. saved contracts not in current
+  // cache window) — budget-gated so detail views can't drain the daily quota
   try {
+    const { tryConsumeSamRequests } = await import('./sam-quota')
+    if (!(await tryConsumeSamRequests(1))) {
+      return MOCK_CONTRACTS.find(c => c.id === noticeId || c.noticeId === noticeId) || null
+    }
     const toDate = new Date()
     const fromDate = new Date()
     fromDate.setDate(fromDate.getDate() - 365)

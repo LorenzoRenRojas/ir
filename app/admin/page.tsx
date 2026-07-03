@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/prisma'
+import { samQuotaStatus } from '@/lib/sam-quota'
 import AdminActions from './AdminActions'
 
 export const dynamic = 'force-dynamic'
@@ -70,6 +71,47 @@ export default async function AdminPage() {
     emailLogsAvailable = false
   }
 
+  // Contract store status
+  let storeCount: number | string = '—'
+  let lastSync: Date | null = null
+  try {
+    storeCount = await prisma.contractCache.count()
+    const latest = await prisma.contractCache.findFirst({ orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } })
+    lastSync = latest?.updatedAt ?? null
+  } catch { /* table missing pre-migration */ }
+
+  // SAM.gov daily budget
+  const quota = await samQuotaStatus()
+
+  // Pipeline totals across all users
+  let pipelineByStage: { status: string; _count: number }[] = []
+  try {
+    const grouped = await prisma.savedContract.groupBy({ by: ['status'], _count: true })
+    pipelineByStage = grouped.map(g => ({ status: g.status, _count: g._count }))
+  } catch { /* ignore */ }
+
+  // Recent waitlist signups
+  let waitlistRecent: { email: string; createdAt: Date }[] = []
+  try {
+    waitlistRecent = await prisma.waitlist.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { email: true, createdAt: true },
+    })
+  } catch { /* table missing pre-migration */ }
+
+  // Environment config — booleans only, never values
+  const ENV_CHECKS: { name: string; ok: boolean; note: string }[] = [
+    { name: 'SAM_GOV_API_KEY', ok: !!process.env.SAM_GOV_API_KEY, note: 'live contract data' },
+    { name: 'RESEND_API_KEY', ok: !!process.env.RESEND_API_KEY, note: 'all outbound email' },
+    { name: 'NEXTAUTH_SECRET', ok: !!process.env.NEXTAUTH_SECRET, note: 'session security' },
+    { name: 'NEXTAUTH_URL', ok: !!process.env.NEXTAUTH_URL, note: 'email link domains' },
+    { name: 'GOOGLE_CLIENT_ID', ok: !!process.env.GOOGLE_CLIENT_ID, note: 'Google sign-in (free)' },
+    { name: 'STRIPE_SECRET_KEY', ok: !!process.env.STRIPE_SECRET_KEY, note: 'payments' },
+    { name: 'CRON_SECRET', ok: !!process.env.CRON_SECRET, note: 'cron endpoint auth' },
+    { name: 'ADMIN_EMAIL', ok: !!process.env.ADMIN_EMAIL, note: 'admin access (bootstrap: first account)' },
+  ]
+
   const fmtDate = (d: Date) =>
     new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
@@ -111,10 +153,58 @@ export default async function AdminPage() {
           <StatCard title="WAITLIST" value={waitlist} />
         </div>
 
+        <div style={label}>LIVE SYSTEMS</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
+          <StatCard
+            title="CONTRACT STORE"
+            value={storeCount}
+            sub={lastSync ? `last sync ${new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'never synced — run SYNC CONTRACTS NOW'}
+          />
+          <StatCard
+            title="SAM.GOV BUDGET TODAY"
+            value={`${quota.used}/${quota.budget}`}
+            sub={quota.used >= quota.budget ? 'EXHAUSTED — resets at midnight UTC' : 'requests used'}
+          />
+          {pipelineByStage.length > 0 && (
+            <StatCard
+              title="PIPELINE (ALL USERS)"
+              value={pipelineByStage.reduce((s, g) => s + g._count, 0)}
+              sub={pipelineByStage.map(g => `${g._count} ${g.status}`).join(' · ')}
+            />
+          )}
+        </div>
+
+        <div style={label}>ENVIRONMENT CONFIG</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 40 }}>
+          {ENV_CHECKS.map(env => (
+            <div key={env.name} style={{ background: '#111', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ color: env.ok ? '#4ADE80' : crimson, fontSize: 14, fontWeight: 700 }}>{env.ok ? '✓' : '✗'}</span>
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: '0.08em', color: env.ok ? 'rgba(255,255,255,0.7)' : crimson, fontFamily: mono }}>{env.name}</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: mono, marginTop: 2 }}>{env.note}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div style={label}>SYSTEM ACTIONS</div>
         <div style={{ marginBottom: 40 }}>
           <AdminActions />
         </div>
+
+        {waitlistRecent.length > 0 && (
+          <>
+            <div style={label}>RECENT WAITLIST SIGNUPS</div>
+            <div style={{ border: '1px solid rgba(255,255,255,0.08)', marginBottom: 40 }}>
+              {waitlistRecent.map(w => (
+                <div key={w.email} style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: mono }}>{w.email}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: mono, whiteSpace: 'nowrap' }}>{fmtDate(w.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <div style={label}>RECENT SIGNUPS</div>
         <div style={{ overflowX: 'auto', marginBottom: 40, border: '1px solid rgba(255,255,255,0.08)' }}>

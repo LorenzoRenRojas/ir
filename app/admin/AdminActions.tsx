@@ -78,9 +78,9 @@ export default function AdminActions() {
             run('sync', async () => {
               const res = await fetch('/api/admin/sync-contracts', { method: 'POST' })
               const data = await res.json()
-              return data.ok
-                ? `Synced ${data.synced} contracts (market total: ${data.total}), pruned ${data.pruned} expired.`
-                : `Sync failed: ${data.error}`
+              if (!data.ok) return `Sync failed: ${data.error}`
+              const quotaNote = data.quotaBlocked ? '\nStopped early: daily SAM.gov budget reached — rest syncs tomorrow.' : ''
+              return `Synced ${data.synced} contracts (market total: ${data.total}), pruned ${data.pruned} expired.${quotaNote}`
             })
           }
         >

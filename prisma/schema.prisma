@@ -148,6 +148,14 @@ model ContractCache {
   @@index([postedDate])
 }
 
+// Tiny key-value store for counters and operational state (e.g. the daily
+// SAM.gov API request budget shared across all serverless instances).
+model Kv {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // Coming-soon page email captures
 model Waitlist {
   id        String   @id @default(cuid())

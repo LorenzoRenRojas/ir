@@ -40,6 +40,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'SAM.gov lookup is not configured on this environment.' }, { status: 503 })
   }
 
+  const { tryConsumeSamRequests } = await import('@/lib/sam-quota')
+  if (!(await tryConsumeSamRequests(1))) {
+    return NextResponse.json(
+      { error: 'Daily SAM.gov lookup budget reached — enter your details manually, or add the UEI in settings tomorrow.' },
+      { status: 429 }
+    )
+  }
+
   try {
     const res = await fetch(
       `https://api.sam.gov/entity-information/v3/entities?api_key=${apiKey}&ueiSAM=${uei}&includeSections=entityRegistration,coreData,assertions`,

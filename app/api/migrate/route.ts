@@ -54,6 +54,8 @@ export async function GET() {
     `CREATE TABLE IF NOT EXISTS "ContractCache" ("noticeId" TEXT NOT NULL PRIMARY KEY,"payload" TEXT NOT NULL,"naicsCode" TEXT NOT NULL DEFAULT '',"setAside" TEXT NOT NULL DEFAULT '',"postedDate" DATETIME,"deadline" DATETIME,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE INDEX IF NOT EXISTS "ContractCache_naicsCode_idx" ON "ContractCache"("naicsCode")`,
     `CREATE INDEX IF NOT EXISTS "ContractCache_postedDate_idx" ON "ContractCache"("postedDate")`,
+    // Key-value store for shared counters (SAM.gov daily budget etc.)
+    `CREATE TABLE IF NOT EXISTS "Kv" ("key" TEXT NOT NULL PRIMARY KEY,"value" TEXT NOT NULL,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     // Coming-soon waitlist
     `CREATE TABLE IF NOT EXISTS "Waitlist" ("id" TEXT NOT NULL PRIMARY KEY,"email" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "Waitlist_email_key" ON "Waitlist"("email")`,

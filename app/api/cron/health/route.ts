@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendAdminAlertEmail } from '@/lib/email'
 import { ADMIN_EMAIL } from '@/lib/cron'
+import { tryConsumeSamRequests } from '@/lib/sam-quota'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +39,11 @@ export async function GET() {
   // minutes, and each probe costs a SAM.gov API request against a small daily
   // quota. An unthrottled probe here can burn the whole quota and force the
   // entire app onto mock data.
-  if (process.env.SAM_GOV_API_KEY && Date.now() - lastSamProbeAt > SAM_PROBE_INTERVAL_MS) {
+  if (
+    process.env.SAM_GOV_API_KEY &&
+    Date.now() - lastSamProbeAt > SAM_PROBE_INTERVAL_MS &&
+    (await tryConsumeSamRequests(1))
+  ) {
     lastSamProbeAt = Date.now()
     try {
       const d = new Date()
