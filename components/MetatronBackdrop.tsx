@@ -27,7 +27,8 @@ function geometry(t: number) {
 
 const INIT_PTS = geometry(0)
 
-export default function MetatronBackdrop({ opacity = 0.22 }: { opacity?: number }) {
+// pulse: slowly breathe between near-invisible and glowing-visible
+export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { opacity?: number; pulse?: boolean }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const rafRef = useRef<number>(0)
   const startRef = useRef<number>(0)
@@ -84,10 +85,25 @@ export default function MetatronBackdrop({ opacity = 0.22 }: { opacity?: number 
   }
 
   return (
+    <>
+      {pulse && (
+        <style>{`
+          @keyframes metatronPulse {
+            0%   { opacity: 0.03; filter: drop-shadow(0 0 0px rgba(196,18,48,0)); }
+            50%  { opacity: 0.5;  filter: drop-shadow(0 0 18px rgba(196,18,48,0.55)); }
+            100% { opacity: 0.03; filter: drop-shadow(0 0 0px rgba(196,18,48,0)); }
+          }
+        `}</style>
+      )}
     <svg
       ref={svgRef}
       viewBox="-400 -400 800 800"
-      style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', opacity, zIndex: 0, pointerEvents: 'none' }}
+      style={{
+        position: 'fixed', inset: 0, width: '100%', height: '100%',
+        opacity: pulse ? undefined : opacity,
+        animation: pulse ? 'metatronPulse 7s ease-in-out infinite' : undefined,
+        zIndex: 0, pointerEvents: 'none',
+      }}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
@@ -103,5 +119,6 @@ export default function MetatronBackdrop({ opacity = 0.22 }: { opacity?: number 
         ))}
       </g>
     </svg>
+    </>
   )
 }

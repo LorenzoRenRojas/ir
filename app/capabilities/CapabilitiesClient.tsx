@@ -211,7 +211,7 @@ function TimeToValue() {
 export default function CapabilitiesClient() {
   return (
     <div style={{ minHeight: '100vh', background: surface, color: '#fff', fontFamily: mono }}>
-      <MetatronBackdrop />
+      <MetatronBackdrop pulse />
       <MarketingNav section="CAPABILITIES" />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 28px', position: 'relative', zIndex: 1 }}>
