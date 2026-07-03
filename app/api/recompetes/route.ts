@@ -35,8 +35,9 @@ export async function GET() {
     return NextResponse.json({ recompetes, naicsCodes: naicsCodes.slice(0, 8) })
   } catch (err) {
     console.error('GET /api/recompetes error:', err)
+    const detail = err instanceof Error ? err.message.slice(0, 300) : ''
     return NextResponse.json(
-      { error: 'USAspending.gov is not responding right now. Try again in a minute.' },
+      { error: `USAspending.gov request failed. ${detail}` },
       { status: 502 }
     )
   }

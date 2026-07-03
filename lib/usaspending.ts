@@ -112,7 +112,11 @@ interface RecompeteRow {
   generated_internal_id?: string
 }
 
-async function fetchRecompetePage(naicsCodes: string[], page: number): Promise<RecompeteRow[]> {
+async function fetchRecompetePage(
+  naicsCodes: string[],
+  page: number,
+  sortField: string
+): Promise<RecompeteRow[]> {
   const now = new Date()
   const fiveYearsAgo = new Date()
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5)
@@ -132,7 +136,7 @@ async function fetchRecompetePage(naicsCodes: string[], page: number): Promise<R
         'Period of Performance Start Date', 'Period of Performance Current End Date',
         'Awarding Agency', 'Awarding Sub Agency',
       ],
-      sort: 'Period of Performance Current End Date',
+      sort: sortField,
       order: 'desc',
       limit: 100,
       page,
@@ -143,12 +147,17 @@ async function fetchRecompetePage(naicsCodes: string[], page: number): Promise<R
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`USAspending API error ${res.status}: ${body.slice(0, 200)}`)
+    const err = new Error(`USAspending API error ${res.status}: ${body.slice(0, 200)}`)
+    ;(err as Error & { status?: number }).status = res.status
+    throw err
   }
 
   const data = await res.json()
   return data.results ?? []
 }
+
+const END_DATE_SORT = 'Period of Performance Current End Date'
+const FALLBACK_SORT = 'Award Amount' // known-good: the incumbent fetcher uses it in production
 
 async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const naicsCodes = naicsKey.split(',').filter(Boolean)
@@ -160,11 +169,26 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const results: RecompeteAward[] = []
   const seen = new Set<string>()
 
-  // Sorted by end date descending: far-future awards first, then our window,
-  // then already-expired. Page until we cross below "now".
+  // Preferred: sorted by end date descending — far-future awards first, then
+  // our window, then already-expired (page until we cross below "now").
+  // If the API rejects that sort field (400), fall back to sorting by award
+  // amount: we lose the early-exit optimization but still find the window by
+  // scanning the largest awards, which are the ones worth chasing anyway.
+  let sortField = END_DATE_SORT
   const MAX_PAGES = 5
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const rows = await fetchRecompetePage(naicsCodes, page)
+    let rows: RecompeteRow[]
+    try {
+      rows = await fetchRecompetePage(naicsCodes, page, sortField)
+    } catch (err) {
+      const status = (err as Error & { status?: number }).status
+      if (status === 400 && sortField === END_DATE_SORT && page === 1) {
+        sortField = FALLBACK_SORT
+        rows = await fetchRecompetePage(naicsCodes, page, sortField)
+      } else {
+        throw err
+      }
+    }
     if (rows.length === 0) break
 
     let crossedPast = false
@@ -198,7 +222,8 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
       })
     }
 
-    if (crossedPast) break
+    // Early exit is only valid when rows arrive in end-date order
+    if (crossedPast && sortField === END_DATE_SORT) break
   }
 
   // Soonest expirations first — most actionable

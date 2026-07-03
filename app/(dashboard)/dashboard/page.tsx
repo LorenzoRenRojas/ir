@@ -410,6 +410,13 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {contracts[0]?.id?.startsWith('mock-') && (
+            <div style={{ marginBottom: 16, padding: '12px 16px', border: '1px solid rgba(196,18,48,0.35)', background: 'rgba(196,18,48,0.05)', fontSize: 11, color: '#C41230', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.6 }}>
+              <strong>SAMPLE DATA</strong> — the live SAM.gov feed is unavailable right now (missing API key or daily
+              rate limit exhausted). These are example contracts, not real opportunities. Live data resumes automatically
+              once the feed recovers.
+            </div>
+          )}
           <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
           <style>{`
             @keyframes fadeSlideIn {

@@ -10,6 +10,11 @@ export const dynamic = 'force-dynamic'
 let lastAlertAt = 0
 const ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
 
+// SAM.gov probe state — probing costs quota, so probe rarely and reuse the result
+let lastSamProbeAt = 0
+let lastSamProbeResult: string | null = null
+const SAM_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000
+
 // Public health endpoint — point a free uptime monitor (e.g. UptimeRobot) at
 // this URL. Returns 200 when all systems are up, 503 when degraded, so the
 // monitor alerts on status code alone. Also self-alerts the admin by email.
@@ -28,8 +33,13 @@ export async function GET() {
   if (!process.env.SAM_GOV_API_KEY) problems.push('SAM_GOV_API_KEY is not set — dashboard is showing mock contracts')
   if (!process.env.NEXTAUTH_SECRET) problems.push('NEXTAUTH_SECRET is not set — sessions are insecure')
 
-  // 3. SAM.gov reachability (cheap 1-result probe)
-  if (process.env.SAM_GOV_API_KEY) {
+  // 3. SAM.gov reachability — throttled to once per 6h per instance.
+  // NEVER probe on every hit: uptime monitors ping this endpoint every few
+  // minutes, and each probe costs a SAM.gov API request against a small daily
+  // quota. An unthrottled probe here can burn the whole quota and force the
+  // entire app onto mock data.
+  if (process.env.SAM_GOV_API_KEY && Date.now() - lastSamProbeAt > SAM_PROBE_INTERVAL_MS) {
+    lastSamProbeAt = Date.now()
     try {
       const d = new Date()
       const fmt = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
@@ -38,17 +48,19 @@ export async function GET() {
         { cache: 'no-store', signal: AbortSignal.timeout(10_000) }
       )
       if (res.status === 401 || res.status === 403) {
-        problems.push(`SAM.gov API key rejected (${res.status}) — key may have expired`)
+        lastSamProbeResult = `SAM.gov API key rejected (${res.status}) — key may have expired`
       } else if (res.status === 429) {
-        // Rate-limited is not "down" — note it but stay healthy
-        console.warn('[health] SAM.gov rate limit hit')
+        lastSamProbeResult = 'SAM.gov daily rate limit exhausted — live contract data unavailable until the quota resets'
       } else if (!res.ok) {
-        problems.push(`SAM.gov API returned ${res.status}`)
+        lastSamProbeResult = `SAM.gov API returned ${res.status}`
+      } else {
+        lastSamProbeResult = null
       }
     } catch (err) {
-      problems.push(`SAM.gov unreachable: ${err instanceof Error ? err.message : String(err)}`)
+      lastSamProbeResult = `SAM.gov unreachable: ${err instanceof Error ? err.message : String(err)}`
     }
   }
+  if (lastSamProbeResult) problems.push(lastSamProbeResult)
 
   const healthy = problems.length === 0
 
