@@ -836,3 +836,79 @@ prior to formal submission to any federal agency.
 ================================================================================
 `
 }
+
+// ─── Capability statement ─────────────────────────────────────────────────────
+// The standard one-page GovCon marketing document — every contracting officer
+// asks for one. Generated entirely from the company profile.
+
+export interface CapabilityExtras {
+  capabilityStatement?: string | null
+  pastPerformance?: string | null
+  contractVehicles?: string[]
+  agencyHistory?: string[]
+  orgSize?: string | null
+  annualRevenue?: string | null
+}
+
+export function generateCapabilityStatement(company: CompanyData, extras: CapabilityExtras): string {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const line = '═'.repeat(78)
+  const thin = '─'.repeat(78)
+
+  const naics = company.naicsCodes.length
+    ? company.naicsCodes.map(c => `  • ${c}`).join('\n')
+    : '  • [Add NAICS codes to your company profile]'
+
+  const certs = [...company.businessTypes, ...company.certifications]
+  const certBlock = certs.length
+    ? certs.map(c => `  • ${c}`).join('\n')
+    : '  • [Add certifications to your company profile]'
+
+  const vehicles = (extras.contractVehicles ?? []).length
+    ? (extras.contractVehicles ?? []).map(v => `  • ${v}`).join('\n')
+    : null
+
+  const agencies = (extras.agencyHistory ?? []).length
+    ? (extras.agencyHistory ?? []).join(', ')
+    : null
+
+  return `${line}
+CAPABILITY STATEMENT
+${company.companyName.toUpperCase()}
+${line}
+
+${extras.capabilityStatement?.trim() || `${company.companyName} is a ${company.businessTypes.join(', ') || 'small'} business delivering professional services to federal, state, and local government clients.`}
+
+${thin}
+CORE COMPETENCIES
+${thin}
+${naics ? `Aligned to the following NAICS codes:\n${naics}` : ''}
+
+${thin}
+DIFFERENTIATORS
+${thin}
+  • Direct principal involvement on every engagement
+  • Rapid mobilization and lean, senior-led delivery teams
+  • Full compliance with federal quality and reporting standards${company.clearanceLevel ? `\n  • Cleared personnel: ${company.clearanceLevel}` : ''}
+
+${thin}
+COMPANY DATA
+${thin}
+Company Name:        ${company.companyName}
+UEI:                 ${company.uei || '[UEI]'}
+CAGE Code:           ${company.cageCode || '[CAGE]'}
+${company.yearFounded ? `Year Founded:        ${company.yearFounded}\n` : ''}${extras.orgSize ? `Organization Size:   ${extras.orgSize}\n` : ''}${extras.annualRevenue ? `Annual Revenue:      ${extras.annualRevenue}\n` : ''}Website:             ${company.website || '[Website]'}
+Point of Contact:    ${company.contactName || '[Name]'}
+Email:               ${company.contactEmail || '[Email]'}
+Phone:               ${company.contactPhone || '[Phone]'}
+
+${thin}
+CERTIFICATIONS & SET-ASIDE STATUS
+${thin}
+${certBlock}
+${vehicles ? `\n${thin}\nCONTRACT VEHICLES\n${thin}\n${vehicles}\n` : ''}
+${extras.pastPerformance?.trim() || agencies ? `${thin}\nPAST PERFORMANCE\n${thin}\n${extras.pastPerformance?.trim() ?? ''}${agencies ? `\nAgency experience: ${agencies}` : ''}\n` : ''}
+${line}
+Prepared ${today} · ${company.companyName}
+${line}`
+}

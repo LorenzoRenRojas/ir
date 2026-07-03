@@ -79,6 +79,8 @@ export default function ProposalsPage() {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [generatedTitle, setGeneratedTitle] = useState('')
   const [error, setError] = useState('')
+  const [capGenerating, setCapGenerating] = useState(false)
+  const [capError, setCapError] = useState('')
 
   useEffect(() => {
     Promise.all([loadProposals(), loadSavedContracts()])
@@ -168,6 +170,32 @@ export default function ProposalsPage() {
     }
   }
 
+  async function handleCapabilityStatement() {
+    setCapGenerating(true)
+    setCapError('')
+    try {
+      const res = await fetch('/api/documents/capability-statement', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setCapError(data.error ?? 'Generation failed.')
+        return
+      }
+      // Download immediately and refresh the list so it shows under documents
+      const blob = new Blob([data.content], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'capability-statement.txt'
+      a.click()
+      URL.revokeObjectURL(url)
+      loadProposals()
+    } catch {
+      setCapError('Failed to generate capability statement.')
+    } finally {
+      setCapGenerating(false)
+    }
+  }
+
   function handleDownload() {
     if (!generatedContent) return
     const blob = new Blob([generatedContent], { type: 'text/plain' })
@@ -199,7 +227,14 @@ export default function ProposalsPage() {
             Generate a fully structured government contract proposal ready for attorney review.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            onClick={handleCapabilityStatement}
+            disabled={capGenerating}
+            style={{ padding: '11px 16px', background: 'transparent', color: '#0A0A0A', border: '1px solid rgba(0,0,0,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: capGenerating ? 'not-allowed' : 'pointer', opacity: capGenerating ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
+          >
+            {capGenerating ? 'GENERATING…' : '⚡ CAPABILITY STATEMENT'}
+          </button>
           <button
             onClick={openBlank}
             style={{ padding: '11px 16px', background: 'transparent', color: '#0A0A0A', border: '1px solid rgba(0,0,0,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
@@ -214,6 +249,12 @@ export default function ProposalsPage() {
           </Link>
         </div>
       </div>
+
+      {capError && (
+        <div style={{ marginBottom: 20, padding: '10px 16px', border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)', fontSize: 11, color: '#C41230', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+          {capError}
+        </div>
+      )}
 
       {/* Saved contracts — quick start */}
       {savedContracts.length > 0 && (

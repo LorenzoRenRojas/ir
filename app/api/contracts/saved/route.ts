@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
 
     const saved = await prisma.savedContract.upsert({
       where: { userId_contractId: { userId: session.user.id, contractId } },
-      update: { matchScore, status: 'saved' },
+      // Don't reset status on re-save — it would wipe the user's pipeline stage
+      update: { matchScore },
       create: {
         userId: session.user.id,
         contractId,
@@ -150,6 +151,35 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('Delete saved contract error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+const PIPELINE_STAGES = ['saved', 'pursuing', 'submitted', 'won', 'lost'] as const
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { contractId, status } = await req.json()
+    if (!contractId || !status) {
+      return NextResponse.json({ error: 'contractId and status are required' }, { status: 400 })
+    }
+    if (!PIPELINE_STAGES.includes(status)) {
+      return NextResponse.json({ error: `status must be one of: ${PIPELINE_STAGES.join(', ')}` }, { status: 400 })
+    }
+
+    const updated = await prisma.savedContract.update({
+      where: { userId_contractId: { userId: session.user.id, contractId } },
+      data: { status },
+    })
+
+    return NextResponse.json({ saved: updated })
+  } catch (err) {
+    console.error('Update saved contract status error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

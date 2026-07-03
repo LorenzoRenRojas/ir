@@ -161,7 +161,7 @@ export default function HeroMetatron() {
           margin: '0 0 8px',
           color: '#0A0A0A',
         }}>
-          When you were young,
+          The government buys
         </h1>
         <h1 style={{
           fontSize: 'clamp(40px, 5.5vw, 82px)',
@@ -171,35 +171,35 @@ export default function HeroMetatron() {
           margin: '0 0 36px',
           color: crimson,
         }}>
-          you dreamed of shaping the world.
+          $2 billion a day.
         </h1>
 
         <p style={{
           fontSize: 18,
           lineHeight: 1.8,
           color: 'rgba(0,0,0,0.52)',
-          maxWidth: 560,
+          maxWidth: 580,
           margin: '0 auto 14px',
         }}>
-          Not just your corner of it —{' '}
-          <span style={{ color: '#0A0A0A', fontWeight: 600 }}>the whole world.</span>{' '}
-          IR connects mission-driven companies to $847 billion in federal opportunities.
+          <span style={{ color: '#0A0A0A', fontWeight: 600 }}>Go take your share.</span>{' '}
+          IR finds the federal contracts your company can actually win, alerts you the day they post,
+          and drafts the proposal.
         </p>
 
         <p style={{
           fontSize: 12,
           lineHeight: 1.7,
           color: 'rgba(0,0,0,0.32)',
-          maxWidth: 460,
+          maxWidth: 480,
           margin: '0 auto 48px',
           fontFamily: mono,
           letterSpacing: '0.03em',
         }}>
-          Every active federal solicitation. Scored against your company profile. Delivered in under 100ms.
+          MATCH SCORING · WIN PROBABILITY · DAILY ALERTS · PROPOSAL DRAFTS — ONE TERMINAL
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/register" className="btn-primary">START MATCHING →</Link>
+          <Link href="/register" className="btn-primary">START FREE →</Link>
           <Link href="#how" className="btn-ghost">SEE HOW IT WORKS</Link>
         </div>
       </div>

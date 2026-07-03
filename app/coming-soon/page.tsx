@@ -166,26 +166,14 @@ function EmailCapture() {
 
   if (done) {
     return (
-      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.1em', color: '#4ADE80', fontFamily: mono }}>
-          YOU'RE ON THE LIST ✓
-        </div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: mono, letterSpacing: '0.06em' }}>
-          3 MONTHS OF PRO — LOCKED IN AT LAUNCH
-        </div>
+      <div style={{ fontSize: 10, letterSpacing: '0.1em', color: '#4ADE80', fontFamily: mono }}>
+        YOU'RE ON THE LIST ✓
       </div>
     )
   }
 
   return (
     <div style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Incentive */}
-      <div style={{ textAlign: 'center', padding: '10px 16px', border: '1px solid rgba(196,18,48,0.35)', background: 'rgba(196,18,48,0.06)' }}>
-        <span style={{ fontSize: 9, letterSpacing: '0.14em', color: crimson, fontFamily: mono, fontWeight: 700 }}>
-          FIRST 100 SIGNUPS GET 3 MONTHS OF PRO FREE
-        </span>
-      </div>
-
       {/* Google */}
       <button
         onClick={handleGoogle}

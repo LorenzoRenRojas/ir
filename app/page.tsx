@@ -31,16 +31,25 @@ const STATS = [
 ]
 
 const HOW = [
-  { n: '01', title: 'PROFILE INGESTION',   body: 'Input your NAICS codes, certifications, clearance levels, and past performance. We map your full capability matrix against every open solicitation in the federal database.' },
-  { n: '02', title: 'SIGNAL PROCESSING',   body: 'Every contract scored against your profile in real time. NAICS depth, set-aside eligibility, contract size, and geography — weighted algorithmically to surface what matters.' },
-  { n: '03', title: 'MATCH DELIVERY',      body: 'Ranked opportunities surface in your dashboard. Win probability scores, incumbent detection, and deadline alerts keep you a step ahead of the competition.' },
-  { n: '04', title: 'DOCUMENT GENERATION', body: 'Capability statements, letters of intent, and teaming agreements generated from your profile data. Submit-ready in minutes, not days.' },
+  { n: '01', title: 'PROFILE INGESTION',   body: 'Input your NAICS codes, certifications, clearance levels, and past performance once. We map your full capability matrix against every open solicitation in the federal database.' },
+  { n: '02', title: 'SIGNAL PROCESSING',   body: 'Every contract scored against your profile in real time. NAICS depth, set-aside eligibility, contract size, and geography — weighted algorithmically to surface only what you can win.' },
+  { n: '03', title: 'MATCH DELIVERY',      body: 'Ranked opportunities in your dashboard, plus a daily email the morning new matches post. Win probability, incumbent detection, and automatic deadline alerts at 3 days and 24 hours.' },
+  { n: '04', title: 'PROPOSAL ENGINE',     body: 'A guided questionnaire turns your answers into a formatted 4-volume federal proposal — technical, management, past performance, and price. Generate capability statements in one click. Send straight to the contracting officer.' },
+]
+
+// Head-to-head vs the incumbents
+const COMPARE = [
+  { dim: 'PRICE',              them: '$5,000–$15,000 / year',       ir: 'From $79 / month' },
+  { dim: 'GETTING STARTED',    them: 'Sales call, demo, contract',   ir: 'Self-serve — matching in 5 minutes' },
+  { dim: 'PROPOSAL HELP',      them: 'None — intel only',            ir: 'Full proposal drafts + capability statements' },
+  { dim: 'ALERTS',             them: 'Saved searches',               ir: 'Profile-scored daily digest + deadline reminders' },
+  { dim: 'CONTRACTING OFFICER',them: 'Look it up yourself',          ir: 'One click — proposal sent, replies to your inbox' },
 ]
 
 const PLANS = [
-  { name: 'STARTER',    price: 79,  tier: 'starter',    popular: false, features: ['25 contract matches/month', '3 document templates', 'Basic match scoring', 'Email support', 'SAM.gov integration'] },
-  { name: 'PRO',        price: 199, tier: 'pro',        popular: true,  features: ['Unlimited contract matches', 'Full document suite', 'AI-drafted responses', 'Advanced match scoring', 'Priority support'] },
-  { name: 'ENTERPRISE', price: 499, tier: 'enterprise', popular: false, features: ['Everything in Pro', '5 team seats', 'Teaming roundtable', 'White-label documents', 'Dedicated account manager'] },
+  { name: 'STARTER',    price: 79,  tier: 'starter',    popular: false, features: ['25 contract matches/month', 'Daily match digest email', 'Deadline alerts', 'Capability statement generator', 'Bid pipeline tracker'] },
+  { name: 'PRO',        price: 199, tier: 'pro',        popular: true,  features: ['Unlimited contract matches', 'Full proposal engine (4-volume drafts)', 'Send-to-contracting-officer', 'Win probability + incumbent intel', 'Priority support'] },
+  { name: 'ENTERPRISE', price: 499, tier: 'enterprise', popular: false, features: ['Everything in Pro', '5 team seats + shared pipeline', 'Proposal sharing across your org', 'White-label documents', 'Dedicated account manager'] },
 ]
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -82,11 +91,13 @@ export default function LandingPage() {
         <div style={{ maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 44 }}>WHY WE EXIST</div>
           <blockquote style={{ fontSize: 'clamp(20px, 2.8vw, 34px)', fontWeight: 700, lineHeight: 1.5, letterSpacing: '-0.02em', margin: '0 0 40px', color: '#0A0A0A', fontStyle: 'normal' }}>
-            &ldquo;The organizations that will define civilization&rsquo;s next chapter are out there right now — underfunded, overlooked, fighting for a foothold. <span style={{ color: crimson }}>IR finds their government contracts before anyone else does.</span>&rdquo;
+            &ldquo;The tools that find winnable government contracts cost $10,000 a year and a sales call to even see pricing. So the same big firms keep winning. <span style={{ color: crimson }}>IR exists to end that.</span>&rdquo;
           </blockquote>
           <div style={{ width: 48, height: 3, background: crimson, margin: '0 auto 40px' }} />
           <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.48)', maxWidth: 600, margin: '0 auto' }}>
-            Federal contracting is where serious capital meets serious purpose. For decades it has been gated behind relationships, insider knowledge, and armies of proposal writers. We built IR to change that — permanently.
+            Federal contracting has been gated behind relationships, insider tools, and armies of proposal
+            writers for decades. IR gives a five-person company the same intelligence a Fortune 500
+            capture team has — for the price of a phone bill.
           </p>
         </div>
       </section>
@@ -119,6 +130,38 @@ export default function LandingPage() {
                 <p style={{ fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.52)', margin: 0 }}>{item.body}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── VS THE INCUMBENTS ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', background: '#0A0A0A', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
+          <div style={{ marginBottom: 56 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', marginBottom: 18 }}>THE ALTERNATIVE</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0, color: '#fff' }}>
+              Legacy GovCon intel vs. <span style={{ color: crimson }}>IR</span>
+            </h2>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}></th>
+                  <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>LEGACY TOOLS</th>
+                  <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: crimson, borderBottom: `1px solid ${crimson}` }}>IR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE.map((row) => (
+                  <tr key={row.dim}>
+                    <td style={{ padding: '18px 20px', fontFamily: mono, fontSize: 10, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>{row.dim}</td>
+                    <td style={{ padding: '18px 20px', fontSize: 14, color: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{row.them}</td>
+                    <td style={{ padding: '18px 20px', fontSize: 14, fontWeight: 600, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{row.ir}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
