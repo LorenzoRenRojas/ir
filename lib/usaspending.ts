@@ -24,6 +24,9 @@ async function _fetchIncumbent(naicsCode: string, agency: string): Promise<Incum
         limit: 1,
         page: 1,
       }),
+      // Hard timeout: dozens of these run per dashboard load — one stalled
+      // connection must never hang the page (this caused 2-minute boots)
+      signal: AbortSignal.timeout(8_000),
     })
 
     if (!res.ok) return null
@@ -115,12 +118,12 @@ interface RecompeteRow {
 async function fetchRecompetePage(
   naicsCodes: string[],
   page: number,
-  sortField: string
+  sortField: string,
+  signedYearsAgo: [number, number] // [olderBound, newerBound], e.g. [6, 3]
 ): Promise<RecompeteRow[]> {
-  const now = new Date()
-  const windowStart = new Date()
-  windowStart.setFullYear(windowStart.getFullYear() - 3)
   const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const from = new Date(); from.setFullYear(from.getFullYear() - signedYearsAgo[0])
+  const to = new Date(); to.setFullYear(to.getFullYear() - signedYearsAgo[1])
 
   const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
     method: 'POST',
@@ -129,9 +132,9 @@ async function fetchRecompetePage(
       filters: {
         award_type_codes: ['A', 'B', 'C', 'D'],
         naics_codes: naicsCodes,
-        // 3-year action window: recompete-relevant awards are recent; a wider
-        // window made USAspending's query planner time out on big NAICS codes
-        time_period: [{ start_date: iso(windowStart), end_date: iso(now) }],
+        // Filter by SIGNING date (the only server-side date filter available;
+        // there is no period-of-performance-end filter — verified in API docs)
+        time_period: [{ start_date: iso(from), end_date: iso(to), date_type: 'date_signed' }],
       },
       fields: [
         'Award ID', 'Recipient Name', 'Award Amount', 'Description',
@@ -159,37 +162,34 @@ async function fetchRecompetePage(
   return data.results ?? []
 }
 
-// Per-code, two complementary scans merged:
-//  A) end-date descending with early exit — walks from far-future awards down
-//     into the expiring window directly (complete when it works)
-//  B) top awards by value — a bounded sweep that catches window awards even
-//     when strategy A's far-future head is too deep to page through
-// Value-sort alone missed everything: a big NAICS code's largest awards are
-// multi-year vehicles ending 2028+, so the 18-month window filtered to zero.
-async function scanByEndDate(code: string, now: number): Promise<RecompeteRow[]> {
+// Per-code, two complementary end-date-descending scans, each over a
+// different SIGNING window, with early exit once the stream descends past
+// today:
+//  S1) signed 6–2.5 years ago — the recompete goldmine: multi-year awards
+//      whose periods of performance end right about now. Their far-future
+//      head is tiny, so the scan reaches the expiring window within a page.
+//  S2) signed in the last 2.5 years — catches short-cycle awards. Deeper
+//      far-future head, so it gets more pages.
+// (There is no server-side end-date filter in the API — this signing-window
+// decomposition is what makes the window reachable on big NAICS codes.)
+const END_DATE_SORT2 = 'Period of Performance Current End Date'
+
+async function scanWindow(
+  code: string,
+  signedYearsAgo: [number, number],
+  maxPages: number,
+  now: number
+): Promise<RecompeteRow[]> {
   const rows: RecompeteRow[] = []
-  for (let page = 1; page <= 4; page++) {
-    const batch = await fetchRecompetePage([code], page, END_DATE_SORT)
+  for (let page = 1; page <= maxPages; page++) {
+    const batch = await fetchRecompetePage([code], page, END_DATE_SORT2, signedYearsAgo)
     rows.push(...batch)
     if (batch.length < 100) break
-    // Early exit once the stream has descended past "now" — everything after
-    // this page has already expired
     const last = batch[batch.length - 1]?.['Period of Performance Current End Date']
-    if (last && new Date(last).getTime() < now) break
+    if (last && new Date(last).getTime() < now) break // descended past today
   }
   return rows
 }
-
-async function sweepByAmount(code: string): Promise<RecompeteRow[]> {
-  const pages = await Promise.allSettled([
-    fetchRecompetePage([code], 1, AMOUNT_SORT),
-    fetchRecompetePage([code], 2, AMOUNT_SORT),
-  ])
-  return pages.flatMap(p => (p.status === 'fulfilled' ? p.value : []))
-}
-
-const END_DATE_SORT = 'Period of Performance Current End Date'
-const AMOUNT_SORT = 'Award Amount'
 
 async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const naicsCodes = naicsKey.split(',').filter(Boolean).slice(0, 6)
@@ -199,18 +199,18 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const now = Date.now()
   const horizon = now + 18 * MONTH_MS
 
-  // All codes in parallel; within a code, both strategies in parallel.
-  // Individual failures are tolerated — partial radar beats no radar.
+  // All codes in parallel; within a code, both signing windows in parallel.
+  // Individual failures tolerated — partial radar beats no radar.
   const settled = await Promise.allSettled(
     naicsCodes.map(async (code) => {
-      const [byDate, byAmount] = await Promise.allSettled([
-        scanByEndDate(code, now),
-        sweepByAmount(code),
+      const [older, recent] = await Promise.allSettled([
+        scanWindow(code, [6, 2.5], 3, now),
+        scanWindow(code, [2.5, 0], 4, now),
       ])
       const rows: RecompeteRow[] = []
-      if (byDate.status === 'fulfilled') rows.push(...byDate.value)
-      if (byAmount.status === 'fulfilled') rows.push(...byAmount.value)
-      if (rows.length === 0 && byDate.status === 'rejected') throw byDate.reason
+      if (older.status === 'fulfilled') rows.push(...older.value)
+      if (recent.status === 'fulfilled') rows.push(...recent.value)
+      if (rows.length === 0 && older.status === 'rejected') throw older.reason
       return rows
     })
   )

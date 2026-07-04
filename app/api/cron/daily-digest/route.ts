@@ -101,26 +101,71 @@ export async function GET(req: NextRequest) {
     problems.push(`Digest cron crashed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  // Prewarm Recompete Radar: run each distinct NAICS set through the fetcher
-  // overnight so the 24h Kv cache is always warm when users open the tab.
-  // USAspending is free and keyless — this costs nothing but cron time.
+  // Recompete Radar: daily scan + notify. For every user, refresh their radar
+  // (warms the 24h Kv cache for the tab too), diff against the award IDs
+  // they've already been alerted about, and email only what's NEW. USAspending
+  // is free and keyless — the scan costs nothing but cron time.
+  let radarAlertsSent = 0
   try {
     const { getRecompetes } = await import('@/lib/usaspending')
-    const profiles = await prisma.companyProfile.findMany({ select: { naicsCodes: true } })
-    const distinctSets = new Set<string>()
-    for (const p of profiles) {
+    const { sendRecompeteAlertEmail } = await import('@/lib/email')
+    const radarUsers = await prisma.user.findMany({
+      where: { emailVerified: { not: null }, companyProfile: { isNot: null } },
+      select: { id: true, email: true, name: true, companyProfile: { select: { naicsCodes: true } } },
+    })
+
+    const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
+
+    for (const user of radarUsers) {
       try {
-        const codes = (JSON.parse(p.naicsCodes) as string[]).slice(0, 8)
-        if (codes.length) distinctSets.add([...new Set(codes)].sort().join(','))
-      } catch { /* malformed profile json */ }
-    }
-    for (const set of distinctSets) {
-      await getRecompetes(set.split(',')).catch(err =>
-        console.error(`Recompete prewarm failed for ${set}:`, err)
-      )
+        let codes: string[] = []
+        try {
+          codes = (JSON.parse(user.companyProfile!.naicsCodes) as string[]).slice(0, 8)
+        } catch { /* malformed json */ }
+        if (codes.length === 0) continue
+
+        const recompetes = await getRecompetes(codes)
+        if (recompetes.length === 0) continue
+
+        // Which awards has this user already been told about?
+        const seenKey = `recompete-alerted:${user.id}`
+        let seen: string[] = []
+        try {
+          const row = await prisma.kv.findUnique({ where: { key: seenKey } })
+          if (row) seen = JSON.parse(row.value) as string[]
+        } catch { /* Kv missing pre-migration — alert on everything once */ }
+        const seenSet = new Set(seen)
+
+        const fresh = recompetes.filter(r => !seenSet.has(r.awardId))
+        if (fresh.length === 0) continue
+
+        // Alert on the most urgent/valuable new ones; record ALL as seen
+        const toSend = fresh.slice(0, 8).map(r => ({
+          description: r.description,
+          incumbent: r.incumbent,
+          amount: r.amount,
+          endDate: r.endDate,
+          monthsUntilExpiry: r.monthsUntilExpiry,
+          agency: r.subAgency || r.agency,
+        }))
+
+        await sendRecompeteAlertEmail(user.email, user.name, toSend, baseUrl)
+        radarAlertsSent++
+
+        const updatedSeen = [...new Set([...seen, ...fresh.map(r => r.awardId)])].slice(-800)
+        try {
+          await prisma.kv.upsert({
+            where: { key: seenKey },
+            update: { value: JSON.stringify(updatedSeen) },
+            create: { key: seenKey, value: JSON.stringify(updatedSeen) },
+          })
+        } catch { /* best-effort */ }
+      } catch (err) {
+        problems.push(`Radar alert for ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
   } catch (err) {
-    console.error('Recompete prewarm skipped:', err)
+    console.error('Recompete scan-and-notify skipped:', err)
   }
 
   // Self-report: if anything failed, alert the admin so it never fails silently
@@ -132,5 +177,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, sync: syncStats, problems })
+  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, radarAlertsSent, sync: syncStats, problems })
 }

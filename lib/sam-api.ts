@@ -396,7 +396,8 @@ async function fetchSamPage(apiKey: string, offset: number, limit: number, daysB
 
   const response = await fetch(
     `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
-    { cache: 'no-store' }
+    // Hard timeout: a stalled SAM.gov connection must never hang a page load
+    { cache: 'no-store', signal: AbortSignal.timeout(20_000) }
   )
 
   if (!response.ok) {
@@ -643,7 +644,7 @@ export async function fetchContractById(noticeId: string): Promise<Contract | nu
     })
     const response = await fetch(
       `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15_000) }
     )
     if (response.ok) {
       const data = await response.json()

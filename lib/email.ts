@@ -346,6 +346,87 @@ export async function sendDeadlineReminderEmail(
   await send(email, `[IR] Deadline ${daysLeft <= 1 ? 'tomorrow' : `in ${daysLeft} days`}: ${contractTitle}`, html)
 }
 
+export interface RecompeteAlertItem {
+  description: string
+  incumbent: string
+  amount: number | null
+  endDate: string
+  monthsUntilExpiry: number
+  agency: string
+}
+
+export async function sendRecompeteAlertEmail(
+  email: string,
+  name: string | null,
+  items: RecompeteAlertItem[],
+  baseUrl: string
+): Promise<void> {
+  const fmtAmt = (v: number | null) =>
+    !v ? 'Undisclosed' : v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${Math.round(v / 1000)}K`
+
+  const rows = items
+    .map(
+      r => `
+        <tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="color:#ffffff;font-size:13px;font-weight:700;font-family:sans-serif;line-height:1.5;">${r.description.slice(0, 120)}</div>
+            <div style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:5px;font-family:sans-serif;">
+              ${r.agency} · Incumbent: <span style="color:rgba(255,255,255,0.7);">${r.incumbent}</span> · ${fmtAmt(r.amount)}
+            </div>
+            <div style="color:#C41230;font-size:10px;letter-spacing:0.08em;margin-top:4px;font-family:monospace;font-weight:700;">
+              EXPIRES ${new Date(r.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} · ~${r.monthsUntilExpiry} MONTHS
+            </div>
+          </td>
+        </tr>`
+    )
+    .join('')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 48px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">RECOMPETE RADAR</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px;">
+            <p style="color:#C41230;font-size:9px;letter-spacing:0.18em;margin:0 0 16px;font-weight:700;">◎ NEW ON YOUR RADAR</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${items.length} contract${items.length === 1 ? '' : 's'} in your space ${items.length === 1 ? 'is' : 'are'} expiring.</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;line-height:1.7;">
+              ${name ? `${name}, these` : 'These'} awards match your NAICS codes and end within 18 months —
+              the recompete solicitations are coming before SAM.gov shows anything. Time to position.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+            <a href="${baseUrl}/recompetes"
+               style="display:inline-block;margin-top:28px;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
+              OPEN RECOMPETE RADAR →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 48px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:0;line-height:1.6;">
+              You're alerted once per new expiring award. Source: USAspending.gov award data.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(email, `[IR Radar] ${items.length} expiring contract${items.length === 1 ? '' : 's'} in your NAICS codes`, html)
+}
+
 export async function sendAdminAlertEmail(
   adminEmail: string,
   subject: string,
