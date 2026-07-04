@@ -108,12 +108,19 @@ interface RecompeteRow {
   'Recipient Name'?: string
   'Award Amount'?: number
   'Description'?: string
+  'Start Date'?: string
+  'End Date'?: string
   'Period of Performance Start Date'?: string
   'Period of Performance Current End Date'?: string
   'Awarding Agency'?: string
   'Awarding Sub Agency'?: string
   generated_internal_id?: string
 }
+
+// The API accepts the long names as FIELDS but its sort mappings only know
+// the short names ('End Date') — confirmed by a live 400. Request short names.
+const rowEnd = (r: RecompeteRow) => r['End Date'] ?? r['Period of Performance Current End Date']
+const rowStart = (r: RecompeteRow) => r['Start Date'] ?? r['Period of Performance Start Date']
 
 async function fetchRecompetePage(
   naicsCodes: string[],
@@ -138,7 +145,7 @@ async function fetchRecompetePage(
       },
       fields: [
         'Award ID', 'Recipient Name', 'Award Amount', 'Description',
-        'Period of Performance Start Date', 'Period of Performance Current End Date',
+        'Start Date', 'End Date',
         'Awarding Agency', 'Awarding Sub Agency',
       ],
       sort: sortField,
@@ -172,7 +179,8 @@ async function fetchRecompetePage(
 //      far-future head, so it gets more pages.
 // (There is no server-side end-date filter in the API — this signing-window
 // decomposition is what makes the window reachable on big NAICS codes.)
-const END_DATE_SORT2 = 'Period of Performance Current End Date'
+const END_DATE_SORT2 = 'End Date'
+const AMOUNT_SORT2 = 'Award Amount' // known-good sort mapping (used in prod by the incumbent fetcher)
 
 async function scanWindow(
   code: string,
@@ -180,13 +188,31 @@ async function scanWindow(
   maxPages: number,
   now: number
 ): Promise<RecompeteRow[]> {
+  let sortField = END_DATE_SORT2
   const rows: RecompeteRow[] = []
   for (let page = 1; page <= maxPages; page++) {
-    const batch = await fetchRecompetePage([code], page, END_DATE_SORT2, signedYearsAgo)
+    let batch: RecompeteRow[]
+    try {
+      batch = await fetchRecompetePage([code], page, sortField, signedYearsAgo)
+    } catch (err) {
+      // If the end-date sort mapping is ever rejected again, fall back to the
+      // amount sort: the signing window already bounds the result set to
+      // recompete-adjacent awards, so the window filter still finds hits.
+      const status = (err as Error & { status?: number }).status
+      if (status === 400 && sortField === END_DATE_SORT2 && page === 1) {
+        sortField = AMOUNT_SORT2
+        batch = await fetchRecompetePage([code], page, sortField, signedYearsAgo)
+      } else {
+        throw err
+      }
+    }
     rows.push(...batch)
     if (batch.length < 100) break
-    const last = batch[batch.length - 1]?.['Period of Performance Current End Date']
-    if (last && new Date(last).getTime() < now) break // descended past today
+    // Early exit only valid in end-date order
+    if (sortField === END_DATE_SORT2) {
+      const last = rowEnd(batch[batch.length - 1] ?? {})
+      if (last && new Date(last).getTime() < now) break // descended past today
+    }
   }
   return rows
 }
@@ -226,7 +252,7 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
 
   for (const { value: rows } of fulfilled) {
     for (const row of rows) {
-      const endStr = row['Period of Performance Current End Date']
+      const endStr = rowEnd(row)
       if (!endStr) continue
       const end = new Date(endStr).getTime()
       if (isNaN(end) || end < now || end > horizon) continue
@@ -241,7 +267,7 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
         description: row['Description']?.trim() || 'Untitled award',
         incumbent: row['Recipient Name'] ?? 'Unknown incumbent',
         amount: typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null,
-        startDate: row['Period of Performance Start Date'] ?? null,
+        startDate: rowStart(row) ?? null,
         endDate: endStr,
         agency: row['Awarding Agency'] ?? 'Unknown agency',
         subAgency: row['Awarding Sub Agency'] ?? '',
