@@ -265,7 +265,7 @@ const RECOMPETE_TTL_MS = 24 * 60 * 60 * 1000
 export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
   const key = [...new Set(naicsCodes)].sort().join(',')
   if (!key) return []
-  const kvKey = `recompetes:v2:${key}`
+  const kvKey = `recompetes:v3:${key}`
 
   const { prisma } = await import('./prisma')
 
@@ -274,10 +274,12 @@ export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAwar
     const row = await prisma.kv.findUnique({ where: { key: kvKey } })
     if (row) {
       const parsed = JSON.parse(row.value) as RecompeteAward[]
-      if (Date.now() - new Date(row.updatedAt).getTime() < RECOMPETE_TTL_MS) {
+      // Never trust a cached EMPTY result — an upstream hiccup or a since-
+      // fixed query bug would otherwise pin users at zero for a full day
+      if (parsed.length > 0 && Date.now() - new Date(row.updatedAt).getTime() < RECOMPETE_TTL_MS) {
         return parsed // fresh — instant, no upstream call
       }
-      stale = parsed
+      if (parsed.length > 0) stale = parsed
     }
   } catch { /* Kv table missing pre-migration — compute live */ }
 
