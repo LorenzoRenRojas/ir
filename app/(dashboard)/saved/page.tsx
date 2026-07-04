@@ -31,7 +31,7 @@ function stageOf(status: string) {
 }
 
 function formatValue(v: number | null): string {
-  if (!v) return 'TBD'
+  if (!v) return 'Not posted'
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`
   return `$${v.toLocaleString()}`

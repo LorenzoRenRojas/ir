@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getRecompetes } from '@/lib/usaspending'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 // Expiring federal awards in the user's NAICS codes — tomorrow's recompetes.
 export async function GET() {

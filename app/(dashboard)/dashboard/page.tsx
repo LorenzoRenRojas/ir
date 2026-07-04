@@ -6,7 +6,7 @@ import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
 
 function formatValue(v?: number): string {
-  if (!v) return 'TBD'
+  if (!v) return 'Not posted'
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`
   return `$${v.toLocaleString()}`
@@ -186,7 +186,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
         )}
         <div style={{ display: 'flex', gap: 12, marginTop: 2, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span style={{ fontSize: 11, color: '#0A0A0A', fontWeight: 700, fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            {contract.value ? formatValue(contract.value) : prevValue ? `~${prevValue} prev.` : 'TBD'}
+            {contract.value ? formatValue(contract.value) : prevValue ? `~${prevValue} prev.` : 'Value not posted'}
           </span>
           {contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' && (
             <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>📍 {contract.placeOfPerformance}</span>

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { fetchContractById } from '@/lib/sam-api'
+import { fetchContractById, fetchContractDescription } from '@/lib/sam-api'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
@@ -8,7 +8,7 @@ import { SaveContractButton } from '@/components/contracts/save-contract-button'
 import { fetchIncumbent } from '@/lib/usaspending'
 
 function formatValue(v?: number): string {
-  if (!v) return 'TBD'
+  if (!v) return 'Not posted'
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`
   return `$${v.toLocaleString()}`
@@ -46,9 +46,12 @@ export default async function ContractDetailPage({
     notFound()
   }
 
-  const incumbent = contract.naicsCode && contract.agency
-    ? await fetchIncumbent(contract.naicsCode, contract.agency)
-    : null
+  const [incumbent, description] = await Promise.all([
+    contract.naicsCode && contract.agency
+      ? fetchIncumbent(contract.naicsCode, contract.agency)
+      : Promise.resolve(null),
+    fetchContractDescription(contract),
+  ])
 
   const session = await auth()
   let breakdown = null
@@ -80,7 +83,7 @@ export default async function ContractDetailPage({
     { label: 'ESTIMATED VALUE', value: formatValue(contract.value) },
     { label: 'POSTED DATE', value: formatDate(contract.postedDate) },
     { label: 'RESPONSE DEADLINE', value: formatDate(contract.responseDeadline) },
-    { label: 'PLACE OF PERFORMANCE', value: contract.placeOfPerformance || 'TBD' },
+    { label: 'PLACE OF PERFORMANCE', value: contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' ? contract.placeOfPerformance : 'Not specified' },
   ]
 
   const scoreColor = breakdown
@@ -116,10 +119,27 @@ export default async function ContractDetailPage({
 
           {/* Description */}
           <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '28px' }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>DESCRIPTION</div>
-            <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.6)', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-              {contract.description || 'No description available.'}
-            </p>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>STATEMENT OF WORK</div>
+            {description ? (
+              <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.6)', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                {description}
+              </p>
+            ) : (
+              <div>
+                <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)', lineHeight: 1.8, margin: '0 0 16px', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                  The full statement of work couldn&apos;t be retrieved right now (SAM.gov limits how often
+                  we can pull notice text). It&apos;s available on the official notice:
+                </p>
+                <a
+                  href={contract.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-block', padding: '10px 20px', border: '1px solid rgba(0,0,0,0.15)', color: '#0A0A0A', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
+                >
+                  VIEW FULL NOTICE ON SAM.GOV ↗
+                </a>
+              </div>
+            )}
           </div>
         </div>
 

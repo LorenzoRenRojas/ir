@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       contracts = contracts.filter((c) => (c.value ?? 0) <= maxValue)
     }
 
-    // Metadata scoring
+    // Metadata scoring — cheap, runs over the full market
     if (profile) {
       contracts = contracts.map((c) => {
         const breakdown = calculateMatchScore(c, profile!)
@@ -100,35 +100,52 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Semantic + behavioral layer (non-fatal — falls back to metadata if unavailable)
+    contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+
+    // The store can hold thousands of contracts. Everything below this line
+    // costs per-contract work (embeddings, USAspending lookups) or response
+    // bytes, so rank on the cheap score first and enrich only the top slice.
+    const PAGE_LIMIT = 100
+    const ENRICH_LIMIT = 40
+    contracts = contracts.slice(0, PAGE_LIMIT)
+
+    // Semantic + behavioral layer on the visible page (non-fatal)
     if (isEmbeddingEnabled() && session?.user?.id) {
       try {
         contracts = await applySemanticScores(contracts, session.user.id, dbProfile)
+        contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
       } catch (err) {
         console.error('Semantic scoring error (non-fatal):', err)
       }
     }
 
-    contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
-
-    // Fetch incumbent data, deduped by NAICS+agency, cached 24h
-    const incumbents = await fetchIncumbents(contracts)
-    contracts = contracts.map((c, i) => ({ ...c, incumbent: incumbents[i] }))
-
-    // Calculate win probability if we have a profile
-    if (profile && dbProfile) {
-      const winProfile = {
-        businessTypes: profile.businessTypes,
-        naicsCodes: profile.naicsCodes,
-        certifications: profile.certifications,
-        contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
-        annualRevenue: dbProfile.annualRevenue ?? null,
-        agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
-      }
-      contracts = contracts.map((c, i) => ({
-        ...c,
-        winProbability: calculateWinProbability(c, winProfile, incumbents[i]),
-      }))
+    // Incumbent + win probability for the contracts users actually look at.
+    // fetchIncumbents dedupes by NAICS+agency and caches 24h, but a cold
+    // cache across thousands of rows was the main dashboard-lag culprit.
+    const enriched = contracts.slice(0, ENRICH_LIMIT)
+    try {
+      const incumbents = await fetchIncumbents(enriched)
+      const winProfile = profile && dbProfile
+        ? {
+            businessTypes: profile.businessTypes,
+            naicsCodes: profile.naicsCodes,
+            certifications: profile.certifications,
+            contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
+            annualRevenue: dbProfile.annualRevenue ?? null,
+            agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+          }
+        : null
+      contracts = contracts.map((c, i) => {
+        if (i >= ENRICH_LIMIT) return c
+        const incumbent = incumbents[i]
+        return {
+          ...c,
+          incumbent,
+          ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent) } : {}),
+        }
+      })
+    } catch (err) {
+      console.error('Enrichment error (non-fatal):', err)
     }
 
     return NextResponse.json({ contracts })

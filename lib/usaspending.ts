@@ -118,8 +118,8 @@ async function fetchRecompetePage(
   sortField: string
 ): Promise<RecompeteRow[]> {
   const now = new Date()
-  const fiveYearsAgo = new Date()
-  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5)
+  const windowStart = new Date()
+  windowStart.setFullYear(windowStart.getFullYear() - 3)
   const iso = (d: Date) => d.toISOString().slice(0, 10)
 
   const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
@@ -129,7 +129,9 @@ async function fetchRecompetePage(
       filters: {
         award_type_codes: ['A', 'B', 'C', 'D'],
         naics_codes: naicsCodes,
-        time_period: [{ start_date: iso(fiveYearsAgo), end_date: iso(now) }],
+        // 3-year action window: recompete-relevant awards are recent; a wider
+        // window made USAspending's query planner time out on big NAICS codes
+        time_period: [{ start_date: iso(windowStart), end_date: iso(now) }],
       },
       fields: [
         'Award ID', 'Recipient Name', 'Award Amount', 'Description',
@@ -140,9 +142,10 @@ async function fetchRecompetePage(
       order: 'desc',
       limit: 100,
       page,
+      subawards: false,
     }),
     cache: 'no-store',
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(40_000),
   })
 
   if (!res.ok) {
@@ -175,7 +178,7 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   // amount: we lose the early-exit optimization but still find the window by
   // scanning the largest awards, which are the ones worth chasing anyway.
   let sortField = END_DATE_SORT
-  const MAX_PAGES = 5
+  const MAX_PAGES = 3
   for (let page = 1; page <= MAX_PAGES; page++) {
     let rows: RecompeteRow[]
     try {
@@ -185,6 +188,9 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
       if (status === 400 && sortField === END_DATE_SORT && page === 1) {
         sortField = FALLBACK_SORT
         rows = await fetchRecompetePage(naicsCodes, page, sortField)
+      } else if (page > 1) {
+        // Later page timed out — return what we already have instead of failing
+        break
       } else {
         throw err
       }

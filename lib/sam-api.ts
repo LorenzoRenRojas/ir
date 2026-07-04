@@ -20,6 +20,7 @@ export interface Contract {
   postedDate: string
   placeOfPerformance: string
   description: string
+  descriptionUrl?: string
   link: string
   pointsOfContact?: { name: string; email: string; phone?: string; type?: string }[]
   matchScore?: number
@@ -327,7 +328,9 @@ const MOCK_CONTRACTS: Contract[] = [
 ]
 
 function formatContractValue(value?: number): string {
-  if (!value) return 'TBD'
+  // SAM.gov rarely publishes estimates on open solicitations — say so
+  // plainly instead of the ambiguous "TBD"
+  if (!value) return 'Not posted'
   if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`
   return `$${value.toLocaleString()}`
@@ -356,7 +359,10 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
       opp.placeOfPerformance?.city?.name,
       opp.placeOfPerformance?.state?.code,
     ].filter(Boolean).join(', ') || 'TBD',
-    description: opp.description || '',
+    // SAM.gov v2 search returns a URL in `description`, not the text itself.
+    // Store it as descriptionUrl; real text is fetched on demand and cached.
+    description: opp.description?.startsWith('http') ? '' : (opp.description || ''),
+    descriptionUrl: opp.description?.startsWith('http') ? opp.description : undefined,
     link: opp.uiLink || `https://sam.gov/opp/${opp.noticeId}`,
     pointsOfContact: (opp.pointOfContact ?? [])
       .filter(poc => poc.email)
@@ -469,12 +475,24 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
     },
   })
 
+  if (synced > 0) invalidateContractMemCache()
   return { synced, total, pruned, quotaBlocked }
+}
+
+// In-memory TTL cache: reading thousands of payload rows from Turso on every
+// dashboard request is the dominant page-load cost. Warm serverless instances
+// reuse the parsed list for 10 minutes; the store itself changes once a day.
+let memCache: { data: Contract[]; at: number } | null = null
+const MEM_TTL_MS = 10 * 60 * 1000
+
+export function invalidateContractMemCache() {
+  memCache = null
 }
 
 // Read the full market from the DB store. Falls back to a live single-page
 // fetch (cached 6h) before the store's first sync, then to mock data.
 async function readContractsFromDb(): Promise<Contract[] | null> {
+  if (memCache && Date.now() - memCache.at < MEM_TTL_MS) return memCache.data
   try {
     const { prisma } = await import('./prisma')
     const rows = await prisma.contractCache.findMany({
@@ -482,7 +500,7 @@ async function readContractsFromDb(): Promise<Contract[] | null> {
       orderBy: { postedDate: 'desc' },
     })
     if (rows.length === 0) return null
-    return rows
+    const parsed = rows
       .map((r: { payload: string }) => {
         try {
           return JSON.parse(r.payload) as Contract
@@ -491,8 +509,63 @@ async function readContractsFromDb(): Promise<Contract[] | null> {
         }
       })
       .filter((c: Contract | null): c is Contract => c !== null)
+    memCache = { data: parsed, at: Date.now() }
+    return parsed
   } catch {
     // Table missing (pre-migration) or DB unreachable
+    return null
+  }
+}
+
+// Fetch a contract's full description text on demand. The noticedesc call
+// costs one SAM.gov request, so it's budget-gated — but the result is written
+// back into ContractCache, so each contract's description is fetched at most
+// once ever, then free for all users.
+export async function fetchContractDescription(contract: Contract): Promise<string | null> {
+  if (contract.description) return contract.description
+  if (!contract.descriptionUrl || !process.env.SAM_GOV_API_KEY) return null
+
+  const { tryConsumeSamRequests } = await import('./sam-quota')
+  if (!(await tryConsumeSamRequests(1))) return null
+
+  try {
+    const sep = contract.descriptionUrl.includes('?') ? '&' : '?'
+    const res = await fetch(`${contract.descriptionUrl}${sep}api_key=${process.env.SAM_GOV_API_KEY}`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12_000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const raw: string = data?.description ?? ''
+    if (!raw) return null
+
+    // Notice descriptions arrive as HTML — strip to readable text
+    const text = raw
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#\d+;/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+    if (!text) return null
+
+    // Persist so this fetch never happens again for this notice
+    try {
+      const { prisma } = await import('./prisma')
+      const updated = { ...contract, description: text }
+      await prisma.contractCache.update({
+        where: { noticeId: contract.noticeId },
+        data: { payload: JSON.stringify(updated) },
+      })
+      invalidateContractMemCache()
+    } catch { /* store row may not exist (mock/legacy path) — text still returned */ }
+
+    return text
+  } catch {
     return null
   }
 }
