@@ -178,3 +178,44 @@ body {
   background-position: left center;
   color: rgba(255,255,255,0.8);
 }
+
+/* ── Global micro-interactions ─────────────────────────────────────────────
+   Every button in the app gets a subtle lift on hover and press on click.
+   Cheap, GPU-only transforms — keeps the terminal aesthetic from feeling
+   static without redesigning any component. */
+button {
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              filter 0.15s ease,
+              box-shadow 0.15s ease;
+}
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}
+button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.97);
+}
+
+/* Selects (pipeline stage picker etc.) get the same treatment */
+select {
+  transition: transform 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+}
+select:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* Crimson primary actions get a soft glow bloom on hover */
+button[style*="background: rgb(196, 18, 48)"]:hover:not(:disabled),
+a[style*="background: rgb(196, 18, 48)"]:hover,
+button[style*="background:#C41230"]:hover:not(:disabled) {
+  box-shadow: 0 4px 18px rgba(196, 18, 48, 0.35);
+}
+a[style*="background: rgb(196, 18, 48)"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+a[style*="background: rgb(196, 18, 48)"]:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}

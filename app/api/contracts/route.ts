@@ -100,7 +100,22 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+    // Personal ranking signal beyond the visible 100-pt score: agencies the
+    // company has worked with before rank ahead on ties/near-ties. (Invisible
+    // boost — the displayed score stays the honest 4-factor breakdown.)
+    let agencyHistory: string[] = []
+    try {
+      agencyHistory = JSON.parse((dbProfile as { agencyHistory?: string } | null)?.agencyHistory ?? '[]') as string[]
+    } catch { /* malformed */ }
+    const familiarity = (c: (typeof contracts)[number]) =>
+      agencyHistory.length > 0 &&
+      agencyHistory.some(a => `${c.agency} ${c.subAgency ?? ''}`.toLowerCase().includes(a.toLowerCase()))
+        ? 3
+        : 0
+
+    contracts.sort(
+      (a, b) => ((b.matchScore ?? 0) + familiarity(b)) - ((a.matchScore ?? 0) + familiarity(a))
+    )
 
     // The store can hold thousands of contracts. Everything below this line
     // costs per-contract work (embeddings, USAspending lookups) or response

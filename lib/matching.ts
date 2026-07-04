@@ -37,11 +37,39 @@ const SET_ASIDE_MAPPINGS: Record<string, string[]> = {
   'VOSBC': ['SDVOSB'],
 }
 
-// Contract value ranges
-const CONTRACT_SIZE_RANGES: Record<string, [number, number]> = {
-  'micro': [0, 10000],
-  'simplified': [10000, 250000],
-  'large': [250000, Infinity],
+// Contract value ranges — matched by keyword so both legacy keys ("micro")
+// and onboarding labels ("Micro (<$10K)", "Mid ($250K–$5M)") resolve
+const SIZE_RANGES: { pattern: RegExp; range: [number, number] }[] = [
+  { pattern: /micro/i, range: [0, 10_000] },
+  { pattern: /simplified/i, range: [10_000, 250_000] },
+  { pattern: /mid/i, range: [250_000, 5_000_000] },
+  { pattern: /large/i, range: [5_000_000, 50_000_000] },
+  { pattern: /major/i, range: [50_000_000, Infinity] },
+]
+
+function sizeScoreFor(prefs: string[], value: number | undefined): { score: number; detail: string } {
+  if (prefs.length === 0) {
+    return { score: 10, detail: 'No size preference set — neutral credit' }
+  }
+  if (prefs.some(p => /any/i.test(p))) {
+    return { score: 20, detail: 'You pursue contracts of any size' }
+  }
+  // SAM.gov rarely publishes estimates on open solicitations — an unknown
+  // value must be neutral, never a penalty
+  if (!value) {
+    return { score: 12, detail: 'Value not posted — no size penalty applied' }
+  }
+  for (const pref of prefs) {
+    // Legacy key "large" meant 250K+ — treat as mid-and-up
+    const legacyLarge = pref.toLowerCase() === 'large' && value >= 250_000
+    const matched = legacyLarge || SIZE_RANGES.some(
+      s => s.pattern.test(pref) && value >= s.range[0] && value < s.range[1]
+    )
+    if (matched) {
+      return { score: 20, detail: `Value $${value.toLocaleString()} is in your preferred range` }
+    }
+  }
+  return { score: 0, detail: `Value $${value.toLocaleString()} is outside your preferred range` }
 }
 
 export function calculateMatchScore(
@@ -81,32 +109,13 @@ export function calculateMatchScore(
     setAsideScore = 15
   }
 
-  // Contract size in preferred range: +20 points
-  const contractValue = contract.value || 0
-  for (const sizePref of profile.contractSizePrefs) {
-    const range = CONTRACT_SIZE_RANGES[sizePref]
-    if (range && contractValue >= range[0] && contractValue < range[1]) {
-      contractSizeScore = 20
-      break
-    }
-  }
-
-  // If no size pref set, give partial credit
-  if (profile.contractSizePrefs.length === 0) {
-    contractSizeScore = 10
-  }
+  // Contract size in preferred range: +20 points (unknown value = neutral)
+  const size = sizeScoreFor(profile.contractSizePrefs, contract.value)
+  contractSizeScore = size.score
 
   // Geographic match: +15 points
-  const contractPlace = contract.placeOfPerformance || ''
-  if (profile.geoPrefs.includes('worldwide')) {
-    geoScore = 15
-  } else if (profile.geoPrefs.includes('CONUS') && !contractPlace.toLowerCase().includes('overseas')) {
-    geoScore = 15
-  } else if (profile.geoPrefs.some(geo => contractPlace.toLowerCase().includes(geo.toLowerCase()))) {
-    geoScore = 15
-  } else if (profile.geoPrefs.length === 0) {
-    geoScore = 8
-  }
+  const geo = geoScoreFor(profile.geoPrefs, contract.placeOfPerformance || '')
+  geoScore = geo.score
 
   const total = naicsScore + setAsideScore + contractSizeScore + geoScore
 
@@ -125,14 +134,60 @@ export function calculateMatchScore(
       setAside: setAsideScore === 25
         ? `You qualify for ${setAsideCode || 'open competition'}`
         : `Set-aside ${setAsideCode} may not match your certifications`,
-      contractSize: contractSizeScore === 20
-        ? `Contract value $${contractValue.toLocaleString()} is in your preferred range`
-        : `Contract value outside your preferred range`,
-      geo: geoScore === 15
-        ? `Location matches your geographic preferences`
-        : `Location may not match your preferences`,
+      contractSize: size.detail,
+      geo: geo.detail,
     },
   }
+}
+
+// Onboarding stores labels like "CONUS (Continental US)", "DC Metro Area",
+// "Texas" — while SAM.gov places arrive as "City, ST" with state CODES.
+// Map both worlds so geo scoring actually fires.
+const GEO_REGION_CODES: { pattern: RegExp; codes: string[] }[] = [
+  { pattern: /dc metro/i, codes: ['DC', 'VA', 'MD'] },
+  { pattern: /northeast/i, codes: ['ME', 'NH', 'VT', 'MA', 'RI', 'CT', 'NY', 'NJ', 'PA'] },
+  { pattern: /mid-?atlantic/i, codes: ['DE', 'MD', 'DC', 'VA', 'WV', 'NJ', 'PA'] },
+  { pattern: /southeast/i, codes: ['NC', 'SC', 'GA', 'FL', 'AL', 'MS', 'TN', 'KY', 'AR', 'LA'] },
+  { pattern: /midwest/i, codes: ['OH', 'IN', 'IL', 'MI', 'WI', 'MN', 'IA', 'MO', 'ND', 'SD', 'NE', 'KS'] },
+  { pattern: /southwest/i, codes: ['TX', 'OK', 'NM', 'AZ'] },
+  { pattern: /west coast/i, codes: ['CA', 'OR', 'WA'] },
+  { pattern: /texas/i, codes: ['TX'] },
+  { pattern: /california/i, codes: ['CA'] },
+  { pattern: /virginia/i, codes: ['VA'] },
+  { pattern: /maryland/i, codes: ['MD'] },
+  { pattern: /florida/i, codes: ['FL'] },
+]
+
+function geoScoreFor(prefs: string[], place: string): { score: number; detail: string } {
+  if (prefs.length === 0) {
+    return { score: 8, detail: 'No geographic preference set — neutral credit' }
+  }
+  const overseas = /overseas|oconus/i.test(place)
+  if (prefs.some(p => /worldwide|remote|virtual/i.test(p))) {
+    return { score: 15, detail: 'You work remotely / anywhere' }
+  }
+  if (prefs.some(p => /conus/i.test(p)) && !overseas) {
+    return { score: 15, detail: 'Location is within the continental U.S.' }
+  }
+  // Unknown place shouldn't punish
+  if (!place || place === 'TBD') {
+    return { score: 8, detail: 'Place of performance not specified — no penalty' }
+  }
+  // Extract the state code from "City, ST"
+  const codeMatch = place.match(/,\s*([A-Z]{2})\b/)
+  const placeCode = codeMatch?.[1]
+  for (const pref of prefs) {
+    if (placeCode) {
+      const region = GEO_REGION_CODES.find(r => r.pattern.test(pref))
+      if (region?.codes.includes(placeCode)) {
+        return { score: 15, detail: `${place} is in your preferred region (${pref})` }
+      }
+    }
+    if (place.toLowerCase().includes(pref.toLowerCase())) {
+      return { score: 15, detail: `${place} matches your preference` }
+    }
+  }
+  return { score: 0, detail: `${place} is outside your preferred regions` }
 }
 
 export function sortByMatchScore<T extends { matchScore?: number }>(contracts: T[]): T[] {
