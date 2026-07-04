@@ -3,3 +3,9 @@
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
+
+# Project context
+
+Read `docs/HANDBOOK.md` before starting work — it is the complete project
+handbook: architecture, data constraints (SAM.gov quota!), operations,
+brand system, pending tasks, and how the founder works.
