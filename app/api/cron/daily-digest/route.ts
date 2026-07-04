@@ -101,6 +101,28 @@ export async function GET(req: NextRequest) {
     problems.push(`Digest cron crashed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
+  // Prewarm Recompete Radar: run each distinct NAICS set through the fetcher
+  // overnight so the 24h Kv cache is always warm when users open the tab.
+  // USAspending is free and keyless — this costs nothing but cron time.
+  try {
+    const { getRecompetes } = await import('@/lib/usaspending')
+    const profiles = await prisma.companyProfile.findMany({ select: { naicsCodes: true } })
+    const distinctSets = new Set<string>()
+    for (const p of profiles) {
+      try {
+        const codes = (JSON.parse(p.naicsCodes) as string[]).slice(0, 8)
+        if (codes.length) distinctSets.add([...new Set(codes)].sort().join(','))
+      } catch { /* malformed profile json */ }
+    }
+    for (const set of distinctSets) {
+      await getRecompetes(set.split(',')).catch(err =>
+        console.error(`Recompete prewarm failed for ${set}:`, err)
+      )
+    }
+  } catch (err) {
+    console.error('Recompete prewarm skipped:', err)
+  }
+
   // Self-report: if anything failed, alert the admin so it never fails silently
   if (problems.length > 0 && ADMIN_EMAIL) {
     try {

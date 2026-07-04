@@ -159,53 +159,51 @@ async function fetchRecompetePage(
   return data.results ?? []
 }
 
-const END_DATE_SORT = 'Period of Performance Current End Date'
-const FALLBACK_SORT = 'Award Amount' // known-good: the incumbent fetcher uses it in production
+// One NAICS code per query, sorted by award amount: small result sets return
+// fast and reliably. The previous design (all codes in one query, sorted by
+// end date) forced USAspending to sort its largest tables and timed out on
+// broad codes like 541511/541512.
+async function fetchNaicsPage(naics: string, page: number): Promise<RecompeteRow[]> {
+  return fetchRecompetePage([naics], page, 'Award Amount')
+}
 
 async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
-  const naicsCodes = naicsKey.split(',').filter(Boolean)
+  const naicsCodes = naicsKey.split(',').filter(Boolean).slice(0, 6)
   if (naicsCodes.length === 0) return []
 
   const MONTH_MS = 30 * 24 * 60 * 60 * 1000
   const now = Date.now()
   const horizon = now + 18 * MONTH_MS
+
+  // Parallel per-code queries, 2 pages each (top 200 awards by value per
+  // code). Individual failures are tolerated — partial radar beats no radar.
+  const settled = await Promise.allSettled(
+    naicsCodes.map(async (code) => {
+      const rows: RecompeteRow[] = []
+      for (let page = 1; page <= 2; page++) {
+        const batch = await fetchNaicsPage(code, page)
+        rows.push(...batch)
+        if (batch.length < 100) break
+      }
+      return rows
+    })
+  )
+
+  const fulfilled = settled.filter((r): r is PromiseFulfilledResult<RecompeteRow[]> => r.status === 'fulfilled')
+  if (fulfilled.length === 0) {
+    const firstErr = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+    throw firstErr?.reason ?? new Error('All USAspending queries failed')
+  }
+
   const results: RecompeteAward[] = []
   const seen = new Set<string>()
 
-  // Preferred: sorted by end date descending — far-future awards first, then
-  // our window, then already-expired (page until we cross below "now").
-  // If the API rejects that sort field (400), fall back to sorting by award
-  // amount: we lose the early-exit optimization but still find the window by
-  // scanning the largest awards, which are the ones worth chasing anyway.
-  let sortField = END_DATE_SORT
-  const MAX_PAGES = 3
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    let rows: RecompeteRow[]
-    try {
-      rows = await fetchRecompetePage(naicsCodes, page, sortField)
-    } catch (err) {
-      const status = (err as Error & { status?: number }).status
-      if (status === 400 && sortField === END_DATE_SORT && page === 1) {
-        sortField = FALLBACK_SORT
-        rows = await fetchRecompetePage(naicsCodes, page, sortField)
-      } else if (page > 1) {
-        // Later page timed out — return what we already have instead of failing
-        break
-      } else {
-        throw err
-      }
-    }
-    if (rows.length === 0) break
-
-    let crossedPast = false
+  for (const { value: rows } of fulfilled) {
     for (const row of rows) {
       const endStr = row['Period of Performance Current End Date']
       if (!endStr) continue
       const end = new Date(endStr).getTime()
-      if (isNaN(end)) continue
-
-      if (end < now) { crossedPast = true; continue }
-      if (end > horizon) continue
+      if (isNaN(end) || end < now || end > horizon) continue
 
       const id = row['Award ID'] ?? row.generated_internal_id ?? ''
       if (!id || seen.has(id)) continue
@@ -227,24 +225,48 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
           : null,
       })
     }
-
-    // Early exit is only valid when rows arrive in end-date order
-    if (crossedPast && sortField === END_DATE_SORT) break
   }
 
   // Soonest expirations first — most actionable
   return results.sort((a, b) => a.monthsUntilExpiry - b.monthsUntilExpiry)
 }
 
-// 24h cache; the naicsKey arg is part of the cache key
-const getCachedRecompetes = unstable_cache(
-  _fetchRecompetes,
-  ['usaspending-recompetes-v1'],
-  { revalidate: 86400 }
-)
+// DB-backed cache (Kv table): shared across all serverless instances, serves
+// fresh results for 24h, and serves STALE results when USAspending is having
+// a bad day — the radar degrades gracefully instead of erroring.
+const RECOMPETE_TTL_MS = 24 * 60 * 60 * 1000
 
 export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
   const key = [...new Set(naicsCodes)].sort().join(',')
   if (!key) return []
-  return getCachedRecompetes(key)
+  const kvKey = `recompetes:v2:${key}`
+
+  const { prisma } = await import('./prisma')
+
+  let stale: RecompeteAward[] | null = null
+  try {
+    const row = await prisma.kv.findUnique({ where: { key: kvKey } })
+    if (row) {
+      const parsed = JSON.parse(row.value) as RecompeteAward[]
+      if (Date.now() - new Date(row.updatedAt).getTime() < RECOMPETE_TTL_MS) {
+        return parsed // fresh — instant, no upstream call
+      }
+      stale = parsed
+    }
+  } catch { /* Kv table missing pre-migration — compute live */ }
+
+  try {
+    const fresh = await _fetchRecompetes(key)
+    try {
+      await prisma.kv.upsert({
+        where: { key: kvKey },
+        update: { value: JSON.stringify(fresh) },
+        create: { key: kvKey, value: JSON.stringify(fresh) },
+      })
+    } catch { /* cache write is best-effort */ }
+    return fresh
+  } catch (err) {
+    if (stale) return stale // upstream down — yesterday's radar beats an error
+    throw err
+  }
 }
