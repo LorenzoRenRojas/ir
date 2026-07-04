@@ -73,11 +73,26 @@ export async function GET() {
       }
     }
 
-    const saved = await prisma.savedContract.findMany({
-      where: { userId: { in: teamUserIds } },
-      orderBy: { createdAt: 'desc' },
-      include: { user: { select: { name: true, email: true } } },
-    })
+    let saved
+    try {
+      saved = await prisma.savedContract.findMany({
+        where: { userId: { in: teamUserIds } },
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { name: true, email: true } } },
+      })
+    } catch {
+      // Pre-migration DB without the notes column — select explicitly and default it
+      const rows = await prisma.savedContract.findMany({
+        where: { userId: { in: teamUserIds } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, userId: true, contractId: true, samNoticeId: true, title: true,
+          agency: true, value: true, deadline: true, matchScore: true, status: true,
+          createdAt: true, user: { select: { name: true, email: true } },
+        },
+      })
+      saved = rows.map((r: (typeof rows)[number]) => ({ ...r, notes: null }))
+    }
 
     // Deduplicate by contractId, keeping latest
     const seen = new Set<string>()
@@ -164,17 +179,23 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { contractId, status } = await req.json()
-    if (!contractId || !status) {
-      return NextResponse.json({ error: 'contractId and status are required' }, { status: 400 })
+    const { contractId, status, notes } = await req.json()
+    if (!contractId || (status === undefined && notes === undefined)) {
+      return NextResponse.json({ error: 'contractId and a status or notes update are required' }, { status: 400 })
     }
-    if (!PIPELINE_STAGES.includes(status)) {
+    if (status !== undefined && !PIPELINE_STAGES.includes(status)) {
       return NextResponse.json({ error: `status must be one of: ${PIPELINE_STAGES.join(', ')}` }, { status: 400 })
+    }
+    if (notes !== undefined && (typeof notes !== 'string' || notes.length > 10_000)) {
+      return NextResponse.json({ error: 'notes must be a string under 10k characters' }, { status: 400 })
     }
 
     const updated = await prisma.savedContract.update({
       where: { userId_contractId: { userId: session.user.id, contractId } },
-      data: { status },
+      data: {
+        ...(status !== undefined ? { status } : {}),
+        ...(notes !== undefined ? { notes } : {}),
+      },
     })
 
     return NextResponse.json({ saved: updated })

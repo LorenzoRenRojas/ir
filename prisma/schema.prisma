@@ -101,6 +101,7 @@ model SavedContract {
   deadline    DateTime?
   matchScore  Int?
   status      String   @default("saved")
+  notes       String?
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

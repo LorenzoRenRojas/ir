@@ -48,6 +48,8 @@ export async function GET() {
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "noticeId" TEXT`,
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "contractTitle" TEXT`,
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "agencyName" TEXT`,
+    // Pipeline workspace notes
+    `ALTER TABLE "SavedContract" ADD COLUMN "notes" TEXT`,
     // Email observability
     `CREATE TABLE IF NOT EXISTS "EmailLog" ("id" TEXT NOT NULL PRIMARY KEY,"to" TEXT NOT NULL,"subject" TEXT NOT NULL,"status" TEXT NOT NULL,"error" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     // Full-market contract store
