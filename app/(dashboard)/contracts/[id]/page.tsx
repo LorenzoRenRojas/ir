@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
 import { SaveContractButton } from '@/components/contracts/save-contract-button'
 import { fetchIncumbent } from '@/lib/usaspending'
+import ScoreBreakdown from '@/components/contracts/ScoreBreakdown'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -19,19 +20,6 @@ function formatDate(d: string): string {
   const date = new Date(d)
   if (isNaN(date.getTime())) return d
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-}
-
-function ScoreBar({ label, score, max }: { label: string; score: number; max: number }) {
-  const pct = max > 0 ? Math.round((score / max) * 100) : 0
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', width: 120, flexShrink: 0, letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>{label}</span>
-      <div style={{ flex: 1, height: 2, background: 'rgba(0,0,0,0.07)' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: score > 0 ? '#C41230' : 'rgba(0,0,0,0.05)', transition: 'width 0.3s' }} />
-      </div>
-      <span style={{ fontSize: 10, fontWeight: 700, width: 28, textAlign: 'right', color: score > 0 ? '#C41230' : '#64748b', fontFamily: 'var(--font-geist-mono, monospace)' }}>+{score}</span>
-    </div>
-  )
 }
 
 export default async function ContractDetailPage({
@@ -86,10 +74,6 @@ export default async function ContractDetailPage({
     { label: 'PLACE OF PERFORMANCE', value: contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' ? contract.placeOfPerformance : 'Not specified' },
   ]
 
-  const scoreColor = breakdown
-    ? breakdown.total >= 80 ? '#16a34a' : breakdown.total >= 60 ? '#C41230' : '#64748b'
-    : '#64748b'
-
   return (
     <div style={{ padding: '32px 40px', minHeight: '100vh', maxWidth: 1100, fontFamily: 'var(--font-geist-mono, monospace)' }}>
       <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'rgba(0,0,0,0.35)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none', marginBottom: 28 }}>
@@ -100,6 +84,9 @@ export default async function ContractDetailPage({
         {contract.title}
       </h1>
       <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginBottom: 32, letterSpacing: '0.06em' }}>{contract.agency}</div>
+
+      {/* Full animated match analysis — the "why this score" story */}
+      {breakdown && <ScoreBreakdown breakdown={breakdown} />}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12, alignItems: 'start' }}>
         {/* Left */}
@@ -145,28 +132,6 @@ export default async function ContractDetailPage({
 
         {/* Right */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Match score */}
-          {breakdown && (
-            <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>MATCH SCORE</div>
-              <div style={{ marginBottom: 20 }}>
-                <span style={{ fontSize: 48, fontWeight: 700, color: scoreColor, fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1 }}>{breakdown.total}</span>
-                <span style={{ fontSize: 16, color: 'rgba(0,0,0,0.25)', marginLeft: 4 }}>/100</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <ScoreBar label="NAICS MATCH" score={breakdown.naicsScore} max={40} />
-                <ScoreBar label="SET-ASIDE" score={breakdown.setAsideScore} max={25} />
-                <ScoreBar label="CONTRACT SIZE" score={breakdown.contractSizeScore} max={20} />
-                <ScoreBar label="GEOGRAPHY" score={breakdown.geoScore} max={15} />
-              </div>
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {Object.values(breakdown.details).map((detail, i) => (
-                  <div key={i} style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', lineHeight: 1.5 }}>• {detail}</div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Incumbent */}
           {incumbent && (
             <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px' }}>

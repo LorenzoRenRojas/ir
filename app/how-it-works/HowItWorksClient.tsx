@@ -44,10 +44,10 @@ function SignalFunnel() {
 
 // ─── The scoring formula: 40 / 25 / 20 / 15 ───────────────────────────────────
 const FACTORS = [
-  { label: 'NAICS ALIGNMENT', pts: 40, desc: 'Exact code match scores full points; same-sector codes score partial. This is the heaviest signal because it decides whether you can legally and credibly perform the work.' },
-  { label: 'SET-ASIDE ELIGIBILITY', pts: 25, desc: '8(a), SDVOSB, WOSB, HUBZone, small business — if the contract is set aside and you qualify, competition collapses to a fraction of the market.' },
-  { label: 'CONTRACT SIZE FIT', pts: 20, desc: 'Scored against the award sizes you can realistically staff and finance. A $45M flood-control job is noise to a 6-person firm — so it never outranks a winnable one.' },
-  { label: 'GEOGRAPHY', pts: 15, desc: 'Place of performance against where you actually work — states, regions, remote, CONUS.' },
+  { label: 'NAICS ALIGNMENT', pts: 40, desc: 'Graduated by code depth: exact 6-digit match earns 40, same industry group 28, same subsector 20, same sector 10. The heaviest signal because it decides whether you can credibly perform the work.' },
+  { label: 'SET-ASIDE ELIGIBILITY', pts: 25, desc: '8(a), SDVOSB, WOSB, HUBZone, small business — if the contract is set aside and you qualify, competition collapses to a fraction of the market. If you don\'t, we tell you what certification it takes.' },
+  { label: 'CONTRACT SIZE FIT', pts: 20, desc: 'Distance-graduated against the award sizes you can staff and finance: in-range 20, one band away 10. When the government doesn\'t post a value — most notices — you get neutral credit, never a penalty.' },
+  { label: 'GEOGRAPHY', pts: 15, desc: 'Place of performance mapped against your regions — states, multi-state regions like DC Metro or Southeast, remote, CONUS. State codes and region names both resolve.' },
 ]
 
 function ScoringBar() {
@@ -159,8 +159,10 @@ export default function HowItWorksClient() {
             100 points. <span style={{ color: crimson }}>Zero black box.</span>
           </h2>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 620, fontFamily: sans, lineHeight: 1.7 }}>
-            Every contract's score decomposes into four visible factors — and every contract card shows
-            you exactly which ones it earned. If IR says 85, you can see why it says 85.
+            Every contract's score decomposes into four visible factors, and every contract page shows the
+            full analysis: what you have, what the notice demands, where they align, and what each gap
+            costs in points. If IR says 85, you can read exactly why it says 85 — and what would make it a 100.
+            Agencies you've worked with before also rank ahead on near-ties.
           </p>
           <ScoringBar />
         </section>

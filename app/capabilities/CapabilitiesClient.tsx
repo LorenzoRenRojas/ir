@@ -34,7 +34,7 @@ const LOOP_STEPS = [
 
 const MATRIX: { feature: string; ir: string; legacy: string; irHas: boolean; legacyHas: boolean }[] = [
   { feature: 'Profile-scored contract matching',      ir: 'Every posting, daily',        legacy: 'Keyword saved searches',      irHas: true,  legacyHas: true },
-  { feature: 'Match reasoning shown per contract',    ir: 'NAICS · set-aside · size · geo', legacy: 'Black box',               irHas: true,  legacyHas: false },
+  { feature: 'Match reasoning shown per contract',    ir: 'Full analysis: you vs. the notice, factor by factor', legacy: 'Black box', irHas: true,  legacyHas: false },
   { feature: 'Expiring-contract (pre-RFP) intel',     ir: 'Automated, included',         legacy: 'Human analysts, $10k+ tier',  irHas: true,  legacyHas: true },
   { feature: 'Proposal drafting',                     ir: '4-volume guided drafts',      legacy: 'Not offered',                 irHas: true,  legacyHas: false },
   { feature: 'Capability statement generator',        ir: 'One click',                   legacy: 'Not offered',                 irHas: true,  legacyHas: false },
