@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { downloadTextAsPdf } from '@/lib/pdf'
 
 interface SavedContract {
   id: string
   contractId: string
   samNoticeId: string | null
+  user?: { name: string | null; email: string } | null
   title: string
   agency: string
   value: number | null
@@ -72,6 +75,7 @@ const btn: React.CSSProperties = {
 const btnPrimary: React.CSSProperties = { ...btn, background: crimson, color: '#fff', border: 'none' }
 
 export default function PipelinePage() {
+  const { data: session } = useSession()
   const [contracts, setContracts] = useState<SavedContract[]>([])
   const [proposals, setProposals] = useState<Proposal[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -192,6 +196,13 @@ export default function PipelinePage() {
     a.download = `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function handleDownloadPdf(p: Proposal) {
+    const res = await fetch(`/api/documents/${p.id}`)
+    const data = await res.json()
+    if (!data.content) return
+    await downloadTextAsPdf(p.title, data.content, `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`)
   }
 
   async function handleSendToOfficer(c: SavedContract, p: Proposal) {
@@ -349,6 +360,11 @@ export default function PipelinePage() {
                           ☰ {cProposals.length} DRAFT{cProposals.length > 1 ? 'S' : ''}
                         </span>
                       )}
+                      {c.user && session?.user?.email && c.user.email !== session.user.email && (
+                        <span style={{ fontSize: 9, letterSpacing: '0.08em', color: '#b45309', fontFamily: mono, border: '1px solid rgba(180,83,9,0.25)', padding: '2px 7px' }}>
+                          BY {(c.user.name ?? c.user.email).split(' ')[0].toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', fontFamily: sans }}>{c.title}</div>
                     <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap' }}>
@@ -389,7 +405,8 @@ export default function PipelinePage() {
                             <div key={p.id} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '10px 12px' }}>
                               <div style={{ fontSize: 11.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 6 }}>{p.title}</div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button onClick={() => handleDownloadProposal(p)} style={{ ...btn, padding: '5px 10px', fontSize: 8 }}>↓ DOWNLOAD</button>
+                                <button onClick={() => handleDownloadProposal(p)} style={{ ...btn, padding: '5px 10px', fontSize: 8 }}>↓ TXT</button>
+                                <button onClick={() => handleDownloadPdf(p)} style={{ ...btn, padding: '5px 10px', fontSize: 8 }}>↓ PDF</button>
                                 {c.samNoticeId && (
                                   <button onClick={() => handleSendToOfficer(c, p)} style={{ ...btn, padding: '5px 10px', fontSize: 8, borderColor: 'rgba(196,18,48,0.35)', color: crimson }}>SEND TO PO →</button>
                                 )}

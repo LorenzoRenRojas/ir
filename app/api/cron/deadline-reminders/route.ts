@@ -30,13 +30,13 @@ export async function GET(req: NextRequest) {
         deadline: { gte: new Date(now), lte: new Date(now + 3 * DAY_MS) },
         status: { notIn: ['submitted', 'won', 'lost', 'archived'] },
       },
-      include: { user: { select: { email: true, name: true, emailVerified: true } } },
+      include: { user: { select: { id: true, email: true, name: true, emailVerified: true, notifyDeadlines: true } } },
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
 
     for (const saved of upcoming) {
-      if (!saved.deadline || !saved.user.emailVerified) continue
+      if (!saved.deadline || !saved.user.emailVerified || !saved.user.notifyDeadlines) continue
       const remaining = saved.deadline.getTime() - now
       const window = REMINDER_WINDOWS.find(w => remaining > w.from && remaining <= w.to)
       if (!window) continue
@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
           saved.agency,
           saved.deadline,
           window.daysLeft,
-          baseUrl
+          baseUrl,
+          saved.user.id
         )
         emailsSent++
       } catch (err) {

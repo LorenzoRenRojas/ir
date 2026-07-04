@@ -113,6 +113,8 @@ const GEO_OPTIONS = [
 
 interface Answers {
   companyName: string
+  website: string
+  yearFounded: string
   capabilityStatement: string
   businessTypes: string[]
   naicsSearch: string
@@ -130,7 +132,7 @@ interface Answers {
 }
 
 const initial: Answers = {
-  companyName: '', capabilityStatement: '', businessTypes: [],
+  companyName: '', website: '', yearFounded: '', capabilityStatement: '', businessTypes: [],
   naicsSearch: '', naicsCodes: [], agencyHistory: [],
   annualRevenue: '', orgSize: '', contractVehicles: [],
   certifications: [], contractSizePref: 'Any', contractTypePrefs: [],
@@ -214,6 +216,20 @@ const QUESTIONS: Question[] = [
       : "What's your company name?",
     type: 'text',
     hint: 'Legal name or DBA is fine.',
+  },
+  {
+    id: 'website',
+    ask: 'Company website? Contracting officers check — a live site builds trust.',
+    type: 'text',
+    optional: true,
+    hint: 'e.g. yourcompany.com — skip if you don\'t have one yet.',
+  },
+  {
+    id: 'yearFounded',
+    ask: 'What year was the company founded?',
+    type: 'text',
+    optional: true,
+    hint: 'Longevity is a win factor on past-performance evaluations.',
   },
   {
     id: 'capabilityStatement',
@@ -375,6 +391,8 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: answers.companyName,
+          website: answers.website.trim() ? answers.website.trim() : null,
+          yearFounded: /^\d{4}$/.test(answers.yearFounded.trim()) ? parseInt(answers.yearFounded.trim(), 10) : null,
           uei: answers.uei || null,
           businessTypes: answers.businessTypes,
           naicsCodes: answers.naicsCodes,
@@ -392,6 +410,7 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong'); return }
+      try { localStorage.setItem('ir-welcome', '1') } catch { /* private mode */ }
       router.push('/dashboard')
     } catch {
       setError('Failed to save profile. Please try again.')
@@ -429,8 +448,8 @@ export default function OnboardingPage() {
 
         {/* Metatron message */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 32, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ width: 90, height: 90, flexShrink: 0, marginTop: 0 }}>
-            <MetatronAvatar size={90} />
+          <div style={{ width: 96, height: 96, flexShrink: 0, marginTop: 0, filter: 'drop-shadow(0 0 16px rgba(196,18,48,0.5)) drop-shadow(0 0 5px rgba(196,18,48,0.55))' }}>
+            <MetatronAvatar size={96} />
           </div>
           <div style={{ flex: 1 }}>
             <div className="matrix-font" style={{ fontSize: 16, color: '#e0e0e0', lineHeight: 1.7, minHeight: 28, letterSpacing: '0.02em' }}>

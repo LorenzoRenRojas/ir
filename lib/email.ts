@@ -4,6 +4,7 @@
 // From address must be from a verified domain in your Resend account.
 
 import { prisma } from './prisma'
+import { unsubFooterHtml } from './unsub'
 
 const FROM = 'IR <noreply@ir-gov.app>'
 const RESEND_API = 'https://api.resend.com/emails'
@@ -223,7 +224,8 @@ export async function sendDailyDigestEmail(
   email: string,
   name: string | null,
   matches: DigestMatch[],
-  baseUrl: string
+  baseUrl: string,
+  userId?: string
 ): Promise<void> {
   const rows = matches
     .map(
@@ -285,6 +287,7 @@ export async function sendDailyDigestEmail(
               You receive this because you have an active IR company profile.<br>
               Manage notifications in <a href="${baseUrl}/settings" style="color:#C41230;">settings</a>.
             </p>
+            ${userId ? unsubFooterHtml(baseUrl, userId, 'digest') : ''}
           </td>
         </tr>
       </table>
@@ -303,7 +306,8 @@ export async function sendDeadlineReminderEmail(
   agency: string,
   deadline: Date,
   daysLeft: number,
-  baseUrl: string
+  baseUrl: string,
+  userId?: string
 ): Promise<void> {
   const urgency = daysLeft <= 1 ? 'DUE IN 24 HOURS' : `${daysLeft} DAYS REMAINING`
 
@@ -335,6 +339,7 @@ export async function sendDeadlineReminderEmail(
                style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
               OPEN SAVED CONTRACTS →
             </a>
+            ${userId ? unsubFooterHtml(baseUrl, userId, 'deadlines') : ''}
           </td>
         </tr>
       </table>
@@ -359,7 +364,8 @@ export async function sendRecompeteAlertEmail(
   email: string,
   name: string | null,
   items: RecompeteAlertItem[],
-  baseUrl: string
+  baseUrl: string,
+  userId?: string
 ): Promise<void> {
   const fmtAmt = (v: number | null) =>
     !v ? 'Undisclosed' : v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : `$${Math.round(v / 1000)}K`
@@ -416,6 +422,7 @@ export async function sendRecompeteAlertEmail(
             <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:0;line-height:1.6;">
               You're alerted once per new expiring award. Source: USAspending.gov award data.
             </p>
+            ${userId ? unsubFooterHtml(baseUrl, userId, 'radar') : ''}
           </td>
         </tr>
       </table>

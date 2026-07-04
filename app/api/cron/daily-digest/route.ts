@@ -54,8 +54,8 @@ export async function GET(req: NextRequest) {
     }
 
     const users = await prisma.user.findMany({
-      where: { emailVerified: { not: null }, companyProfile: { isNot: null } },
-      select: { email: true, name: true, companyProfile: true },
+      where: { emailVerified: { not: null }, companyProfile: { isNot: null }, notifyDigest: true },
+      select: { id: true, email: true, name: true, companyProfile: true },
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       if (matches.length === 0) continue
 
       try {
-        await sendDailyDigestEmail(user.email, user.name, matches, baseUrl)
+        await sendDailyDigestEmail(user.email, user.name, matches, baseUrl, user.id)
         emailsSent++
       } catch (err) {
         problems.push(`Digest to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     const { getRecompetes } = await import('@/lib/usaspending')
     const { sendRecompeteAlertEmail } = await import('@/lib/email')
     const radarUsers = await prisma.user.findMany({
-      where: { emailVerified: { not: null }, companyProfile: { isNot: null } },
+      where: { emailVerified: { not: null }, companyProfile: { isNot: null }, notifyRadar: true },
       select: { id: true, email: true, name: true, companyProfile: { select: { naicsCodes: true } } },
     })
 
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
           agency: r.subAgency || r.agency,
         }))
 
-        await sendRecompeteAlertEmail(user.email, user.name, toSend, baseUrl)
+        await sendRecompeteAlertEmail(user.email, user.name, toSend, baseUrl, user.id)
         radarAlertsSent++
 
         const updatedSeen = [...new Set([...seen, ...fresh.map(r => r.awardId)])].slice(-800)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import SecuritySection from '@/components/settings/SecuritySection'
 
 interface CompanyProfileData {
   companyName: string
@@ -787,6 +788,8 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      <SecuritySection />
     </div>
   )
 }

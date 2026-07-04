@@ -340,6 +340,17 @@ export default function DashboardPage() {
 
   const onboardingDone = session?.user?.onboardingDone
 
+  const [showWelcome, setShowWelcome] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('ir-welcome') === '1') setShowWelcome(true)
+    } catch { /* private mode */ }
+  }, [])
+  function dismissWelcome() {
+    setShowWelcome(false)
+    try { localStorage.removeItem('ir-welcome') } catch { /* ignore */ }
+  }
+
   return (
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
       <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -362,6 +373,19 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {showWelcome && (
+        <div style={{ marginBottom: 24, padding: '20px 24px', background: '#0A0A0A', border: '1px solid rgba(196,18,48,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: '0.18em', color: '#C41230', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 8, fontWeight: 700 }}>◆ PROFILE ACTIVE — THE MACHINE IS RUNNING</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 4 }}>Every contract below is scored against YOUR profile.</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.6 }}>Save one that looks winnable — that starts your pipeline, unlocks deadline alerts, and teaches the matcher what you like. Check RECOMPETES for contracts expiring in your space.</div>
+          </div>
+          <button onClick={dismissWelcome} style={{ flexShrink: 0, padding: '9px 16px', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+            GOT IT ✓
+          </button>
+        </div>
+      )}
 
       {!onboardingDone && (
         <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(196,18,48,0.04)', border: '1px solid rgba(196,18,48,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>

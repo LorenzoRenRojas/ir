@@ -48,6 +48,10 @@ export async function GET() {
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "noticeId" TEXT`,
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "contractTitle" TEXT`,
     `ALTER TABLE "GeneratedDocument" ADD COLUMN "agencyName" TEXT`,
+    // Email notification preferences (unsubscribe support)
+    `ALTER TABLE "User" ADD COLUMN "notifyDigest" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "User" ADD COLUMN "notifyDeadlines" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "User" ADD COLUMN "notifyRadar" BOOLEAN NOT NULL DEFAULT true`,
     // Pipeline workspace notes
     `ALTER TABLE "SavedContract" ADD COLUMN "notes" TEXT`,
     // Email observability
