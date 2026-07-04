@@ -6,6 +6,7 @@ const BASE = 'https://ir-gov.app'
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: BASE, changeFrequency: 'weekly', priority: 1 },
+    { url: `${BASE}/coming-soon`, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${BASE}/naics`, changeFrequency: 'daily', priority: 0.9 },
     ...TOP_NAICS_CODES.map(n => ({
       url: `${BASE}/naics/${n.code}`,

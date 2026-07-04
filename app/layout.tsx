@@ -40,6 +40,34 @@ export const metadata: Metadata = {
   },
 }
 
+// Structured data: tells Google exactly what IR is, powers rich results
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://ir-gov.app/#org',
+      name: 'IR — GovCon Intelligence',
+      url: 'https://ir-gov.app',
+      description: 'Federal contract intelligence for small businesses: AI-matched SAM.gov opportunities, recompete radar, and proposal drafting.',
+      contactPoint: { '@type': 'ContactPoint', email: 'hello@ir-gov.app', contactType: 'sales' },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'IR',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      url: 'https://ir-gov.app',
+      description: 'Finds federal contracts your company can win: profile-scored SAM.gov matching, daily alerts, expiring-contract intelligence, and 4-volume proposal drafting.',
+      offers: [
+        { '@type': 'Offer', name: 'Starter', price: '79', priceCurrency: 'USD' },
+        { '@type': 'Offer', name: 'Pro', price: '199', priceCurrency: 'USD' },
+        { '@type': 'Offer', name: 'Enterprise', price: '499', priceCurrency: 'USD' },
+      ],
+    },
+  ],
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +80,10 @@ export default function RootLayout({
       style={{ height: '100%' }}
     >
       <body style={{ minHeight: '100%', background: '#0A0A0B', color: '#E2E8F0', margin: 0 }}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
