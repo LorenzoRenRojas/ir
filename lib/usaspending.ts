@@ -159,13 +159,37 @@ async function fetchRecompetePage(
   return data.results ?? []
 }
 
-// One NAICS code per query, sorted by award amount: small result sets return
-// fast and reliably. The previous design (all codes in one query, sorted by
-// end date) forced USAspending to sort its largest tables and timed out on
-// broad codes like 541511/541512.
-async function fetchNaicsPage(naics: string, page: number): Promise<RecompeteRow[]> {
-  return fetchRecompetePage([naics], page, 'Award Amount')
+// Per-code, two complementary scans merged:
+//  A) end-date descending with early exit — walks from far-future awards down
+//     into the expiring window directly (complete when it works)
+//  B) top awards by value — a bounded sweep that catches window awards even
+//     when strategy A's far-future head is too deep to page through
+// Value-sort alone missed everything: a big NAICS code's largest awards are
+// multi-year vehicles ending 2028+, so the 18-month window filtered to zero.
+async function scanByEndDate(code: string, now: number): Promise<RecompeteRow[]> {
+  const rows: RecompeteRow[] = []
+  for (let page = 1; page <= 4; page++) {
+    const batch = await fetchRecompetePage([code], page, END_DATE_SORT)
+    rows.push(...batch)
+    if (batch.length < 100) break
+    // Early exit once the stream has descended past "now" — everything after
+    // this page has already expired
+    const last = batch[batch.length - 1]?.['Period of Performance Current End Date']
+    if (last && new Date(last).getTime() < now) break
+  }
+  return rows
 }
+
+async function sweepByAmount(code: string): Promise<RecompeteRow[]> {
+  const pages = await Promise.allSettled([
+    fetchRecompetePage([code], 1, AMOUNT_SORT),
+    fetchRecompetePage([code], 2, AMOUNT_SORT),
+  ])
+  return pages.flatMap(p => (p.status === 'fulfilled' ? p.value : []))
+}
+
+const END_DATE_SORT = 'Period of Performance Current End Date'
+const AMOUNT_SORT = 'Award Amount'
 
 async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const naicsCodes = naicsKey.split(',').filter(Boolean).slice(0, 6)
@@ -175,16 +199,18 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const now = Date.now()
   const horizon = now + 18 * MONTH_MS
 
-  // Parallel per-code queries, 2 pages each (top 200 awards by value per
-  // code). Individual failures are tolerated — partial radar beats no radar.
+  // All codes in parallel; within a code, both strategies in parallel.
+  // Individual failures are tolerated — partial radar beats no radar.
   const settled = await Promise.allSettled(
     naicsCodes.map(async (code) => {
+      const [byDate, byAmount] = await Promise.allSettled([
+        scanByEndDate(code, now),
+        sweepByAmount(code),
+      ])
       const rows: RecompeteRow[] = []
-      for (let page = 1; page <= 2; page++) {
-        const batch = await fetchNaicsPage(code, page)
-        rows.push(...batch)
-        if (batch.length < 100) break
-      }
+      if (byDate.status === 'fulfilled') rows.push(...byDate.value)
+      if (byAmount.status === 'fulfilled') rows.push(...byAmount.value)
+      if (rows.length === 0 && byDate.status === 'rejected') throw byDate.reason
       return rows
     })
   )
