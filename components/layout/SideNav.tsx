@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import MetatronIcon from '@/components/MetatronIcon'
+import MetatronEyeIcon from '@/components/MetatronEyeIcon'
 import { SignOutButton } from '@/components/ui/sign-out-button'
 
 const mono = 'var(--font-geist-mono, monospace)'
@@ -71,7 +72,7 @@ export default function SideNav({
               }}
             >
               <span style={{ color: active ? crimson : 'rgba(0,0,0,0.25)', display: 'inline-flex' }}>
-                <MetatronIcon size={13} />
+                {href === '/recompetes' ? <MetatronEyeIcon size={16} /> : <MetatronIcon size={13} />}
               </span>
               {label}
             </Link>

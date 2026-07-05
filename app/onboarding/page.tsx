@@ -204,10 +204,10 @@ type Question = {
 const QUESTIONS: Question[] = [
   {
     id: 'uei',
-    ask: "Welcome to IR. Do you have a SAM.gov UEI? Paste it and I'll pull your official registration — company name, NAICS codes, set-aside status — automatically.",
+    ask: "Welcome to IR. Got a SAM.gov UEI or CAGE code? Paste either and I'll pull your official registration — company name, NAICS codes, set-aside status — automatically.",
     type: 'text',
     optional: true,
-    hint: '12-character Unique Entity Identifier from SAM.gov. Skip if you don\'t have one yet — you can add it later.',
+    hint: '12-character UEI or 5-character CAGE code from SAM.gov. Skip if you don\'t have one yet — you can add it later.',
   },
   {
     id: 'companyName',
@@ -348,7 +348,7 @@ export default function OnboardingPage() {
 
     // Leaving the UEI step with a plausible UEI → pull the official SAM.gov
     // registration and prefill everything we can before the next question.
-    if (q.id === 'uei' && /^[a-zA-Z0-9]{12}$/.test(answers.uei.trim())) {
+    if (q.id === 'uei' && /^([a-zA-Z0-9]{12}|[a-zA-Z0-9]{5})$/.test(answers.uei.trim())) {
       setUeiLoading(true)
       setUeiNote('')
       try {

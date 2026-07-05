@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import MetatronBackdrop from '@/components/MetatronBackdrop'
+import MetatronEyeIcon from '@/components/MetatronEyeIcon'
 import { useInView, CountUp, MarketingNav, mono, sans, crimson, surface } from '@/components/marketing'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ function RadarSection() {
   const { ref, inView } = useInView<HTMLDivElement>(0.25)
   return (
     <section ref={ref} style={{ padding: '72px 0' }}>
-      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: crimson, margin: '0 0 14px' }}>◎ RECOMPETE RADAR — NO OTHER PLATFORM SHIPS THIS</p>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: crimson, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}><MetatronEyeIcon size={22} /> RECOMPETE RADAR — NO OTHER PLATFORM SHIPS THIS</p>
       <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
         The contracts that don&apos;t exist yet.
       </h2>

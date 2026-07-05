@@ -30,10 +30,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Too many lookups. Please wait a moment.' }, { status: 429 })
   }
 
-  const uei = new URL(req.url).searchParams.get('uei')?.trim().toUpperCase()
-  if (!uei || !/^[A-Z0-9]{12}$/.test(uei)) {
-    return NextResponse.json({ error: 'A valid 12-character UEI is required.' }, { status: 400 })
+  const raw = new URL(req.url).searchParams.get('uei')?.trim().toUpperCase() ?? ''
+  const isUei = /^[A-Z0-9]{12}$/.test(raw)
+  const isCage = /^[A-Z0-9]{5}$/.test(raw)
+  if (!isUei && !isCage) {
+    return NextResponse.json({ error: 'Enter a 12-character UEI or a 5-character CAGE code.' }, { status: 400 })
   }
+  const uei = raw
 
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) {
@@ -50,7 +53,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://api.sam.gov/entity-information/v3/entities?api_key=${apiKey}&ueiSAM=${uei}&includeSections=entityRegistration,coreData,assertions`,
+      `https://api.sam.gov/entity-information/v3/entities?api_key=${apiKey}&${isUei ? `ueiSAM=${uei}` : `cageCode=${uei}`}&includeSections=entityRegistration,coreData,assertions`,
       { cache: 'no-store', signal: AbortSignal.timeout(15_000) }
     )
 
@@ -100,8 +103,8 @@ export async function GET(req: NextRequest) {
       profile: {
         companyName: reg.legalBusinessName ?? null,
         dbaName: reg.dbaName ?? null,
-        uei,
-        cageCode: reg.cageCode ?? null,
+        uei: reg.ueiSAM ?? (isUei ? uei : null),
+        cageCode: reg.cageCode ?? (isCage ? uei : null),
         website: core.entityInformation?.entityURL ?? null,
         yearFounded: yearFounded && !isNaN(yearFounded) ? yearFounded : null,
         naicsCodes,

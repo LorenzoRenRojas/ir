@@ -1,27 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { metatronFrame } from '@/lib/metatron-motion'
 
-const HALF = Math.PI / 6
-const D = 132
 
-function geometry(t: number) {
-  const fold = Math.sin(t * 0.42) * 0.5 + 0.5
-  const g = t * 0.18
-  const pts: { x: number; y: number }[] = [{ x: 0, y: 0 }]
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3 - HALF * fold + g
-    pts.push({ x: Math.cos(a) * D, y: Math.sin(a) * D })
-  }
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3 + HALF * fold + g
-    const r = D * (2 - (2 - Math.sqrt(3)) * fold)
-    pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r })
-  }
-  return pts
-}
 
-const INIT_PTS = geometry(0)
+const INIT_PTS = metatronFrame(0).pts
 
 const initLines: { x1: number; y1: number; x2: number; y2: number }[] = []
 for (let i = 0; i < INIT_PTS.length; i++) {
@@ -39,6 +23,7 @@ export default function MetatronAvatar({ size = 90 }: { size?: number }) {
   const lineEls  = useRef<SVGLineElement[]>([])
   const circEls  = useRef<SVGCircleElement[]>([])
   const nodeEls  = useRef<SVGCircleElement[]>([])
+  const lidRef = useRef<SVGPathElement>(null)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -52,7 +37,7 @@ export default function MetatronAvatar({ size = 90 }: { size?: number }) {
 
     const loop = () => {
       const t = (performance.now() - startRef.current) / 1000
-      const pts = geometry(t)
+      const { pts, pupilR, lidOpacity, lid } = metatronFrame(t)
 
       for (let i = 0; i < pts.length; i++) {
         const cx = pts[i].x.toFixed(1)
@@ -61,6 +46,13 @@ export default function MetatronAvatar({ size = 90 }: { size?: number }) {
         circEls.current[i]?.setAttribute('cy', cy)
         nodeEls.current[i]?.setAttribute('cx', cx)
         nodeEls.current[i]?.setAttribute('cy', cy)
+      }
+
+      // The Eye: center node dilates into the pupil; the upper lid draws in
+      nodeEls.current[0]?.setAttribute('r', pupilR.toFixed(1))
+      if (lidRef.current) {
+        lidRef.current.setAttribute('d', 'M' + lid.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('L'))
+        lidRef.current.setAttribute('stroke-opacity', lidOpacity.toFixed(2))
       }
 
       let li = 0
@@ -108,6 +100,7 @@ export default function MetatronAvatar({ size = 90 }: { size?: number }) {
             cx={p.x.toFixed(1)} cy={p.y.toFixed(1)}
             r="4" fill={crimson} stroke="none" fillOpacity="0.9" />
         ))}
+        <path ref={lidRef} d="" fill="none" strokeWidth="5" strokeOpacity="0" />
       </g>
     </svg>
   )

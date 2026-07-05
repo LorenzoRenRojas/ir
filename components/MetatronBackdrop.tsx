@@ -1,31 +1,15 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { metatronFrame } from '@/lib/metatron-motion'
 
 // The folding Metatron's Cube from the landing hero, packaged as a fixed
 // full-viewport backdrop for dark marketing pages. Content renders above it
 // (zIndex >= 1); the cube stays pinned and animates behind everything.
 
-const HALF = Math.PI / 6
-const D = 132
 
-function geometry(t: number) {
-  const fold = Math.sin(t * 0.42) * 0.5 + 0.5
-  const g = t * 0.18
-  const pts: { x: number; y: number }[] = [{ x: 0, y: 0 }]
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3 - HALF * fold + g
-    pts.push({ x: Math.cos(a) * D, y: Math.sin(a) * D })
-  }
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3 + HALF * fold + g
-    const r = D * (2 - (2 - Math.sqrt(3)) * fold)
-    pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r })
-  }
-  return pts
-}
 
-const INIT_PTS = geometry(0)
+const INIT_PTS = metatronFrame(0).pts
 
 // pulse: slowly breathe between near-invisible and glowing-visible
 export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { opacity?: number; pulse?: boolean }) {
@@ -35,6 +19,7 @@ export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { op
   const lineEls = useRef<SVGLineElement[]>([])
   const circEls = useRef<SVGCircleElement[]>([])
   const nodeEls = useRef<SVGCircleElement[]>([])
+  const lidRef = useRef<SVGPathElement>(null)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -47,7 +32,7 @@ export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { op
 
     const loop = () => {
       const t = (performance.now() - startRef.current) / 1000
-      const pts = geometry(t)
+      const { pts, pupilR, lidOpacity, lid } = metatronFrame(t)
 
       for (let i = 0; i < pts.length; i++) {
         const cx = pts[i].x.toFixed(1)
@@ -56,6 +41,13 @@ export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { op
         circEls.current[i]?.setAttribute('cy', cy)
         nodeEls.current[i]?.setAttribute('cx', cx)
         nodeEls.current[i]?.setAttribute('cy', cy)
+      }
+
+      // The Eye: center node dilates into the pupil; the upper lid draws in
+      nodeEls.current[0]?.setAttribute('r', pupilR.toFixed(1))
+      if (lidRef.current) {
+        lidRef.current.setAttribute('d', 'M' + lid.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('L'))
+        lidRef.current.setAttribute('stroke-opacity', lidOpacity.toFixed(2))
       }
 
       let li = 0
@@ -117,6 +109,7 @@ export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { op
         {INIT_PTS.map((p, i) => (
           <circle key={`n${i}`} data-mb="node" cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="4" fill="#C41230" stroke="none" fillOpacity="0.7" />
         ))}
+        <path ref={lidRef} d="" fill="none" strokeWidth="5" strokeOpacity="0" />
       </g>
     </svg>
     </>

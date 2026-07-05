@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import MetatronEyeIcon from '@/components/MetatronEyeIcon'
 
 interface ScoreParts {
   timing: number
@@ -146,7 +147,7 @@ export default function RecompetesPage() {
   return (
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>RECOMPETE RADAR — PRE-RFP INTELLIGENCE</div>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: crimson, marginBottom: 10, fontFamily: mono, display: 'flex', alignItems: 'center', gap: 8 }}><MetatronEyeIcon size={20} /> RECOMPETE RADAR — PRE-RFP INTELLIGENCE</div>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>
           Contracts expiring in your space.
         </h1>
