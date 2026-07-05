@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -70,6 +70,18 @@ export async function POST(req: NextRequest) {
         },
       })
     }
+
+    // Prewarm this user's Recompete Radar in the background so their first
+    // visit to the tab is instant instead of a cold 30s USAspending scan.
+    after(async () => {
+      try {
+        const { getRecompetes } = await import('@/lib/usaspending')
+        const codes = Array.isArray(naicsCodes) ? (naicsCodes as string[]).slice(0, 8) : []
+        if (codes.length) await getRecompetes(codes)
+      } catch (err) {
+        console.error('Radar prewarm after onboarding failed (non-fatal):', err)
+      }
+    })
 
     return NextResponse.json({ success: true })
   } catch (err) {

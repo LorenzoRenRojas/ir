@@ -49,11 +49,9 @@ export async function GET(req: NextRequest) {
       return !isNaN(posted) && posted >= cutoff
     })
 
-    if (fresh.length === 0) {
-      return NextResponse.json({ ok: true, message: 'No new contracts in window', emailsSent: 0 })
-    }
-
-    const users = await prisma.user.findMany({
+    // No early return here — even with nothing fresh to digest, the radar
+    // alerts and pre-embedding below must still run today.
+    const users = fresh.length === 0 ? [] : await prisma.user.findMany({
       where: { emailVerified: { not: null }, companyProfile: { isNot: null }, notifyDigest: true },
       select: { id: true, email: true, name: true, companyProfile: true },
     })
@@ -99,6 +97,37 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     problems.push(`Digest cron crashed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  // Pre-embed fresh contracts so the dashboard's semantic layer is always a
+  // cache hit — embedding happens here, off every user's request path.
+  try {
+    const { isEmbeddingEnabled, embedTexts, contractToText } = await import('@/lib/embeddings')
+    if (isEmbeddingEnabled()) {
+      const contracts = await fetchContracts()
+      const ids = contracts.map(c => c.noticeId).filter(Boolean)
+      const existing = await prisma.contractEmbedding.findMany({
+        where: { noticeId: { in: ids } },
+        select: { noticeId: true },
+      })
+      const have = new Set(existing.map(e => e.noticeId))
+      const missing = contracts.filter(c => c.noticeId && !have.has(c.noticeId)).slice(0, 512)
+      for (let i = 0; i < missing.length; i += 128) {
+        const batch = missing.slice(i, i + 128)
+        const vectors = await embedTexts(batch.map(contractToText))
+        await Promise.all(
+          batch.map((c, j) =>
+            prisma.contractEmbedding.upsert({
+              where: { noticeId: c.noticeId },
+              update: { embedding: JSON.stringify(vectors[j]) },
+              create: { noticeId: c.noticeId, embedding: JSON.stringify(vectors[j]) },
+            })
+          )
+        )
+      }
+    }
+  } catch (err) {
+    console.error('Contract pre-embedding skipped (non-fatal):', err)
   }
 
   // Recompete Radar: daily scan + notify. For every user, refresh their radar
