@@ -6,12 +6,13 @@ const HALF = Math.PI / 6
 const D = 120
 const fold = 0.5
 const g = -15 * (Math.PI / 180)
-const squash = 0.5
+const squash = 0.58
+const innerTuck = 0.82
 
 const pts: [number, number][] = []
 for (let i = 0; i < 6; i++) {
   const a = (i * Math.PI) / 3 - HALF * fold + g
-  pts.push([Math.cos(a) * D, Math.sin(a) * D * squash])
+  pts.push([Math.cos(a) * D, Math.sin(a) * D * squash * innerTuck])
 }
 const outer: [number, number][] = []
 for (let i = 0; i < 6; i++) {
@@ -40,7 +41,7 @@ export default function MetatronEyeIcon({ size = 14 }: { size?: number }) {
       style={{ flexShrink: 0 }}
     >
       <path d={LID} stroke="currentColor" strokeWidth="26" fill="none" strokeLinecap="round" />
-      <path d={LOWER} stroke="currentColor" strokeWidth="14" strokeOpacity="0.55" fill="none" strokeLinecap="round" />
+      <path d={LOWER} stroke="currentColor" strokeWidth="24" strokeOpacity="0.8" fill="none" strokeLinecap="round" />
       <circle cx="0" cy="0" r="52" fill="currentColor" />
     </svg>
   )
