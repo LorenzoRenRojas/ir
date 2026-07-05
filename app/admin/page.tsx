@@ -107,6 +107,8 @@ export default async function AdminPage() {
     { name: 'NEXTAUTH_SECRET', ok: !!process.env.NEXTAUTH_SECRET, note: 'session security' },
     { name: 'NEXTAUTH_URL', ok: !!process.env.NEXTAUTH_URL, note: 'email link domains' },
     { name: 'GOOGLE_CLIENT_ID', ok: !!process.env.GOOGLE_CLIENT_ID, note: 'Google sign-in (free)' },
+    { name: 'VOYAGE_API_KEY', ok: !!process.env.VOYAGE_API_KEY, note: 'learning match layer (adapts to saves)' },
+    { name: 'ANTHROPIC_API_KEY', ok: !!process.env.ANTHROPIC_API_KEY, note: 'AI proposal drafting (feature pending)' },
     { name: 'STRIPE_SECRET_KEY', ok: !!process.env.STRIPE_SECRET_KEY, note: 'payments' },
     { name: 'CRON_SECRET', ok: !!process.env.CRON_SECRET, note: 'cron endpoint auth' },
     { name: 'ADMIN_EMAIL', ok: !!process.env.ADMIN_EMAIL, note: 'admin access (bootstrap: first account)' },
