@@ -92,6 +92,7 @@ export async function fetchIncumbents(
 export interface RecompeteAward {
   awardId: string
   internalId: string | null
+  naicsCode: string
   description: string
   incumbent: string
   amount: number | null
@@ -237,11 +238,11 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
       if (older.status === 'fulfilled') rows.push(...older.value)
       if (recent.status === 'fulfilled') rows.push(...recent.value)
       if (rows.length === 0 && older.status === 'rejected') throw older.reason
-      return rows
+      return { code, rows }
     })
   )
 
-  const fulfilled = settled.filter((r): r is PromiseFulfilledResult<RecompeteRow[]> => r.status === 'fulfilled')
+  const fulfilled = settled.filter((r): r is PromiseFulfilledResult<{ code: string; rows: RecompeteRow[] }> => r.status === 'fulfilled')
   if (fulfilled.length === 0) {
     const firstErr = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
     throw firstErr?.reason ?? new Error('All USAspending queries failed')
@@ -250,7 +251,7 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
   const results: RecompeteAward[] = []
   const seen = new Set<string>()
 
-  for (const { value: rows } of fulfilled) {
+  for (const { value: { code, rows } } of fulfilled) {
     for (const row of rows) {
       const endStr = rowEnd(row)
       if (!endStr) continue
@@ -264,6 +265,7 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
       results.push({
         awardId: id,
         internalId: row.generated_internal_id ?? null,
+        naicsCode: code,
         description: row['Description']?.trim() || 'Untitled award',
         incumbent: row['Recipient Name'] ?? 'Unknown incumbent',
         amount: typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null,

@@ -178,6 +178,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── RECOMPETE RADAR — the feature nobody else has ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 56, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: crimson, marginBottom: 18 }}>◎ RECOMPETE RADAR — ONLY ON IR</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 20px', lineHeight: 1.1 }}>
+              See contracts <span style={{ color: crimson }}>before they exist.</span>
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.5)', margin: '0 0 16px' }}>
+              Every federal contract expires on a known date — and most become recompete solicitations.
+              IR scans the government&apos;s own award data for contracts in your NAICS codes ending within
+              18 months, shows you the incumbent and what they were paid, and scores each one on timing,
+              size fit, agency history, and your learned preferences.
+            </p>
+            <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.5)', margin: '0 0 32px' }}>
+              That&apos;s a <strong style={{ color: '#0A0A0A' }}>6–18 month head start</strong> before anything
+              appears on SAM.gov — the intelligence legacy platforms sell through human analysts at $10k+ a year,
+              automated, with email alerts when something new hits your radar.
+            </p>
+            <Link href="/capabilities" style={{ display: 'inline-block', padding: '13px 28px', border: `1px solid ${crimson}`, color: crimson, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textDecoration: 'none', fontFamily: mono }}>
+              SEE HOW THE RADAR WORKS →
+            </Link>
+          </div>
+          {/* Mock radar card stack */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { score: 87, desc: 'Enterprise IT support services — recompete window opening', inc: 'INCUMBENT CORP A', val: '$2.4M', ends: 'ENDS MAR 2027 · ~8 MO', color: '#16a34a' },
+              { score: 74, desc: 'Cybersecurity operations center staffing', inc: 'INCUMBENT CORP B', val: '$890K', ends: 'ENDS DEC 2026 · ~5 MO', color: crimson },
+              { score: 61, desc: 'Logistics & warehouse modernization program', inc: 'INCUMBENT CORP C', val: '$5.1M', ends: 'ENDS SEP 2027 · ~14 MO', color: crimson },
+            ].map((c, i) => (
+              <div key={i} style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.1)', borderLeft: `3px solid ${c.color}`, padding: '16px 20px', transform: `translateX(${i * 14}px)` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, color: c.color }}>{c.score}%</span>
+                  <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                    <div style={{ height: '100%', width: `${c.score}%`, background: c.color, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)' }}>RECOMPETE</span>
+                </div>
+                <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{c.desc}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ fontFamily: mono, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{c.inc} · {c.val}</span>
+                  <span style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, color: c.color }}>{c.ends}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── PRICING ── */}
       <section id="pricing" style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>

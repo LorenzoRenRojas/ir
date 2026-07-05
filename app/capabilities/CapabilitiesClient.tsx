@@ -94,6 +94,64 @@ function CapabilityLoop() {
   )
 }
 
+// ─── Recompete Radar: animated mock cards ─────────────────────────────────────
+const RADAR_MOCK = [
+  { score: 87, desc: 'Enterprise IT support services — multi-year vehicle winding down', inc: 'Incumbent Corp A', val: '$2.4M', ends: '~8 MO', color: '#16a34a' },
+  { score: 74, desc: 'Cybersecurity operations center staffing', inc: 'Incumbent Corp B', val: '$890K', ends: '~5 MO', color: crimson },
+  { score: 61, desc: 'Logistics & warehouse modernization program', inc: 'Incumbent Corp C', val: '$5.1M', ends: '~14 MO', color: crimson },
+]
+
+function RadarSection() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.25)
+  return (
+    <section ref={ref} style={{ padding: '72px 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: crimson, margin: '0 0 14px' }}>◎ RECOMPETE RADAR — NO OTHER PLATFORM SHIPS THIS</p>
+      <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+        The contracts that don&apos;t exist yet.
+      </h2>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 640, fontFamily: sans, lineHeight: 1.7 }}>
+        Federal contracts expire on public, knowable dates — and most get recompeted. IR reads the
+        government&apos;s own award data, finds everything in your NAICS codes ending within 18 months,
+        names the incumbent and their price, and scores each opportunity on timing, size fit, agency
+        history, and your learned preferences. You get an email the day something new hits your radar —
+        6 to 18 months before the RFP exists.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 720 }}>
+        {RADAR_MOCK.map((c, i) => (
+          <div
+            key={i}
+            style={{
+              background: '#111', border: '1px solid rgba(255,255,255,0.09)', borderLeft: `3px solid ${c.color}`,
+              padding: '16px 20px',
+              opacity: inView ? 1 : 0,
+              transform: inView ? 'translateX(0)' : 'translateX(-20px)',
+              transition: `all 0.55s cubic-bezier(0.22,1,0.36,1) ${i * 180}ms`,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, color: c.color }}>
+                <CountUp to={c.score} started={inView} duration={900} />%
+              </span>
+              <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: inView ? `${c.score}%` : '0%', background: c.color, borderRadius: 2, transition: `width 0.9s cubic-bezier(0.22,1,0.36,1) ${i * 180 + 200}ms` }} />
+              </div>
+              <span style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)' }}>RECOMPETE SCORE</span>
+            </div>
+            <div style={{ color: '#fff', fontSize: 13.5, fontWeight: 600, marginBottom: 6, fontFamily: sans }}>{c.desc}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <span style={{ fontFamily: mono, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>INCUMBENT: {c.inc.toUpperCase()} · {c.val}</span>
+              <span style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, color: c.color }}>EXPIRES {c.ends}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.3)', marginTop: 20 }}>
+        LEGACY EQUIVALENT: HUMAN ANALYST REPORTS AT $10,000+/YR. IR: INCLUDED IN PRO.
+      </p>
+    </section>
+  )
+}
+
 function PriceChart() {
   const { ref, inView } = useInView<HTMLDivElement>(0.3)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -237,6 +295,9 @@ export default function CapabilitiesClient() {
           </h2>
           <CapabilityLoop />
         </section>
+
+        {/* Recompete Radar — category-of-one feature */}
+        <RadarSection />
 
         {/* Price chart */}
         <section style={{ padding: '72px 0' }}>

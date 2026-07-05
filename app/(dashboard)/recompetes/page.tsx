@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+interface ScoreParts {
+  timing: number
+  size: number
+  agency: number
+  taste: number
+}
+
 interface Recompete {
   awardId: string
+  naicsCode: string
   description: string
   incumbent: string
   amount: number | null
@@ -14,17 +22,20 @@ interface Recompete {
   subAgency: string
   monthsUntilExpiry: number
   usaspendingUrl: string | null
+  recompeteScore: number
+  scoreParts: ScoreParts
 }
 
 const mono = 'var(--font-geist-mono, monospace)'
 const sans = 'var(--font-geist-sans, sans-serif)'
 const crimson = '#C41230'
 
-const BUCKETS = [
-  { key: 'urgent',  label: 'EXPIRING SOON — 0–6 MONTHS',  sub: 'Recompete likely already in planning. Contact the contracting office now.', min: 0,  max: 6,  color: crimson },
-  { key: 'sweet',   label: 'SWEET SPOT — 6–12 MONTHS',    sub: 'Ideal positioning window: build the relationship before the RFP drops.',    min: 7,  max: 12, color: '#b45309' },
-  { key: 'horizon', label: 'ON THE HORIZON — 12–18 MONTHS', sub: 'Early intel. Track these and watch for sources-sought notices.',          min: 13, max: 18, color: '#64748b' },
-]
+const WINDOWS = [
+  { key: 'all', label: 'ALL' },
+  { key: 'urgent', label: '0–6 MO', min: 0, max: 6 },
+  { key: 'sweet', label: '6–12 MO', min: 7, max: 12 },
+  { key: 'horizon', label: '12–18 MO', min: 13, max: 18 },
+] as const
 
 function formatAmount(v: number | null): string {
   if (!v) return 'Undisclosed'
@@ -39,10 +50,50 @@ function formatDate(d: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+// Same visual language as the dashboard's match bar
+function ScoreBar({ score }: { score: number }) {
+  const color = score >= 75 ? '#16a34a' : score >= 55 ? crimson : '#94a3b8'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color, fontFamily: mono, flexShrink: 0 }}>{score}%</span>
+      <div style={{ flex: 1, height: 3, background: 'rgba(0,0,0,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: 2, transition: 'width 0.4s ease' }} />
+      </div>
+      <span style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.25)', fontFamily: mono, flexShrink: 0 }}>RECOMPETE</span>
+    </div>
+  )
+}
+
+function PartsBadges({ parts }: { parts: ScoreParts }) {
+  const factors = [
+    { label: 'TIMING', score: parts.timing, max: 35, full: 35 },
+    { label: 'SIZE', score: parts.size, max: 25, full: 25 },
+    { label: 'AGENCY', score: parts.agency, max: 20, full: 20 },
+    { label: 'TASTE', score: parts.taste, max: 20, full: 16 }, // taste ≥16 counts as strong
+  ]
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {factors.map(f => {
+        const full = f.score >= f.full
+        const weak = f.score <= f.max * 0.3
+        const mark = full ? '✓' : weak ? '✗' : '~'
+        const color = full ? '#16a34a' : weak ? 'rgba(0,0,0,0.2)' : '#b45309'
+        return (
+          <span key={f.label} title={`${f.score}/${f.max} points`} style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 6px', color, background: full ? 'rgba(22,163,74,0.06)' : 'rgba(0,0,0,0.02)', border: `1px solid ${full ? 'rgba(22,163,74,0.2)' : 'rgba(0,0,0,0.07)'}`, fontFamily: mono, whiteSpace: 'nowrap' }}>
+            {f.label} {mark}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function RecompetesPage() {
   const [recompetes, setRecompetes] = useState<Recompete[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [filter, setFilter] = useState<string>('all')
+  const [tracked, setTracked] = useState<Record<string, 'saving' | 'done'>>({})
 
   useEffect(() => {
     fetch('/api/recompetes')
@@ -58,19 +109,80 @@ export default function RecompetesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  async function handleTrack(r: Recompete) {
+    setTracked(t => ({ ...t, [r.awardId]: 'saving' }))
+    try {
+      const res = await fetch('/api/contracts/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractId: `recompete-${r.awardId}`,
+          title: `[RECOMPETE] ${r.description.slice(0, 140)}`,
+          agency: r.subAgency || r.agency,
+          value: r.amount,
+          deadline: r.endDate,
+          matchScore: r.recompeteScore,
+        }),
+      })
+      setTracked(t => ({ ...t, [r.awardId]: res.ok ? 'done' : undefined as never }))
+    } catch {
+      setTracked(t => {
+        const next = { ...t }
+        delete next[r.awardId]
+        return next
+      })
+    }
+  }
+
+  const visible = recompetes.filter(r => {
+    if (filter === 'all') return true
+    const w = WINDOWS.find(w => w.key === filter)
+    if (!w || !('min' in w)) return true
+    return r.monthsUntilExpiry >= w.min && r.monthsUntilExpiry <= w.max
+  })
+
+  const totalValue = recompetes.reduce((s, r) => s + (r.amount ?? 0), 0)
+
   return (
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>RECOMPETE RADAR</div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>RECOMPETE RADAR — PRE-RFP INTELLIGENCE</div>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>
-          Contracts in your space, expiring soon.
+          Contracts expiring in your space.
         </h1>
         <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '8px 0 0', fontFamily: sans, lineHeight: 1.6, maxWidth: 640 }}>
-          Most federal contracts get recompeted when they expire. These awards match your NAICS codes and end within 18 months —
-          meaning the solicitation is coming <strong style={{ color: '#0A0A0A' }}>before it ever appears on SAM.gov</strong>.
-          Source: USAspending.gov award data.
+          These awards match your NAICS codes and end within 18 months — the solicitations are coming{' '}
+          <strong style={{ color: '#0A0A0A' }}>before they appear on SAM.gov</strong>. Ranked by your
+          Recompete Score: timing, size fit, agency history, and what you save. Source: USAspending.gov.
         </p>
       </div>
+
+      {!loading && !error && recompetes.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)', marginBottom: 20, flexWrap: 'wrap' }}>
+            <div style={{ background: '#fff', padding: '14px 22px', flex: '1 1 140px' }}>
+              <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>ON YOUR RADAR</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{recompetes.length}</div>
+            </div>
+            <div style={{ background: '#fff', padding: '14px 22px', flex: '1 1 140px' }}>
+              <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>EXPIRING VALUE</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: crimson, fontFamily: sans }}>{formatAmount(totalValue)}</div>
+            </div>
+            <div style={{ background: '#fff', padding: '14px 22px', flex: '1 1 140px' }}>
+              <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>IN THE SWEET SPOT (6–12 MO)</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#b45309', fontFamily: sans }}>{recompetes.filter(r => r.monthsUntilExpiry >= 6 && r.monthsUntilExpiry <= 12).length}</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+            {WINDOWS.map(w => (
+              <button key={w.key} onClick={() => setFilter(w.key)} style={{ padding: '6px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', fontFamily: mono, cursor: 'pointer', background: filter === w.key ? '#0A0A0A' : 'transparent', color: filter === w.key ? '#fff' : 'rgba(0,0,0,0.4)', border: `1px solid ${filter === w.key ? '#0A0A0A' : 'rgba(0,0,0,0.12)'}` }}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {loading && (
         <div style={{ textAlign: 'center', paddingTop: 80, fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', fontFamily: mono }}>
@@ -81,9 +193,7 @@ export default function RecompetesPage() {
       {error && !loading && (
         <div style={{ padding: '14px 18px', border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)', fontSize: 12, color: crimson, fontFamily: sans, maxWidth: 560 }}>
           {error}{' '}
-          {error.includes('NAICS') && (
-            <Link href="/settings" style={{ color: crimson, fontWeight: 700 }}>Open settings →</Link>
-          )}
+          {error.includes('NAICS') && <Link href="/settings" style={{ color: crimson, fontWeight: 700 }}>Open settings →</Link>}
         </div>
       )}
 
@@ -96,53 +206,68 @@ export default function RecompetesPage() {
         </div>
       )}
 
-      {!loading && BUCKETS.map(bucket => {
-        const items = recompetes.filter(r => r.monthsUntilExpiry >= bucket.min && r.monthsUntilExpiry <= bucket.max)
-        if (items.length === 0) return null
-        return (
-          <div key={bucket.key} style={{ marginBottom: 36 }}>
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: bucket.color, fontFamily: mono }}>
-                {bucket.label} ({items.length})
-              </span>
-            </div>
-            <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', margin: '0 0 12px', fontFamily: sans }}>{bucket.sub}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {items.map(r => (
-                <div key={r.awardId} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderLeft: `3px solid ${bucket.color}`, padding: '16px 20px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 260 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {r.description}
-                    </div>
-                    <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', fontFamily: sans }}>{r.subAgency || r.agency}</span>
-                      <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>
-                        INCUMBENT: <span style={{ color: '#0A0A0A', fontWeight: 700 }}>{r.incumbent}</span>
-                      </span>
-                    </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {visible.map((r, i) => {
+          const accent = r.recompeteScore >= 75 ? '#16a34a' : r.recompeteScore >= 55 ? crimson : '#94a3b8'
+          const months = r.monthsUntilExpiry
+          const urgencyColor = months <= 6 ? crimson : months <= 12 ? '#b45309' : '#64748b'
+          const trackState = tracked[r.awardId]
+          return (
+            <div
+              key={r.awardId}
+              style={{
+                background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', borderLeft: `3px solid ${accent}`,
+                padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10,
+                animation: 'fadeSlideIn 0.35s ease both', animationDelay: `${Math.min(i, 15) * 40}ms`,
+              }}
+            >
+              <ScoreBar score={r.recompeteScore} />
+              <PartsBadges parts={r.scoreParts} />
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {r.description}
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{formatAmount(r.amount)}</div>
-                    <div style={{ fontSize: 9, letterSpacing: '0.08em', color: bucket.color, fontFamily: mono, fontWeight: 700, marginTop: 2 }}>
-                      ENDS {formatDate(r.endDate).toUpperCase()} · ~{r.monthsUntilExpiry} MO
-                    </div>
+                  <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', fontFamily: sans }}>{r.subAgency || r.agency}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>NAICS {r.naicsCode}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>
+                      INCUMBENT: <span style={{ color: '#0A0A0A', fontWeight: 700 }}>{r.incumbent}</span>
+                    </span>
                   </div>
-                  {r.usaspendingUrl && (
-                    <a
-                      href={r.usaspendingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono, flexShrink: 0 }}
-                    >
-                      AWARD DETAIL ↗
-                    </a>
-                  )}
                 </div>
-              ))}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{formatAmount(r.amount)}</div>
+                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: urgencyColor, fontFamily: mono, fontWeight: 700, marginTop: 2 }}>
+                    ENDS {formatDate(r.endDate).toUpperCase()} · ~{months} MO
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleTrack(r)}
+                  disabled={!!trackState}
+                  style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, cursor: trackState ? 'default' : 'pointer', background: trackState === 'done' ? 'rgba(22,163,74,0.08)' : crimson, color: trackState === 'done' ? '#16a34a' : '#fff', border: trackState === 'done' ? '1px solid rgba(22,163,74,0.3)' : 'none' }}
+                >
+                  {trackState === 'done' ? '✓ IN PIPELINE' : trackState === 'saving' ? 'TRACKING…' : '+ TRACK IN PIPELINE'}
+                </button>
+                {r.usaspendingUrl && (
+                  <a href={r.usaspendingUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono }}>
+                    AWARD DETAIL ↗
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
