@@ -219,3 +219,16 @@ a[style*="background: rgb(196, 18, 48)"]:hover {
   transform: translateY(-1px);
   filter: brightness(1.07);
 }
+
+/* Metatron micro-icon: dormant at rest, ignites on parent hover */
+.ir-mticon {
+  opacity: 0.5;
+  transition: opacity 0.2s ease, filter 0.2s ease, color 0.2s ease, transform 0.25s ease;
+}
+button:hover:not(:disabled) .ir-mticon,
+a:hover .ir-mticon {
+  opacity: 1;
+  color: #C41230;
+  filter: drop-shadow(0 0 4px rgba(196, 18, 48, 0.85));
+  transform: rotate(30deg);
+}

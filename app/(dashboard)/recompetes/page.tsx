@@ -232,7 +232,7 @@ export default function RecompetesPage() {
                     <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', fontFamily: sans }}>{r.subAgency || r.agency}</span>
                     <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>NAICS {r.naicsCode}</span>
                     <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>
-                      INCUMBENT: <span style={{ color: '#0A0A0A', fontWeight: 700 }}>{r.incumbent}</span>
+                      DEFENDING: <span style={{ color: '#0A0A0A', fontWeight: 700 }}>{r.incumbent}</span>
                     </span>
                   </div>
                 </div>

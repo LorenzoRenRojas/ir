@@ -36,8 +36,7 @@ export async function GET(req: NextRequest) {
     const agency = searchParams.get('agency') ?? ''
     const type = searchParams.get('type') ?? ''
     const setAside = searchParams.get('setAside') ?? ''
-    const minValue = searchParams.get('minValue') ? Number(searchParams.get('minValue')) : undefined
-    const maxValue = searchParams.get('maxValue') ? Number(searchParams.get('maxValue')) : undefined
+    const dueWithin = searchParams.get('dueWithin') ? Number(searchParams.get('dueWithin')) : undefined
 
     // Load company profile
     let profile = null
@@ -85,11 +84,12 @@ export async function GET(req: NextRequest) {
         (c.setAsideDescription ?? c.setAsideType ?? '').toLowerCase().includes(setAside.toLowerCase())
       )
     }
-    if (minValue !== undefined) {
-      contracts = contracts.filter((c) => (c.value ?? 0) >= minValue)
-    }
-    if (maxValue !== undefined) {
-      contracts = contracts.filter((c) => (c.value ?? 0) <= maxValue)
+    if (dueWithin !== undefined && Number.isFinite(dueWithin)) {
+      const cutoff = Date.now() + dueWithin * 86_400_000
+      contracts = contracts.filter((c) => {
+        const dl = new Date(c.responseDeadline).getTime()
+        return !isNaN(dl) && dl >= Date.now() && dl <= cutoff
+      })
     }
 
     // Metadata scoring — cheap, runs over the full market

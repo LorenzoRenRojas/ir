@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { downloadTextAsPdf } from '@/lib/pdf'
+import MetatronIcon from '@/components/MetatronIcon'
 
 interface SavedContract {
   id: string
@@ -417,7 +418,7 @@ export default function PipelinePage() {
                       )}
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button onClick={() => handleQuickDraft(c)} disabled={drafting === c.contractId} style={btnPrimary}>
-                          {drafting === c.contractId ? 'DRAFTING…' : '⚡ QUICK DRAFT'}
+                          {drafting === c.contractId ? 'DRAFTING…' : <><MetatronIcon size={11} /> QUICK DRAFT</>}
                         </button>
                         <Link href="/proposals/new" style={btn}>FULL QUESTIONNAIRE →</Link>
                       </div>
@@ -443,9 +444,16 @@ export default function PipelinePage() {
                     <div>
                       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 12 }}>CONTRACT</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <Link href={`/contracts/${encodeURIComponent(c.contractId)}`} style={{ ...btn, justifyContent: 'center' }}>
-                          ◈ MATCH ANALYSIS + DETAILS
-                        </Link>
+                        {c.contractId.startsWith('recompete-') ? (
+                          <div style={{ padding: '10px 12px', border: '1px dashed rgba(180,83,9,0.4)', fontSize: 10, lineHeight: 1.6, color: '#b45309', fontFamily: sans }}>
+                            <strong style={{ fontFamily: mono, letterSpacing: '0.08em' }}>◎ PRE-RFP PURSUIT</strong> — this came from Recompete Radar.
+                            The solicitation doesn&apos;t exist yet; when it posts to SAM.gov, save the live notice and it gains full match analysis.
+                          </div>
+                        ) : (
+                          <Link href={`/contracts/${encodeURIComponent(c.contractId)}`} style={{ ...btn, justifyContent: 'center' }}>
+                            <MetatronIcon size={11} /> MATCH ANALYSIS + DETAILS
+                          </Link>
+                        )}
                         {c.samNoticeId && (
                           <a href={`https://sam.gov/opp/${c.samNoticeId}`} target="_blank" rel="noopener noreferrer" style={{ ...btn, justifyContent: 'center' }}>
                             ↗ OFFICIAL NOTICE ON SAM.GOV

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
+import MetatronIcon from '@/components/MetatronIcon'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -203,7 +204,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
       {incumbent && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(0,0,0,0.025)', borderLeft: `2px solid ${accentColor}` }}>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 1 }}>PREV. WINNER</div>
+            <div style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 1 }}>DEFENDING THIS CONTRACT</div>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{incumbent.awardee}</div>
           </div>
           {prevValue && (
@@ -217,9 +218,9 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
         <button
           onClick={() => onSave(contract)}
           disabled={saving || isSaved}
-          style={{ padding: '7px 12px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.1)', background: isSaved ? 'rgba(196,18,48,0.05)' : 'transparent', color: isSaved ? '#C41230' : 'rgba(0,0,0,0.4)', cursor: saving || isSaved ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)', transition: 'all 0.15s' }}
+          style={{ padding: '8px 14px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.1)', background: isSaved ? 'rgba(196,18,48,0.05)' : 'transparent', color: isSaved ? '#C41230' : 'rgba(0,0,0,0.4)', cursor: saving || isSaved ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, fontFamily: 'var(--font-geist-mono, monospace)', transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          {isSaved ? '♥ SAVED' : '♡ SAVE'}
+          <MetatronIcon size={11} /> {isSaved ? 'SAVED' : 'SAVE'}
         </button>
         <Link
           href={`/contracts/${encodeURIComponent(contract.id)}`}
@@ -280,8 +281,8 @@ export default function DashboardPage() {
   const [q, setQ] = useState('')
   const [agency, setAgency] = useState('')
   const [type, setType] = useState('')
-  const [minValue, setMinValue] = useState('')
-  const [maxValue, setMaxValue] = useState('')
+  const [setAside, setSetAside] = useState('')
+  const [dueWithin, setDueWithin] = useState('')
 
   const refreshAge = useRefreshAge(fetchedAt)
 
@@ -297,8 +298,8 @@ export default function DashboardPage() {
       if (q) params.set('q', q)
       if (agency) params.set('agency', agency)
       if (type) params.set('type', type)
-      if (minValue) params.set('minValue', minValue)
-      if (maxValue) params.set('maxValue', maxValue)
+      if (setAside) params.set('setAside', setAside)
+      if (dueWithin) params.set('dueWithin', dueWithin)
       const res = await fetch(`/api/contracts?${params.toString()}`)
       const data = await res.json()
       setContracts(data.contracts ?? [])
@@ -308,7 +309,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [q, agency, type, minValue, maxValue])
+  }, [q, agency, type, setAside, dueWithin])
 
   useEffect(() => { fetchContracts() }, [fetchContracts])
 
@@ -399,21 +400,47 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '16px', marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 8 }}>
-          <input type="text" placeholder="Search contracts…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputFilterStyle} />
-          <input type="text" placeholder="Agency" value={agency} onChange={(e) => setAgency(e.target.value)} style={inputFilterStyle} />
-          <select value={type} onChange={(e) => setType(e.target.value)} style={selectStyle}>
-            <option value="">All Types</option>
+      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '18px 20px', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr)', gap: 10 }}>
+          <input type="text" placeholder="Search title, agency, keywords…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={{ ...inputFilterStyle, padding: '12px 14px', fontSize: 13 }} />
+          <input type="text" placeholder="Agency" value={agency} onChange={(e) => setAgency(e.target.value)} style={{ ...inputFilterStyle, padding: '12px 14px', fontSize: 13 }} />
+          <select value={setAside} onChange={(e) => setSetAside(e.target.value)} style={{ ...selectStyle, padding: '12px 12px', fontSize: 12 }}>
+            <option value="">Any set-aside</option>
+            <option value="Small Business">Small Business</option>
+            <option value="8(a)">8(a)</option>
+            <option value="Service-Disabled">SDVOSB</option>
+            <option value="Women-Owned">WOSB</option>
+            <option value="HUBZone">HUBZone</option>
+          </select>
+          <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...selectStyle, padding: '12px 12px', fontSize: 12 }}>
+            <option value="">All types</option>
             <option value="Solicitation">Solicitation</option>
             <option value="Sources Sought">Sources Sought</option>
             <option value="Request for Quote">RFQ</option>
             <option value="Request for Proposal">RFP</option>
             <option value="Broad Agency">BAA</option>
           </select>
-          <input type="number" placeholder="Min value ($)" value={minValue} onChange={(e) => setMinValue(e.target.value)} style={inputFilterStyle} />
-          <input type="number" placeholder="Max value ($)" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} style={inputFilterStyle} />
+          <select value={dueWithin} onChange={(e) => setDueWithin(e.target.value)} style={{ ...selectStyle, padding: '12px 12px', fontSize: 12 }}>
+            <option value="">Any deadline</option>
+            <option value="7">Due in 7 days</option>
+            <option value="14">Due in 14 days</option>
+            <option value="30">Due in 30 days</option>
+            <option value="60">Due in 60 days</option>
+          </select>
         </div>
+        {(q || agency || type || setAside || dueWithin) && (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              {contracts.length} RESULT{contracts.length === 1 ? '' : 'S'}
+            </span>
+            <button
+              onClick={() => { setSearchInput(''); setAgency(''); setType(''); setSetAside(''); setDueWithin('') }}
+              style={{ fontSize: 9, letterSpacing: '0.1em', fontWeight: 700, color: '#C41230', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', padding: '2px 4px' }}
+            >
+              ✕ CLEAR FILTERS
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
