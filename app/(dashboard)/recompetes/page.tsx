@@ -51,6 +51,30 @@ function formatDate(d: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+// Recompete solicitations typically drop 3–9 months before the incumbent's
+// period of performance ends — forecast that window for each award.
+function rfpWindow(endDate: string): { label: string; open: boolean } | null {
+  const end = new Date(endDate)
+  if (isNaN(end.getTime())) return null
+  const from = new Date(end); from.setMonth(from.getMonth() - 9)
+  const to = new Date(end); to.setMonth(to.getMonth() - 3)
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()
+  if (Date.now() >= from.getTime()) {
+    return { label: `RFP WINDOW OPEN — SOLICITATION EXPECTED BY ${fmt(to)}`, open: true }
+  }
+  return { label: `RFP EXPECTED ${fmt(from)} – ${fmt(to)}`, open: false }
+}
+
+// First few meaningful words of the award description → live SAM.gov search
+function liveSearchQuery(description: string): string {
+  return description
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2)
+    .slice(0, 5)
+    .join(' ')
+}
+
 // Same visual language as the dashboard's match bar
 function ScoreBar({ score }: { score: number }) {
   const color = score >= 75 ? '#16a34a' : score >= 55 ? crimson : '#94a3b8'
@@ -232,16 +256,30 @@ export default function RecompetesPage() {
                   <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', fontFamily: sans }}>{r.subAgency || r.agency}</span>
                     <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>NAICS {r.naicsCode}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>AWARD {r.awardId}</span>
                     <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>
                       DEFENDING: <span style={{ color: '#0A0A0A', fontWeight: 700 }}>{r.incumbent}</span>
                     </span>
                   </div>
+                  {(() => {
+                    const w = rfpWindow(r.endDate)
+                    return w && (
+                      <div style={{ marginTop: 8, display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, padding: '3px 8px', color: w.open ? crimson : '#b45309', background: w.open ? 'rgba(196,18,48,0.05)' : 'rgba(180,83,9,0.05)', border: `1px solid ${w.open ? 'rgba(196,18,48,0.25)' : 'rgba(180,83,9,0.25)'}` }}>
+                        {w.open ? '● ' : '◌ '}{w.label}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{formatAmount(r.amount)}</div>
                   <div style={{ fontSize: 9, letterSpacing: '0.08em', color: urgencyColor, fontFamily: mono, fontWeight: 700, marginTop: 2 }}>
                     ENDS {formatDate(r.endDate).toUpperCase()} · ~{months} MO
                   </div>
+                  {r.startDate && (
+                    <div style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.28)', fontFamily: mono, marginTop: 2 }}>
+                      RAN SINCE {formatDate(r.startDate).toUpperCase()}
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -252,9 +290,12 @@ export default function RecompetesPage() {
                 >
                   {trackState === 'done' ? '✓ IN PIPELINE' : trackState === 'saving' ? 'TRACKING…' : '+ TRACK IN PIPELINE'}
                 </button>
+                <Link href={`/dashboard?q=${encodeURIComponent(liveSearchQuery(r.description))}`} style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono }}>
+                  SCAN LIVE RFPs
+                </Link>
                 {r.usaspendingUrl && (
                   <a href={r.usaspendingUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono }}>
-                    AWARD DETAIL ↗
+                    AWARD HISTORY ↗
                   </a>
                 )}
               </div>

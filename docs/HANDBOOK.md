@@ -131,6 +131,11 @@ app pages; the bypass list includes all public/marketing pages: `/coming-soon`, 
   name/title bottom-left, domain/email bottom-right, blank middle = writing space).
 - The ᛁ rune is the legacy inline mark, still used in nav/emails — site-wide rollout of the new
   logo is a pending task.
+- **Marketing claims policy**: never say "only platform with X". GovWin IQ, Bloomberg Government,
+  and HigherGov all track expiring contracts/recompetes. The defensible Recompete Radar claims:
+  it's included at self-serve prices (legacy tools price it into $10K+/yr terminals), it's scored
+  against the user's own profile + learned taste, and it's wired to alerts + pipeline. Same
+  discipline for every feature claim — price-tier and integration claims, not existence claims.
 
 ## Known issues / pending
 

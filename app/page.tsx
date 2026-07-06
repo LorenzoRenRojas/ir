@@ -178,11 +178,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── RECOMPETE RADAR — the feature nobody else has ── */}
+      {/* ── RECOMPETE RADAR — flagship differentiator (legacy tools sell this at $10K+/yr) ── */}
       <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 56, alignItems: 'center' }}>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: crimson, marginBottom: 18 }}>◎ RECOMPETE RADAR — ONLY ON IR</div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: crimson, marginBottom: 18 }}>◎ RECOMPETE RADAR — THE $10K/YR FEATURE, INCLUDED</div>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 20px', lineHeight: 1.1 }}>
               See contracts <span style={{ color: crimson }}>before they exist.</span>
             </h2>

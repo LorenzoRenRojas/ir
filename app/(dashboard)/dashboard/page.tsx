@@ -286,6 +286,16 @@ export default function DashboardPage() {
 
   const refreshAge = useRefreshAge(fetchedAt)
 
+  // Deep-linked search (e.g. Recompete Radar's "SCAN LIVE RFPs") — read ?q=
+  // straight off the URL to avoid the useSearchParams Suspense requirement
+  useEffect(() => {
+    const preset = new URLSearchParams(window.location.search).get('q')
+    if (preset) {
+      setSearchInput(preset)
+      setQ(preset)
+    }
+  }, [])
+
   useEffect(() => {
     const t = setTimeout(() => setQ(searchInput), 400)
     return () => clearTimeout(t)

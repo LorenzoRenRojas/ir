@@ -258,25 +258,34 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
       const end = new Date(endStr).getTime()
       if (isNaN(end) || end < now || end > horizon) continue
 
-      const id = row['Award ID'] ?? row.generated_internal_id ?? ''
+      // Quality gate: FPDS is full of thin records — de-obligated/$0 awards,
+      // blank descriptions, missing internal IDs. Those are exactly the rows
+      // that click through to a near-empty USAspending page, so a row has to
+      // earn its card: linkable ID, real description, named incumbent, ≥$10K.
+      const internalId = row.generated_internal_id?.trim()
+      const description = row['Description']?.trim()
+      const incumbent = row['Recipient Name']?.trim()
+      const amount = typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null
+      if (!internalId || !description || !incumbent) continue
+      if (amount === null || amount < 10_000) continue
+
+      const id = row['Award ID'] ?? internalId
       if (!id || seen.has(id)) continue
       seen.add(id)
 
       results.push({
         awardId: id,
-        internalId: row.generated_internal_id ?? null,
+        internalId,
         naicsCode: code,
-        description: row['Description']?.trim() || 'Untitled award',
-        incumbent: row['Recipient Name'] ?? 'Unknown incumbent',
-        amount: typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null,
+        description,
+        incumbent,
+        amount,
         startDate: rowStart(row) ?? null,
         endDate: endStr,
         agency: row['Awarding Agency'] ?? 'Unknown agency',
         subAgency: row['Awarding Sub Agency'] ?? '',
         monthsUntilExpiry: Math.max(0, Math.round((end - now) / MONTH_MS)),
-        usaspendingUrl: row.generated_internal_id
-          ? `https://www.usaspending.gov/award/${row.generated_internal_id}`
-          : null,
+        usaspendingUrl: `https://www.usaspending.gov/award/${encodeURIComponent(internalId)}`,
       })
     }
   }
@@ -293,7 +302,8 @@ const RECOMPETE_TTL_MS = 24 * 60 * 60 * 1000
 export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
   const key = [...new Set(naicsCodes)].sort().join(',')
   if (!key) return []
-  const kvKey = `recompetes:v3:${key}`
+  // v4: quality-gated rows (real description, named incumbent, ≥$10K, linkable)
+  const kvKey = `recompetes:v4:${key}`
 
   const { prisma } = await import('./prisma')
 
