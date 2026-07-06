@@ -45,7 +45,7 @@ export default function MetatronBackdrop({ opacity = 0.22, pulse = false }: { op
 
       // The Eye: center node dilates into the pupil; the upper lid draws in
       nodeEls.current[0]?.setAttribute('r', pupilR.toFixed(1))
-      if (lidRef.current) {
+      if (lidRef.current && lid.length > 1) {
         lidRef.current.setAttribute('d', 'M' + lid.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join('L'))
         lidRef.current.setAttribute('stroke-opacity', lidOpacity.toFixed(2))
       }

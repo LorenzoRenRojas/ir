@@ -19,6 +19,8 @@ const COMING_SOON_BYPASS = [
   '/how-it-works',
   '/pricing',
   '/security',
+  '/opengraph-image',
+  '/twitter-image',
   '/sitemap.xml',
   '/robots.txt',
 ]
@@ -86,6 +88,6 @@ export const config = {
   // Run on all pages except Next.js internals, static files, and API routes
   // API routes do their own auth checks
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon|icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon|icon|apple-icon|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

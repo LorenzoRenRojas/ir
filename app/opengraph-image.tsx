@@ -5,6 +5,9 @@ export const alt = 'IR — Government Contract Intelligence'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
+// The lattice mark (half-fold, flat-top pose) precomputed as one path
+const LATTICE = 'M0.0 0.0L114.3 -66.0M0.0 0.0L114.3 66.0M0.0 0.0L0.0 132.0M0.0 0.0L-114.3 66.0M0.0 0.0L-114.3 -66.0M0.0 0.0L0.0 -132.0M0.0 0.0L246.3 0.0M0.0 0.0L123.2 213.3M0.0 0.0L-123.2 213.3M0.0 0.0L-246.3 0.0M0.0 0.0L-123.2 -213.3M0.0 0.0L123.2 -213.3M114.3 -66.0L114.3 66.0M114.3 -66.0L0.0 132.0M114.3 -66.0L-114.3 66.0M114.3 -66.0L-114.3 -66.0M114.3 -66.0L0.0 -132.0M114.3 -66.0L246.3 0.0M114.3 -66.0L123.2 213.3M114.3 -66.0L-123.2 213.3M114.3 -66.0L-246.3 0.0M114.3 -66.0L-123.2 -213.3M114.3 -66.0L123.2 -213.3M114.3 66.0L0.0 132.0M114.3 66.0L-114.3 66.0M114.3 66.0L-114.3 -66.0M114.3 66.0L0.0 -132.0M114.3 66.0L246.3 0.0M114.3 66.0L123.2 213.3M114.3 66.0L-123.2 213.3M114.3 66.0L-246.3 0.0M114.3 66.0L-123.2 -213.3M114.3 66.0L123.2 -213.3M0.0 132.0L-114.3 66.0M0.0 132.0L-114.3 -66.0M0.0 132.0L0.0 -132.0M0.0 132.0L246.3 0.0M0.0 132.0L123.2 213.3M0.0 132.0L-123.2 213.3M0.0 132.0L-246.3 0.0M0.0 132.0L-123.2 -213.3M0.0 132.0L123.2 -213.3M-114.3 66.0L-114.3 -66.0M-114.3 66.0L0.0 -132.0M-114.3 66.0L246.3 0.0M-114.3 66.0L123.2 213.3M-114.3 66.0L-123.2 213.3M-114.3 66.0L-246.3 0.0M-114.3 66.0L-123.2 -213.3M-114.3 66.0L123.2 -213.3M-114.3 -66.0L0.0 -132.0M-114.3 -66.0L246.3 0.0M-114.3 -66.0L123.2 213.3M-114.3 -66.0L-123.2 213.3M-114.3 -66.0L-246.3 0.0M-114.3 -66.0L-123.2 -213.3M-114.3 -66.0L123.2 -213.3M0.0 -132.0L246.3 0.0M0.0 -132.0L123.2 213.3M0.0 -132.0L-123.2 213.3M0.0 -132.0L-246.3 0.0M0.0 -132.0L-123.2 -213.3M0.0 -132.0L123.2 -213.3M246.3 0.0L123.2 213.3M246.3 0.0L-123.2 213.3M246.3 0.0L-246.3 0.0M246.3 0.0L-123.2 -213.3M246.3 0.0L123.2 -213.3M123.2 213.3L-123.2 213.3M123.2 213.3L-246.3 0.0M123.2 213.3L-123.2 -213.3M123.2 213.3L123.2 -213.3M-123.2 213.3L-246.3 0.0M-123.2 213.3L-123.2 -213.3M-123.2 213.3L123.2 -213.3M-246.3 0.0L-123.2 -213.3M-246.3 0.0L123.2 -213.3M-123.2 -213.3L123.2 -213.3'
+
 export default function Image() {
   return new ImageResponse(
     (
@@ -14,81 +17,39 @@ export default function Image() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: '80px 100px',
+          alignItems: 'center',
+          padding: '0 90px',
           fontFamily: 'monospace',
-          position: 'relative',
         }}
       >
-        {/* Top-left wordmark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 60 }}>
-          <div style={{
-            width: 40, height: 40,
-            background: '#C41230',
-            borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <div style={{ width: 14, height: 24, background: '#0A0A0A', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ height: 4, background: '#ffffff', borderRadius: 1 }} />
-              <div style={{ flex: 1, width: 6, background: '#ffffff', alignSelf: 'center' }} />
-              <div style={{ height: 4, background: '#ffffff', borderRadius: 1 }} />
-            </div>
+        {/* The mark */}
+        <svg width="430" height="430" viewBox="-290 -290 580 580">
+          <path d={LATTICE} stroke="#C41230" strokeWidth="3" strokeOpacity="0.55" fill="none" strokeLinecap="round" />
+          <circle cx="0.0" cy="0.0" r="8" fill="#C41230" />
+          <circle cx="114.3" cy="-66.0" r="8" fill="#C41230" />
+          <circle cx="114.3" cy="66.0" r="8" fill="#C41230" />
+          <circle cx="0.0" cy="132.0" r="8" fill="#C41230" />
+          <circle cx="-114.3" cy="66.0" r="8" fill="#C41230" />
+          <circle cx="-114.3" cy="-66.0" r="8" fill="#C41230" />
+          <circle cx="0.0" cy="-132.0" r="8" fill="#C41230" />
+          <circle cx="246.3" cy="0.0" r="8" fill="#C41230" />
+          <circle cx="123.2" cy="213.3" r="8" fill="#C41230" />
+          <circle cx="-123.2" cy="213.3" r="8" fill="#C41230" />
+          <circle cx="-246.3" cy="0.0" r="8" fill="#C41230" />
+          <circle cx="-123.2" cy="-213.3" r="8" fill="#C41230" />
+          <circle cx="123.2" cy="-213.3" r="8" fill="#C41230" />
+        </svg>
+
+        {/* The words */}
+        <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 70 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span style={{ color: '#C41230', fontSize: 130, fontWeight: 700, letterSpacing: '-0.02em' }}>IR</span>
           </div>
-          <span style={{ color: '#ffffff', fontSize: 18, fontWeight: 700, letterSpacing: '0.16em' }}>
-            IR
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, letterSpacing: '0.12em', marginLeft: 4 }}>
-            GOVCON INTELLIGENCE
-          </span>
-        </div>
-
-        {/* Main headline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 40 }}>
-          <span style={{
-            color: '#ffffff',
-            fontSize: 64,
-            fontWeight: 800,
-            lineHeight: 1.05,
-            letterSpacing: '-0.02em',
-          }}>
-            Find the contracts
-          </span>
-          <span style={{
-            color: '#C41230',
-            fontSize: 64,
-            fontWeight: 800,
-            lineHeight: 1.05,
-            letterSpacing: '-0.02em',
-          }}>
-            you were built to win.
-          </span>
-        </div>
-
-        {/* Sub-copy */}
-        <span style={{
-          color: 'rgba(255,255,255,0.45)',
-          fontSize: 22,
-          lineHeight: 1.6,
-          maxWidth: 640,
-          letterSpacing: '0.01em',
-        }}>
-          AI-matched federal opportunities from SAM.gov, scored against your company profile. Built for small businesses and set-aside firms.
-        </span>
-
-        {/* Bottom right — live indicator */}
-        <div style={{
-          position: 'absolute',
-          right: 100,
-          bottom: 80,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ADE80' }} />
-          <span style={{ color: '#4ADE80', fontSize: 12, letterSpacing: '0.14em' }}>
-            LIVE SAM.GOV FEED
+          <div style={{ width: 80, height: 6, background: '#C41230', marginTop: 18, marginBottom: 26, display: 'flex' }} />
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 34, letterSpacing: '0.22em' }}>THE GEOMETRY</span>
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 34, letterSpacing: '0.22em', marginTop: 8 }}>OF WINNING.</span>
+          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 19, letterSpacing: '0.14em', marginTop: 42 }}>
+            FEDERAL CONTRACT INTELLIGENCE · IR-GOV.APP
           </span>
         </div>
       </div>
