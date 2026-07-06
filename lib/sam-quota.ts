@@ -26,16 +26,15 @@ function dailyBudget(): number {
 // still works; the migration adds enforcement.
 export async function tryConsumeSamRequests(n: number): Promise<boolean> {
   const key = todayKey()
+  const budget = dailyBudget()
   try {
-    const row = await prisma.kv.findUnique({ where: { key } })
-    const used = row ? parseInt(row.value, 10) || 0 : 0
-    if (used + n > dailyBudget()) return false
-    await prisma.kv.upsert({
-      where: { key },
-      update: { value: String(used + n) },
-      create: { key, value: String(n) },
-    })
-    return true
+    // Atomic claim: ensure the counter row exists, then increment it only if
+    // the post-claim total stays within budget. A read-modify-write here would
+    // let two concurrent serverless instances both pass the check and
+    // overspend the (tiny) daily SAM quota.
+    await prisma.$executeRaw`INSERT INTO "Kv" ("key", "value", "updatedAt") VALUES (${key}, '0', CURRENT_TIMESTAMP) ON CONFLICT ("key") DO NOTHING`
+    const claimed = await prisma.$executeRaw`UPDATE "Kv" SET "value" = CAST(CAST("value" AS INTEGER) + ${n} AS TEXT), "updatedAt" = CURRENT_TIMESTAMP WHERE "key" = ${key} AND CAST("value" AS INTEGER) + ${n} <= ${budget}`
+    return claimed > 0
   } catch {
     return true
   }

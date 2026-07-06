@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getRecompetes, type RecompeteAward } from '@/lib/usaspending'
-import { isEmbeddingEnabled, embedTexts, cosineSimilarity } from '@/lib/embeddings'
+import { isEmbeddingEnabled, embedTexts, cosineSimilarity, embeddingCacheKey } from '@/lib/embeddings'
 
 export const maxDuration = 120
 
@@ -93,7 +93,7 @@ export async function GET() {
         const userEmb = await prisma.userEmbedding.findUnique({ where: { userId: session.user.id } })
         if (userEmb) {
           const userVec = JSON.parse(userEmb.preferenceEmbedding) as number[]
-          const keys = awards.map(a => `award:${a.awardId}`.slice(0, 190))
+          const keys = awards.map(a => embeddingCacheKey(`award:${a.awardId}`))
           const cached = await prisma.contractEmbedding.findMany({ where: { noticeId: { in: keys } } })
           const embMap = new Map(cached.map(e => [e.noticeId, JSON.parse(e.embedding) as number[]]))
 
@@ -104,7 +104,7 @@ export async function GET() {
             )
             await Promise.all(
               uncached.map((a, i) => {
-                const key = `award:${a.awardId}`.slice(0, 190)
+                const key = embeddingCacheKey(`award:${a.awardId}`)
                 embMap.set(key, vectors[i])
                 return prisma.contractEmbedding.upsert({
                   where: { noticeId: key },

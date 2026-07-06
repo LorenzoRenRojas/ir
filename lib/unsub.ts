@@ -6,8 +6,12 @@ import crypto from 'crypto'
 
 export type EmailKind = 'digest' | 'deadlines' | 'radar' | 'all'
 
+// No fallback constant: a repo-public fallback would let anyone forge
+// unsubscribe tokens and silently kill every user's notifications.
 function secret(): string {
-  return process.env.NEXTAUTH_SECRET ?? 'ir-unsub-fallback'
+  const s = process.env.NEXTAUTH_SECRET
+  if (!s) throw new Error('NEXTAUTH_SECRET is required for unsubscribe tokens')
+  return s
 }
 
 export function unsubToken(userId: string, kind: EmailKind): string {

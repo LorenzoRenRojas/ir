@@ -13,13 +13,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, email, password } = body
+    const { name, password } = body
 
-    if (!email || !password) {
+    if (!body.email || typeof body.email !== 'string' || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
+    // Store emails lowercased — every later lookup (login, reset, verify)
+    // normalizes the same way, so casing can never lock a user out
+    const email = body.email.toLowerCase().trim()
 
-    if (password.length < 8) {
+    if (typeof password !== 'string' || password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
@@ -30,10 +33,19 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.create({
-      data: { name: name ?? null, email, password: hashedPassword },
-      select: { id: true, email: true, name: true },
-    })
+    let user
+    try {
+      user = await prisma.user.create({
+        data: { name: name ?? null, email, password: hashedPassword },
+        select: { id: true, email: true, name: true },
+      })
+    } catch (err) {
+      // Unique-constraint race with a concurrent registration
+      if ((err as { code?: string })?.code === 'P2002') {
+        return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
+      }
+      throw err
+    }
 
     let emailSent = false
     try {

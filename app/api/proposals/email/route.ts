@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const teamIds = memberships.map((m) => m.teamId)
 
     if (teamIds.length === 0) {
-      return NextResponse.json({ error: 'You have no team members to send to. Invite team members from the Team page first.', sent: 0 })
+      return NextResponse.json({ error: 'You have no team members to send to. Invite team members from the Team page first.', sent: 0 }, { status: 400 })
     }
 
     const allMembers = await prisma.teamMember.findMany({
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       })
 
     if (recipients.length === 0) {
-      return NextResponse.json({ error: 'No other team members found. Invite people from the Team page first.', sent: 0 })
+      return NextResponse.json({ error: 'No other team members found. Invite people from the Team page first.', sent: 0 }, { status: 400 })
     }
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'

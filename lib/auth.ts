@@ -25,8 +25,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Emails are stored lowercased (register normalizes) — match that here
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email: (credentials.email as string).toLowerCase().trim() },
         })
 
         if (!user || !user.password) return null

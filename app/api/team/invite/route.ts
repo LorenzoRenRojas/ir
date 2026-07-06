@@ -14,8 +14,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { email, role = 'member' } = body
 
-    if (!email) {
+    if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    }
+    if (role !== 'member' && role !== 'admin') {
+      return NextResponse.json({ error: 'Role must be member or admin' }, { status: 400 })
+    }
+
+    // Team seats are the Enterprise feature — same gate as /api/team/create.
+    // (Onboarding creates a personal team for everyone, so admin-of-a-team
+    // alone must not unlock invites.)
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { subscriptionTier: true },
+    })
+    if (me?.subscriptionTier !== 'enterprise') {
+      return NextResponse.json({ error: 'Team invites require the Enterprise plan' }, { status: 403 })
     }
 
     // Must be team admin

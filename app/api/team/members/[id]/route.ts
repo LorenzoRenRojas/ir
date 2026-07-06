@@ -30,6 +30,21 @@ export async function PATCH(
     const body = await req.json()
     const { permissions, role } = body
 
+    if (role !== undefined && role !== 'admin' && role !== 'member') {
+      return NextResponse.json({ error: 'Role must be admin or member' }, { status: 400 })
+    }
+
+    // Demoting the last admin (including yourself) would lock the team out
+    // of every admin operation permanently
+    if (role === 'member' && target.role === 'admin') {
+      const adminCount = await prisma.teamMember.count({
+        where: { teamId: adminMembership.teamId, role: 'admin' },
+      })
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: 'Cannot demote the last admin of the team' }, { status: 400 })
+      }
+    }
+
     const updated = await prisma.teamMember.update({
       where: { id },
       data: {

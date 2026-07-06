@@ -7,6 +7,14 @@ export function isEmbeddingEnabled(): boolean {
   return !!process.env.VOYAGE_API_KEY
 }
 
+// Cache keys for ContractEmbedding rows are model-versioned: if MODEL ever
+// changes, old vectors (possibly a different dimension) must read as cache
+// MISSES and re-embed — not silently cosine against mismatched vectors,
+// which would flatten every semantic score to neutral with no error.
+export function embeddingCacheKey(id: string): string {
+  return `${MODEL}:${id}`.slice(0, 190)
+}
+
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const res = await fetch(VOYAGE_API_URL, {
     method: 'POST',

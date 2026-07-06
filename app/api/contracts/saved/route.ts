@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { isEmbeddingEnabled, embedTexts, updatePreferenceVector } from '@/lib/embeddings'
+import { isEmbeddingEnabled, embedTexts, updatePreferenceVector, embeddingCacheKey } from '@/lib/embeddings'
 
 export async function POST(req: NextRequest) {
   try {
@@ -112,16 +112,17 @@ export async function GET() {
 async function updateUserPreference(userId: string, noticeId: string, contractText?: string) {
   // Get or compute the contract's embedding
   let contractEmb: number[] | null = null
-  const cached = await prisma.contractEmbedding.findUnique({ where: { noticeId } })
+  const cacheKey = embeddingCacheKey(noticeId)
+  const cached = await prisma.contractEmbedding.findUnique({ where: { noticeId: cacheKey } })
   if (cached) {
     contractEmb = JSON.parse(cached.embedding)
   } else if (contractText) {
     const [vec] = await embedTexts([contractText])
     contractEmb = vec
     await prisma.contractEmbedding.upsert({
-      where: { noticeId },
+      where: { noticeId: cacheKey },
       update: { embedding: JSON.stringify(vec) },
-      create: { noticeId, embedding: JSON.stringify(vec) },
+      create: { noticeId: cacheKey, embedding: JSON.stringify(vec) },
     })
   }
   if (!contractEmb) return
@@ -159,8 +160,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'contractId is required' }, { status: 400 })
     }
 
-    await prisma.savedContract.delete({
-      where: { userId_contractId: { userId: session.user.id, contractId } },
+    // deleteMany: a double-click or stale UI on an already-removed row is a
+    // no-op, not a P2025 throw → 500
+    await prisma.savedContract.deleteMany({
+      where: { userId: session.user.id, contractId },
     })
 
     return NextResponse.json({ success: true })
@@ -190,13 +193,21 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'notes must be a string under 10k characters' }, { status: 400 })
     }
 
-    const updated = await prisma.savedContract.update({
-      where: { userId_contractId: { userId: session.user.id, contractId } },
-      data: {
-        ...(status !== undefined ? { status } : {}),
-        ...(notes !== undefined ? { notes } : {}),
-      },
-    })
+    let updated
+    try {
+      updated = await prisma.savedContract.update({
+        where: { userId_contractId: { userId: session.user.id, contractId } },
+        data: {
+          ...(status !== undefined ? { status } : {}),
+          ...(notes !== undefined ? { notes } : {}),
+        },
+      })
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2025') {
+        return NextResponse.json({ error: 'Contract is no longer in your pipeline' }, { status: 404 })
+      }
+      throw err
+    }
 
     return NextResponse.json({ saved: updated })
   } catch (err) {

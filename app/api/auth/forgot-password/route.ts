@@ -17,25 +17,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    // Normalize ONCE and use everywhere — the token identifier must match the
+    // stored (lowercased) account email exactly, or reset-password's
+    // user.update({ where: { email } }) throws and the reset never works
+    const normalized = email.toLowerCase().trim()
+
     // Always return success to prevent email enumeration
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
+    const user = await prisma.user.findUnique({ where: { email: normalized } })
     if (!user || !user.password) {
       // No account or Google-only account — return success anyway
       return NextResponse.json({ success: true })
     }
 
     // Delete any existing reset tokens for this email
-    await prisma.verificationToken.deleteMany({ where: { identifier: `reset:${email}` } })
+    await prisma.verificationToken.deleteMany({ where: { identifier: `reset:${normalized}` } })
 
     const token = crypto.randomBytes(32).toString('hex')
     const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
     await prisma.verificationToken.create({
-      data: { identifier: `reset:${email}`, token, expires },
+      data: { identifier: `reset:${normalized}`, token, expires },
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
-    await sendPasswordResetEmail(email, token, baseUrl)
+    await sendPasswordResetEmail(normalized, token, baseUrl)
 
     return NextResponse.json({ success: true })
   } catch (err) {

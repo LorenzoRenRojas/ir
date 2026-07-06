@@ -9,6 +9,22 @@ import { unsubFooterHtml } from './unsub'
 const FROM = 'IR <noreply@ir-gov.app>'
 const RESEND_API = 'https://api.resend.com/emails'
 
+// External strings (SAM.gov titles, USAspending incumbent names, user names,
+// upstream error bodies) go through this before landing in email HTML.
+function esc(s: string | null | undefined): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function fmtDateSafe(d: string): string {
+  const date = new Date(d)
+  if (!d || isNaN(date.getTime())) return 'Not posted'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // Best-effort audit trail — must never break the actual send.
 async function logEmail(to: string, subject: string, status: string, error?: string) {
   try {
@@ -235,12 +251,12 @@ export async function sendDailyDigestEmail(
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <a href="${m.link}" style="color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;font-family:sans-serif;">${m.title}</a>
+                  <a href="${esc(m.link)}" style="color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;font-family:sans-serif;">${esc(m.title)}</a>
                   <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:6px 0 0;font-family:sans-serif;">
-                    ${m.agency} · ${m.valueFormatted} · ${m.setAsideDescription}
+                    ${esc(m.agency)} · ${esc(m.valueFormatted)} · ${esc(m.setAsideDescription)}
                   </p>
                   <p style="color:rgba(255,255,255,0.3);font-size:10px;margin:4px 0 0;font-family:sans-serif;">
-                    Deadline: ${new Date(m.responseDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Deadline: ${fmtDateSafe(m.responseDeadline)}
                   </p>
                 </td>
                 <td align="right" valign="top" style="white-space:nowrap;padding-left:16px;">
@@ -273,7 +289,7 @@ export async function sendDailyDigestEmail(
           <td style="padding:36px 48px;">
             <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">DAILY MATCH REPORT</p>
             <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${matches.length} new ${matches.length === 1 ? 'opportunity matches' : 'opportunities match'} your profile.</h1>
-            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${name ? `${name}, these` : 'These'} were posted in the last 24 hours and scored against your company profile.</p>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${name ? `${esc(name)}, these` : 'These'} were posted in the last 24 hours and scored against your company profile.</p>
             <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
             <a href="${baseUrl}/dashboard"
                style="display:inline-block;margin-top:28px;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
@@ -328,10 +344,10 @@ export async function sendDeadlineReminderEmail(
         <tr>
           <td style="padding:36px 48px;">
             <p style="color:#C41230;font-size:9px;letter-spacing:0.18em;margin:0 0 16px;font-weight:700;">⏱ ${urgency}</p>
-            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${contractTitle}</h1>
-            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${agency}</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${esc(contractTitle)}</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${esc(agency)}</p>
             <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 28px;font-family:sans-serif;">
-              ${name ? `${name}, a` : 'A'} contract you saved has a response deadline of
+              ${name ? `${esc(name)}, a` : 'A'} contract you saved has a response deadline of
               <strong style="color:#ffffff;">${deadline.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong>.
               If you're bidding, your proposal needs to be submitted before then.
             </p>
@@ -375,12 +391,12 @@ export async function sendRecompeteAlertEmail(
       r => `
         <tr>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-            <div style="color:#ffffff;font-size:13px;font-weight:700;font-family:sans-serif;line-height:1.5;">${r.description.slice(0, 120)}</div>
+            <div style="color:#ffffff;font-size:13px;font-weight:700;font-family:sans-serif;line-height:1.5;">${esc(r.description.slice(0, 120))}</div>
             <div style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:5px;font-family:sans-serif;">
-              ${r.agency} · Incumbent: <span style="color:rgba(255,255,255,0.7);">${r.incumbent}</span> · ${fmtAmt(r.amount)}
+              ${esc(r.agency)} · Incumbent: <span style="color:rgba(255,255,255,0.7);">${esc(r.incumbent)}</span> · ${fmtAmt(r.amount)}
             </div>
             <div style="color:#C41230;font-size:10px;letter-spacing:0.08em;margin-top:4px;font-family:monospace;font-weight:700;">
-              EXPIRES ${new Date(r.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} · ~${r.monthsUntilExpiry} MONTHS
+              EXPIRES ${fmtDateSafe(r.endDate).toUpperCase()} · ~${r.monthsUntilExpiry} MONTHS
             </div>
           </td>
         </tr>`
@@ -407,7 +423,7 @@ export async function sendRecompeteAlertEmail(
             <p style="color:#C41230;font-size:9px;letter-spacing:0.18em;margin:0 0 16px;font-weight:700;">◎ NEW ON YOUR RADAR</p>
             <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${items.length} contract${items.length === 1 ? '' : 's'} in your space ${items.length === 1 ? 'is' : 'are'} expiring.</h1>
             <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;line-height:1.7;">
-              ${name ? `${name}, these` : 'These'} awards match your NAICS codes and end within 18 months —
+              ${name ? `${esc(name)}, these` : 'These'} awards match your NAICS codes and end within 18 months —
               the recompete solicitations are coming before SAM.gov shows anything. Time to position.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
@@ -439,7 +455,7 @@ export async function sendAdminAlertEmail(
   subject: string,
   problems: string[]
 ): Promise<void> {
-  const items = problems.map(p => `<li style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.8;font-family:monospace;">${p}</li>`).join('')
+  const items = problems.map(p => `<li style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.8;font-family:monospace;">${esc(p)}</li>`).join('')
   const html = `
 <!DOCTYPE html>
 <html>

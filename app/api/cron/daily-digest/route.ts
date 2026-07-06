@@ -16,7 +16,9 @@ const FRESH_WINDOW_MS = 48 * 60 * 60 * 1000
 function parseJsonArray(value: string): string[] {
   try {
     const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : []
+    // Element types matter: a number in the array would crash .slice() calls
+    // deep inside scoring — and one bad profile must never kill the loop
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
   } catch {
     return []
   }
@@ -30,6 +32,10 @@ export async function GET(req: NextRequest) {
   const problems: string[] = []
   let emailsSent = 0
   let usersProcessed = 0
+  // Hobby-plan wall clock is 300s; leave headroom so the admin self-report at
+  // the end always runs instead of the function being hard-killed mid-loop
+  const startedAt = Date.now()
+  const timeBudgetLeft = () => 240_000 - (Date.now() - startedAt)
 
   // Full-market sync first: a few 1000-row pulls refresh the ContractCache
   // store, so the digest (and every dashboard view today) scores the whole
@@ -60,37 +66,62 @@ export async function GET(req: NextRequest) {
 
     for (const user of users) {
       usersProcessed++
-      const cp = user.companyProfile!
-      const profile: CompanyProfile = {
-        naicsCodes: parseJsonArray(cp.naicsCodes),
-        businessTypes: parseJsonArray(cp.businessTypes),
-        contractSizePrefs: parseJsonArray(cp.contractSizePrefs),
-        contractTypePrefs: parseJsonArray(cp.contractTypePrefs),
-        geoPrefs: parseJsonArray(cp.geoPrefs),
-        certifications: parseJsonArray(cp.certifications),
-        clearanceLevel: cp.clearanceLevel ?? undefined,
-      }
-
-      const matches: DigestMatch[] = fresh
-        .map(c => ({ contract: c, score: calculateMatchScore(c, profile).total }))
-        .filter(m => m.score >= MIN_SCORE)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, MAX_MATCHES_PER_EMAIL)
-        .map(m => ({
-          title: m.contract.title,
-          agency: m.contract.agency,
-          valueFormatted: m.contract.valueFormatted,
-          setAsideDescription: m.contract.setAsideDescription,
-          responseDeadline: m.contract.responseDeadline,
-          matchScore: m.score,
-          link: m.contract.link,
-        }))
-
-      if (matches.length === 0) continue
-
+      // Whole per-user body inside the try: one corrupt profile or one
+      // scoring crash must skip THIS user, not everyone after them
       try {
+        const cp = user.companyProfile!
+        const profile: CompanyProfile = {
+          naicsCodes: parseJsonArray(cp.naicsCodes),
+          businessTypes: parseJsonArray(cp.businessTypes),
+          contractSizePrefs: parseJsonArray(cp.contractSizePrefs),
+          contractTypePrefs: parseJsonArray(cp.contractTypePrefs),
+          geoPrefs: parseJsonArray(cp.geoPrefs),
+          certifications: parseJsonArray(cp.certifications),
+          clearanceLevel: cp.clearanceLevel ?? undefined,
+        }
+
+        // Never digest the same notice to the same user twice — the 48h fresh
+        // window overlaps consecutive daily runs by design, so dedupe per user
+        const digestKey = `digest-sent:${user.id}`
+        let alreadySent: string[] = []
+        try {
+          const row = await prisma.kv.findUnique({ where: { key: digestKey } })
+          if (row) alreadySent = JSON.parse(row.value) as string[]
+        } catch { /* Kv missing pre-migration */ }
+        const sentSet = new Set(alreadySent)
+
+        const candidates = fresh.filter(c => !sentSet.has(c.noticeId))
+        const matches: DigestMatch[] = candidates
+          .map(c => ({ contract: c, score: calculateMatchScore(c, profile).total }))
+          .filter(m => m.score >= MIN_SCORE)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, MAX_MATCHES_PER_EMAIL)
+          .map(m => ({
+            title: m.contract.title,
+            agency: m.contract.agency,
+            valueFormatted: m.contract.valueFormatted,
+            setAsideDescription: m.contract.setAsideDescription,
+            responseDeadline: m.contract.responseDeadline,
+            matchScore: m.score,
+            link: m.contract.link,
+          }))
+
+        if (matches.length === 0) continue
+
         await sendDailyDigestEmail(user.email, user.name, matches, baseUrl, user.id)
         emailsSent++
+
+        const sentIds = candidates
+          .filter(c => matches.some(m => m.link === c.link))
+          .map(c => c.noticeId)
+        const updated = [...new Set([...alreadySent, ...sentIds])].slice(-800)
+        try {
+          await prisma.kv.upsert({
+            where: { key: digestKey },
+            update: { value: JSON.stringify(updated) },
+            create: { key: digestKey, value: JSON.stringify(updated) },
+          })
+        } catch { /* best-effort */ }
       } catch (err) {
         problems.push(`Digest to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
       }
@@ -102,25 +133,25 @@ export async function GET(req: NextRequest) {
   // Pre-embed fresh contracts so the dashboard's semantic layer is always a
   // cache hit — embedding happens here, off every user's request path.
   try {
-    const { isEmbeddingEnabled, embedTexts, contractToText } = await import('@/lib/embeddings')
+    const { isEmbeddingEnabled, embedTexts, contractToText, embeddingCacheKey } = await import('@/lib/embeddings')
     if (isEmbeddingEnabled()) {
       const contracts = await fetchContracts()
-      const ids = contracts.map(c => c.noticeId).filter(Boolean)
+      const ids = contracts.map(c => c.noticeId).filter(Boolean).map(embeddingCacheKey)
       const existing = await prisma.contractEmbedding.findMany({
         where: { noticeId: { in: ids } },
         select: { noticeId: true },
       })
       const have = new Set(existing.map(e => e.noticeId))
-      const missing = contracts.filter(c => c.noticeId && !have.has(c.noticeId)).slice(0, 512)
+      const missing = contracts.filter(c => c.noticeId && !have.has(embeddingCacheKey(c.noticeId))).slice(0, 512)
       for (let i = 0; i < missing.length; i += 128) {
         const batch = missing.slice(i, i + 128)
         const vectors = await embedTexts(batch.map(contractToText))
         await Promise.all(
           batch.map((c, j) =>
             prisma.contractEmbedding.upsert({
-              where: { noticeId: c.noticeId },
+              where: { noticeId: embeddingCacheKey(c.noticeId) },
               update: { embedding: JSON.stringify(vectors[j]) },
-              create: { noticeId: c.noticeId, embedding: JSON.stringify(vectors[j]) },
+              create: { noticeId: embeddingCacheKey(c.noticeId), embedding: JSON.stringify(vectors[j]) },
             })
           )
         )
@@ -146,6 +177,10 @@ export async function GET(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
 
     for (const user of radarUsers) {
+      if (timeBudgetLeft() <= 0) {
+        problems.push(`Radar scan stopped at time budget — ${radarUsers.length - radarAlertsSent} users deferred to tomorrow's run`)
+        break
+      }
       try {
         let codes: string[] = []
         try {

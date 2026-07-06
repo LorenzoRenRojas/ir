@@ -14,6 +14,7 @@ import {
   blendScores,
   contractToText,
   profileToText,
+  embeddingCacheKey,
 } from '@/lib/embeddings'
 
 export async function GET(req: NextRequest) {
@@ -46,13 +47,23 @@ export async function GET(req: NextRequest) {
         where: { userId: session.user.id },
       })
       if (dbProfile) {
+        // Guarded parse: one malformed column must degrade to "no preference",
+        // not throw into the outer catch (which serves mock data with a 200)
+        const parseArr = (s: string): string[] => {
+          try {
+            const v = JSON.parse(s)
+            return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+          } catch {
+            return []
+          }
+        }
         profile = {
-          naicsCodes: JSON.parse(dbProfile.naicsCodes) as string[],
-          businessTypes: JSON.parse(dbProfile.businessTypes) as string[],
-          contractSizePrefs: JSON.parse(dbProfile.contractSizePrefs) as string[],
-          contractTypePrefs: JSON.parse(dbProfile.contractTypePrefs) as string[],
-          geoPrefs: JSON.parse(dbProfile.geoPrefs) as string[],
-          certifications: JSON.parse(dbProfile.certifications) as string[],
+          naicsCodes: parseArr(dbProfile.naicsCodes),
+          businessTypes: parseArr(dbProfile.businessTypes),
+          contractSizePrefs: parseArr(dbProfile.contractSizePrefs),
+          contractTypePrefs: parseArr(dbProfile.contractTypePrefs),
+          geoPrefs: parseArr(dbProfile.geoPrefs),
+          certifications: parseArr(dbProfile.certifications),
         }
       }
     }
@@ -175,28 +186,29 @@ async function applySemanticScores(
   userId: string,
   dbProfile: Awaited<ReturnType<typeof prisma.companyProfile.findUnique>>
 ) {
-  const noticeIds = contracts.map((c) => c.noticeId).filter(Boolean)
+  const cacheKeys = contracts.map((c) => c.noticeId).filter(Boolean).map(embeddingCacheKey)
 
-  // Fetch cached embeddings
+  // Fetch cached embeddings (keys are model-versioned — a model change reads
+  // as a miss and re-embeds instead of scoring against mismatched vectors)
   const existing = await prisma.contractEmbedding.findMany({
-    where: { noticeId: { in: noticeIds } },
+    where: { noticeId: { in: cacheKeys } },
   })
   const embMap = new Map(existing.map((e) => [e.noticeId, JSON.parse(e.embedding) as number[]]))
 
   // Embed any contracts not yet in DB (batch — one API call)
-  const needsEmb = contracts.filter((c) => c.noticeId && !embMap.has(c.noticeId))
+  const needsEmb = contracts.filter((c) => c.noticeId && !embMap.has(embeddingCacheKey(c.noticeId)))
   if (needsEmb.length > 0) {
     const vectors = await embedTexts(needsEmb.map(contractToText))
     await Promise.all(
       needsEmb.map((c, i) =>
         prisma.contractEmbedding.upsert({
-          where: { noticeId: c.noticeId },
+          where: { noticeId: embeddingCacheKey(c.noticeId) },
           update: { embedding: JSON.stringify(vectors[i]) },
-          create: { noticeId: c.noticeId, embedding: JSON.stringify(vectors[i]) },
+          create: { noticeId: embeddingCacheKey(c.noticeId), embedding: JSON.stringify(vectors[i]) },
         })
       )
     )
-    needsEmb.forEach((c, i) => embMap.set(c.noticeId, vectors[i]))
+    needsEmb.forEach((c, i) => embMap.set(embeddingCacheKey(c.noticeId), vectors[i]))
   }
 
   // Get learned preference vector
@@ -225,7 +237,7 @@ async function applySemanticScores(
   if (!queryVector) return contracts
 
   return contracts.map((c) => {
-    const emb = c.noticeId ? embMap.get(c.noticeId) : undefined
+    const emb = c.noticeId ? embMap.get(embeddingCacheKey(c.noticeId)) : undefined
     if (!emb) return c
     const sim = cosineSimilarity(queryVector!, emb)
     const semanticScore = similarityToScore(sim)

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { sendAdminAlertEmail } from '@/lib/email'
 import { ADMIN_EMAIL } from '@/lib/cron'
 import { tryConsumeSamRequests } from '@/lib/sam-quota'
+import { requireAdmin } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,16 +71,39 @@ export async function GET() {
   const healthy = problems.length === 0
 
   if (!healthy && ADMIN_EMAIL && process.env.RESEND_API_KEY && Date.now() - lastAlertAt > ALERT_COOLDOWN_MS) {
+    // Double-check the cooldown against Kv: module state resets on every
+    // serverless cold start, and an outage + 5-min uptime pings would
+    // otherwise send one alert per cold instance and drain the Resend quota
+    let kvAllows = true
     try {
-      await sendAdminAlertEmail(ADMIN_EMAIL, 'IR health check failing', problems)
-      lastAlertAt = Date.now()
-    } catch (alertErr) {
-      console.error('Admin alert failed:', alertErr)
+      const row = await prisma.kv.findUnique({ where: { key: 'health-alert-at' } })
+      if (row && Date.now() - parseInt(row.value, 10) < ALERT_COOLDOWN_MS) kvAllows = false
+    } catch { /* Kv missing or DB down — in-memory throttle still applies */ }
+
+    if (kvAllows) {
+      try {
+        await sendAdminAlertEmail(ADMIN_EMAIL, 'IR health check failing', problems)
+        lastAlertAt = Date.now()
+        try {
+          await prisma.kv.upsert({
+            where: { key: 'health-alert-at' },
+            update: { value: String(Date.now()) },
+            create: { key: 'health-alert-at', value: String(Date.now()) },
+          })
+        } catch { /* best-effort */ }
+      } catch (alertErr) {
+        console.error('Admin alert failed:', alertErr)
+      }
     }
   }
 
+  // Public response is status-code-only: uptime monitors alert on the 503,
+  // the admin email carries the specifics. Enumerating missing env vars or
+  // quota state here would hand recon data to anyone who finds the URL —
+  // only a logged-in admin (the dashboard's health button) gets the detail.
+  const isAdmin = !healthy && (await requireAdmin().catch(() => null))
   return NextResponse.json(
-    { healthy, problems, checkedAt: new Date().toISOString() },
+    { healthy, ...(isAdmin ? { problems } : {}), checkedAt: new Date().toISOString() },
     { status: healthy ? 200 : 503 }
   )
 }

@@ -353,7 +353,10 @@ function transformSamOpportunity(opp: SamGovOpportunity): Contract {
     typeDescription: opp.type || 'Solicitation',
     value,
     valueFormatted: formatContractValue(value),
-    responseDeadline: opp.responseDeadLine || new Date().toISOString(),
+    // No deadline (Sources Sought, presolicitations) must stay EMPTY — a
+    // "now" fallback would store deadline≈sync-time, hide the notice from the
+    // deadline>=now read filter within milliseconds, and prune it next run
+    responseDeadline: opp.responseDeadLine || '',
     postedDate: opp.postedDate || new Date().toISOString(),
     placeOfPerformance: [
       opp.placeOfPerformance?.city?.name,
@@ -438,7 +441,12 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
     for (const c of contracts) {
       if (!c.noticeId) continue
       const postedDate = new Date(c.postedDate)
-      const deadline = new Date(c.responseDeadline)
+      // Date-only deadlines ("2026-07-15") parse as UTC midnight, which would
+      // expire a 5PM-ET deadline the previous evening — treat them as
+      // end-of-day so the notice stays visible through its actual due date
+      const deadline = /^\d{4}-\d{2}-\d{2}$/.test(c.responseDeadline)
+        ? new Date(`${c.responseDeadline}T23:59:59`)
+        : new Date(c.responseDeadline)
       await prisma.contractCache.upsert({
         where: { noticeId: c.noticeId },
         update: {

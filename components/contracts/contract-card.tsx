@@ -14,6 +14,7 @@ interface ContractCardProps {
 
 function formatDeadline(deadline: string): { text: string; urgent: boolean } {
   const date = new Date(deadline)
+  if (!deadline || isNaN(date.getTime())) return { text: 'No deadline posted', urgent: false }
   const now = new Date()
   const diff = date.getTime() - now.getTime()
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
