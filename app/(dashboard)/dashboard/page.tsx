@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
 import MetatronIcon from '@/components/MetatronIcon'
+import MetatronLoader from '@/components/MetatronLoader'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -455,12 +456,7 @@ export default function DashboardPage() {
 
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 12 }}>LOADING CONTRACTS…</div>
-            <div style={{ width: 120, height: 1, background: 'rgba(196,18,48,0.2)', margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', inset: 0, background: '#C41230', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            </div>
-          </div>
+          <MetatronLoader size={150} label="SCANNING THE FEDERAL MARKET…" />
         </div>
       ) : contracts.length === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { recompeteCacheKey } from '@/lib/usaspending'
 import SideNav, { type SideNavStats } from '@/components/layout/SideNav'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,49 +11,43 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const isEnterprise = session.user.subscriptionTier === 'enterprise'
-  let hasTeam = false
-  if (isEnterprise) {
-    try {
-      const membership = await prisma.teamMember.findFirst({ where: { userId: session.user.id } })
-      hasTeam = !!membership
-    } catch {
-      hasTeam = false
-    }
-  }
 
-  // Sidebar snapshot — three cheap queries; radar count comes from the Kv
-  // cache only (never triggers an upstream scan on navigation)
+  // Sidebar snapshot — everything in ONE parallel batch. These queries gate
+  // the first paint of every dashboard page (Turso round-trips add up), so
+  // they must never run sequentially. Radar count comes from the Kv cache
+  // only (never triggers an upstream scan on navigation).
   const stats: SideNavStats = { activeValue: 0, dueThisWeek: 0, radarCount: null }
-  try {
-    const [agg, due] = await Promise.all([
-      prisma.savedContract.aggregate({
-        where: { userId: session.user.id, status: { in: ['saved', 'pursuing', 'submitted'] } },
-        _sum: { value: true },
-      }),
-      prisma.savedContract.count({
-        where: {
-          userId: session.user.id,
-          status: { in: ['saved', 'pursuing', 'submitted'] },
-          deadline: { gte: new Date(), lte: new Date(Date.now() + 7 * 86_400_000) },
-        },
-      }),
-    ])
-    stats.activeValue = agg._sum.value ?? 0
-    stats.dueThisWeek = due
-  } catch { /* pre-migration or DB hiccup — snapshot stays zeroed */ }
-
-  try {
-    const profile = await prisma.companyProfile.findUnique({
+  let hasTeam = false
+  const [membership, agg, due, radarRow] = await Promise.all([
+    isEnterprise
+      ? prisma.teamMember.findFirst({ where: { userId: session.user.id } }).catch(() => null)
+      : Promise.resolve(null),
+    prisma.savedContract.aggregate({
+      where: { userId: session.user.id, status: { in: ['saved', 'pursuing', 'submitted'] } },
+      _sum: { value: true },
+    }).catch(() => null),
+    prisma.savedContract.count({
+      where: {
+        userId: session.user.id,
+        status: { in: ['saved', 'pursuing', 'submitted'] },
+        deadline: { gte: new Date(), lte: new Date(Date.now() + 7 * 86_400_000) },
+      },
+    }).catch(() => null),
+    prisma.companyProfile.findUnique({
       where: { userId: session.user.id },
       select: { naicsCodes: true },
-    })
-    if (profile) {
+    }).then(profile => {
+      if (!profile) return null
       const codes = (JSON.parse(profile.naicsCodes) as string[]).slice(0, 8)
-      const key = `recompetes:v3:${[...new Set(codes)].sort().join(',')}`
-      const row = await prisma.kv.findUnique({ where: { key } })
-      if (row) stats.radarCount = (JSON.parse(row.value) as unknown[]).length
-    }
-  } catch { /* cache miss or table missing — show a dash */ }
+      return prisma.kv.findUnique({ where: { key: recompeteCacheKey(codes) } })
+    }).catch(() => null),
+  ])
+  hasTeam = !!membership
+  if (agg) stats.activeValue = agg._sum.value ?? 0
+  if (due !== null) stats.dueThisWeek = due
+  try {
+    if (radarRow) stats.radarCount = (JSON.parse(radarRow.value) as unknown[]).length
+  } catch { /* malformed cache — show a dash */ }
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F8F7', display: 'flex', fontFamily: 'var(--font-geist-mono, monospace)', color: '#0A0A0A' }}>

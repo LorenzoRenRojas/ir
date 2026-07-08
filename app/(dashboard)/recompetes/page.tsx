@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import MetatronEyeIcon from '@/components/MetatronEyeIcon'
+import MetatronLoader from '@/components/MetatronLoader'
 
 interface ScoreParts {
   timing: number
@@ -65,13 +66,16 @@ function rfpWindow(endDate: string): { label: string; open: boolean } | null {
   return { label: `RFP EXPECTED ${fmt(from)} – ${fmt(to)}`, open: false }
 }
 
-// First few meaningful words of the award description → live SAM.gov search
+// First few meaningful words of the award description → live SAM.gov search.
+// FPDS descriptions open with boilerplate codes (IGF::OT::IGF etc.) — strip
+// those, keep it short: the contracts search matches a majority of tokens.
 function liveSearchQuery(description: string): string {
   return description
-    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .replace(/IGF::[A-Z]+::IGF/gi, ' ')
+    .replace(/[^a-zA-Z ]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 2)
-    .slice(0, 5)
+    .slice(0, 4)
     .join(' ')
 }
 
@@ -210,8 +214,8 @@ export default function RecompetesPage() {
       )}
 
       {loading && (
-        <div style={{ textAlign: 'center', paddingTop: 80, fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', fontFamily: mono }}>
-          SCANNING FEDERAL AWARD DATA…
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
+          <MetatronLoader size={150} label="SCANNING FEDERAL AWARD DATA…" />
         </div>
       )}
 

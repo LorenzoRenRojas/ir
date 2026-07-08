@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { downloadTextAsPdf } from '@/lib/pdf'
 import MetatronIcon from '@/components/MetatronIcon'
+import MetatronLoader from '@/components/MetatronLoader'
 
 interface SavedContract {
   id: string
@@ -315,7 +316,9 @@ export default function PipelinePage() {
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', paddingTop: 80, fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', fontFamily: mono }}>LOADING…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
+          <MetatronLoader size={140} label="LOADING PIPELINE…" />
+        </div>
       ) : contracts.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 80, textAlign: 'center', gap: 16 }}>
           <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.2)', fontFamily: mono }}>PIPELINE EMPTY</div>

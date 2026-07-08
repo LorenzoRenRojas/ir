@@ -316,11 +316,16 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
 // a bad day — the radar degrades gracefully instead of erroring.
 const RECOMPETE_TTL_MS = 24 * 60 * 60 * 1000
 
+// v4: quality-gated rows (real description, named incumbent, ≥$10K, linkable).
+// Single source for the Kv key — the sidebar radar count reads it too.
+export function recompeteCacheKey(naicsCodes: string[]): string {
+  return `recompetes:v4:${[...new Set(naicsCodes)].sort().join(',')}`
+}
+
 export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
   const key = [...new Set(naicsCodes)].sort().join(',')
   if (!key) return []
-  // v4: quality-gated rows (real description, named incumbent, ≥$10K, linkable)
-  const kvKey = `recompetes:v4:${key}`
+  const kvKey = recompeteCacheKey(naicsCodes)
 
   const { prisma } = await import('./prisma')
 

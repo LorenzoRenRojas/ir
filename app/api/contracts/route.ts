@@ -72,13 +72,23 @@ export async function GET(req: NextRequest) {
 
     // Filters
     if (q) {
-      const kw = q.toLowerCase()
-      contracts = contracts.filter(
-        (c) =>
-          c.title.toLowerCase().includes(kw) ||
-          c.agency.toLowerCase().includes(kw) ||
-          c.description.toLowerCase().includes(kw)
-      )
+      // Token matching, not whole-phrase substring: "IT support services Army"
+      // should hit a notice titled "Army Base IT Support" even though the
+      // exact phrase never appears. Keep contracts matching a majority of
+      // tokens (all tokens for 1–2 word queries), ranked by hits.
+      const tokens = q.toLowerCase().split(/\s+/).filter(t => t.length > 1)
+      if (tokens.length > 0) {
+        const needed = tokens.length <= 2 ? tokens.length : Math.ceil(tokens.length / 2)
+        const hits = (c: (typeof contracts)[number]) => {
+          const hay = `${c.title} ${c.agency} ${c.subAgency ?? ''} ${c.naicsDescription ?? ''} ${c.description}`.toLowerCase()
+          return tokens.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0)
+        }
+        contracts = contracts
+          .map(c => ({ c, h: hits(c) }))
+          .filter(x => x.h >= needed)
+          .sort((a, b) => b.h - a.h)
+          .map(x => x.c)
+      }
     }
     if (agency) {
       contracts = contracts.filter((c) =>
