@@ -133,41 +133,58 @@ async function fetchRecompetePage(
   const from = new Date(); from.setFullYear(from.getFullYear() - signedYearsAgo[0])
   const to = new Date(); to.setFullYear(to.getFullYear() - signedYearsAgo[1])
 
-  const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filters: {
-        award_type_codes: ['A', 'B', 'C', 'D'],
-        naics_codes: naicsCodes,
-        // Filter by SIGNING date (the only server-side date filter available;
-        // there is no period-of-performance-end filter — verified in API docs)
-        time_period: [{ start_date: iso(from), end_date: iso(to), date_type: 'date_signed' }],
-      },
-      fields: [
-        'Award ID', 'Recipient Name', 'Award Amount', 'Description',
-        'Start Date', 'End Date',
-        'Awarding Agency', 'Awarding Sub Agency',
-      ],
-      sort: sortField,
-      order: 'desc',
-      limit: 100,
-      page,
-      subawards: false,
-    }),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(40_000),
-  })
+  const attempt = async (timeoutMs: number): Promise<RecompeteRow[]> => {
+    const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filters: {
+          award_type_codes: ['A', 'B', 'C', 'D'],
+          naics_codes: naicsCodes,
+          // Filter by SIGNING date (the only server-side date filter available;
+          // there is no period-of-performance-end filter — verified in API docs)
+          time_period: [{ start_date: iso(from), end_date: iso(to), date_type: 'date_signed' }],
+        },
+        fields: [
+          'Award ID', 'Recipient Name', 'Award Amount', 'Description',
+          'Start Date', 'End Date',
+          'Awarding Agency', 'Awarding Sub Agency',
+        ],
+        sort: sortField,
+        order: 'desc',
+        limit: 100,
+        page,
+        subawards: false,
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeoutMs),
+    })
 
-  if (!res.ok) {
-    const body = await res.text()
-    const err = new Error(`USAspending API error ${res.status}: ${body.slice(0, 200)}`)
-    ;(err as Error & { status?: number }).status = res.status
-    throw err
+    if (!res.ok) {
+      const body = await res.text()
+      const err = new Error(`USAspending API error ${res.status}: ${body.slice(0, 200)}`)
+      ;(err as Error & { status?: number }).status = res.status
+      throw err
+    }
+
+    const data = await res.json()
+    return data.results ?? []
   }
 
-  const data = await res.json()
-  return data.results ?? []
+  // USAspending is routinely slow under load — one slow response must not
+  // kill a whole radar scan. First attempt fails fast; the single retry gets
+  // a longer leash. 4xx (e.g. the 400 sort fallback) propagates immediately.
+  try {
+    return await attempt(25_000)
+  } catch (err) {
+    const status = (err as Error & { status?: number }).status
+    const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+    if (timedOut || status === 502 || status === 503 || status === 504) {
+      await new Promise(r => setTimeout(r, 1_000))
+      return attempt(40_000)
+    }
+    throw err
+  }
 }
 
 // Per-code, two complementary end-date-descending scans, each over a

@@ -397,11 +397,25 @@ async function fetchSamPage(apiKey: string, offset: number, limit: number, daysB
     postedTo: fmtSamDate(toDate),
   })
 
-  const response = await fetch(
+  const doFetch = (timeoutMs: number) => fetch(
     `https://api.sam.gov/opportunities/v2/search?${params.toString()}`,
     // Hard timeout: a stalled SAM.gov connection must never hang a page load
-    { cache: 'no-store', signal: AbortSignal.timeout(20_000) }
+    { cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) }
   )
+
+  // One retry on timeout: the quota unit for this page is already spent
+  // (reserved before the call), so giving up on a slow response wastes it
+  let response: Response
+  try {
+    response = await doFetch(20_000)
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      await new Promise(r => setTimeout(r, 1_000))
+      response = await doFetch(30_000)
+    } else {
+      throw err
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`)
