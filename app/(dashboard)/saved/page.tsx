@@ -20,6 +20,7 @@ interface SavedContract {
   createdAt: string
   status: string
   notes: string | null
+  scorecard: string | null
 }
 
 interface Proposal {
@@ -35,6 +36,87 @@ interface Proposal {
 const mono = 'var(--font-geist-mono, monospace)'
 const sans = 'var(--font-geist-sans, sans-serif)'
 const crimson = '#C41230'
+
+// ─── Bid/No-Bid scorecard ─────────────────────────────────────────────────────
+// The capture-discipline tool APEX advisors teach: rate the pursuit on the six
+// factors that decide wins BEFORE spending 40 hours writing. Weighted toward
+// customer relationship and capability fit — the two that actually predict.
+const BID_FACTORS = [
+  { key: 'customer', label: 'CUSTOMER RELATIONSHIP', hint: 'Have you worked with or at least talked to this buyer?', w: 3 },
+  { key: 'fit', label: 'CAPABILITY FIT', hint: 'Core work for you — not a stretch?', w: 3 },
+  { key: 'pastPerf', label: 'PAST PERFORMANCE', hint: 'Two or three similar, referenceable projects?', w: 2 },
+  { key: 'competition', label: 'COMPETITIVE FIELD', hint: 'Beatable incumbent, or a set-aside lane you hold?', w: 2 },
+  { key: 'resources', label: 'CAPACITY TO RESPOND', hint: 'Team and hours to write a real response by the deadline?', w: 2 },
+  { key: 'price', label: 'PRICE POSITION', hint: 'Competitive without buying the job?', w: 2 },
+] as const
+const BID_MAX = BID_FACTORS.reduce((s, f) => s + f.w * 2, 0)
+const RATING_LABELS = ['WEAK', 'OK', 'STRONG'] as const
+
+function parseScorecard(s: string | null): Record<string, number> {
+  if (!s) return {}
+  try {
+    const v = JSON.parse(s)
+    return v && typeof v === 'object' ? (v as Record<string, number>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function BidScorecard({ ratings, onRate }: { ratings: Record<string, number>; onRate: (factor: string, val: number) => void }) {
+  const ratedCount = BID_FACTORS.filter(f => typeof ratings[f.key] === 'number').length
+  const total = BID_FACTORS.reduce((s, f) => s + (ratings[f.key] ?? 0) * f.w, 0)
+  const pct = Math.round((total / BID_MAX) * 100)
+  const complete = ratedCount === BID_FACTORS.length
+  const verdict = !complete
+    ? { label: `${ratedCount}/${BID_FACTORS.length} RATED`, color: 'rgba(0,0,0,0.35)', bg: 'rgba(0,0,0,0.03)', note: 'Rate every factor for a verdict.' }
+    : pct >= 70
+      ? { label: `GO — ${pct}`, color: '#16a34a', bg: 'rgba(22,163,74,0.07)', note: 'Strong position. Commit and write to win.' }
+      : pct >= 45
+        ? { label: `REVIEW — ${pct}`, color: '#b45309', bg: 'rgba(180,83,9,0.07)', note: 'Winnable with a plan — shore up the weak factors before committing.' }
+        : { label: `NO-BID — ${pct}`, color: crimson, bg: 'rgba(196,18,48,0.06)', note: 'Your hours are your scarcest asset. Spend them on a better-positioned pursuit.' }
+
+  return (
+    <div>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 12 }}>
+        BID / NO-BID SCORECARD <span style={{ color: 'rgba(0,0,0,0.2)', fontWeight: 400 }}>· AUTOSAVES</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+        {BID_FACTORS.map(f => (
+          <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 220px', minWidth: 200 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#0A0A0A', fontFamily: mono }}>{f.label} <span style={{ color: 'rgba(0,0,0,0.25)', fontWeight: 400 }}>×{f.w}</span></div>
+              <div style={{ fontSize: 10.5, color: 'rgba(0,0,0,0.35)', fontFamily: sans, marginTop: 1 }}>{f.hint}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {RATING_LABELS.map((lbl, val) => {
+                const active = ratings[f.key] === val
+                const activeColor = val === 2 ? '#16a34a' : val === 1 ? '#b45309' : crimson
+                return (
+                  <button
+                    key={lbl}
+                    onClick={() => onRate(f.key, val)}
+                    style={{
+                      padding: '5px 10px', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, cursor: 'pointer',
+                      background: active ? activeColor : 'transparent',
+                      color: active ? '#fff' : 'rgba(0,0,0,0.35)',
+                      border: `1px solid ${active ? activeColor : 'rgba(0,0,0,0.12)'}`,
+                    }}
+                  >
+                    {lbl}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: '10px 14px', background: verdict.bg, border: `1px solid ${verdict.color}33`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', color: verdict.color, fontFamily: mono }}>{verdict.label}</span>
+        <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.45)', fontFamily: sans, lineHeight: 1.5 }}>{verdict.note}</span>
+      </div>
+    </div>
+  )
+}
 
 const STAGES = [
   { key: 'saved',     label: 'SAVED',     color: '#64748b' },
@@ -154,6 +236,16 @@ export default function PipelinePage() {
     const prev = contracts
     setContracts(cs => cs.map(c => (c.contractId === contractId ? { ...c, status } : c)))
     patchSaved(contractId, { status }).then(ok => { if (!ok) setContracts(prev) })
+  }
+
+  function handleScorecardRate(contractId: string, factor: string, val: number) {
+    let nextRatings: Record<string, number> = {}
+    setContracts(cs => cs.map(c => {
+      if (c.contractId !== contractId) return c
+      nextRatings = { ...parseScorecard(c.scorecard), [factor]: val }
+      return { ...c, scorecard: JSON.stringify(nextRatings) }
+    }))
+    patchSaved(contractId, { scorecard: nextRatings })
   }
 
   function handleNotesChange(contractId: string, notes: string) {
@@ -299,11 +391,11 @@ export default function PipelinePage() {
         <div style={{ display: 'flex', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)', marginBottom: 20, flexWrap: 'wrap' }}>
           <div style={{ background: '#fff', padding: '16px 24px', flex: '1 1 140px' }}>
             <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>ACTIVE PIPELINE</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{formatValue(activeValue)}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{activeValue ? formatValue(activeValue) : '$0'}</div>
           </div>
           <div style={{ background: '#fff', padding: '16px 24px', flex: '1 1 140px' }}>
             <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>WON</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a', fontFamily: sans }}>{formatValue(wonValue)}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a', fontFamily: sans }}>{wonValue ? formatValue(wonValue) : '$0'}</div>
           </div>
           {STAGES.map(s => {
             const n = contracts.filter(c => c.status === s.key).length
@@ -451,6 +543,12 @@ export default function PipelinePage() {
                         <div style={{ marginTop: 10, fontSize: 10, fontFamily: mono, color: msg.endsWith('✓') ? '#16a34a' : crimson }}>{msg}</div>
                       )}
                     </div>
+
+                    {/* Bid/No-Bid scorecard */}
+                    <BidScorecard
+                      ratings={parseScorecard(c.scorecard)}
+                      onRate={(factor, val) => handleScorecardRate(c.contractId, factor, val)}
+                    />
 
                     {/* Notes */}
                     <div>

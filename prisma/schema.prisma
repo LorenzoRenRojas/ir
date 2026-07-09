@@ -106,6 +106,7 @@ model SavedContract {
   matchScore  Int?
   status      String   @default("saved")
   notes       String?
+  scorecard   String? // JSON: bid/no-bid factor ratings {customer,fit,pastPerf,competition,resources,price}
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

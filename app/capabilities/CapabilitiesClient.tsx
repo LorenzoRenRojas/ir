@@ -26,11 +26,12 @@ const PRICE_BARS = [
 const PRICE_MAX = 12000
 
 const LOOP_STEPS = [
-  { n: '01', title: 'FIND',   body: 'Every active SAM.gov solicitation scored against your NAICS codes, set-asides, size, and geography.' },
+  { n: '01', title: 'FIND',    body: 'Every active SAM.gov solicitation scored against your NAICS codes, set-asides, size, and geography.' },
   { n: '02', title: 'FORESEE', body: 'Recompete Radar surfaces contracts in your space expiring within 18 months — before the RFP exists.' },
-  { n: '03', title: 'TRACK',  body: 'A bid pipeline from first look to award, with dollar totals and automatic deadline alerts.' },
-  { n: '04', title: 'DRAFT',  body: 'A guided questionnaire becomes a formatted 4-volume federal proposal. Capability statements in one click.' },
-  { n: '05', title: 'SEND',   body: 'Proposal delivered to the contracting officer from inside IR — replies go to your inbox.' },
+  { n: '03', title: 'DECIDE',  body: 'A Capture Playbook on every contract — eligibility verdict, market concentration, who wins here, and a Bid/No-Bid scorecard so you spend hours only on winnable work.' },
+  { n: '04', title: 'TRACK',   body: 'A bid pipeline from first look to award, with dollar totals and automatic deadline alerts. Every win and loss teaches your matching algorithm.' },
+  { n: '05', title: 'DRAFT',   body: 'A guided questionnaire becomes a formatted 4-volume federal proposal. Capability statements in one click.' },
+  { n: '06', title: 'SEND',    body: 'Proposal delivered to the contracting officer from inside IR — replies go to your inbox.' },
 ]
 
 const MATRIX: { feature: string; ir: string; legacy: string; irHas: boolean; legacyHas: boolean }[] = [

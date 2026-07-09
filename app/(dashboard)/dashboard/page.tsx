@@ -468,6 +468,30 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {(() => {
+        // FY-end window: Jul 1 – Sep 30. Agencies must obligate remaining
+        // FY funds by Sep 30 — the best-known seasonal surge in GovCon.
+        const now = new Date()
+        const inWindow = now.getMonth() >= 6 && now.getMonth() <= 8
+        if (!inWindow) return null
+        const fyEnd = new Date(now.getFullYear(), 8, 30)
+        const daysLeft = Math.max(0, Math.ceil((fyEnd.getTime() - now.getTime()) / 86_400_000))
+        return (
+          <div style={{ marginBottom: 16, padding: '13px 18px', border: '1px solid rgba(180,83,9,0.3)', background: 'rgba(180,83,9,0.05)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: '#b45309', fontFamily: 'var(--font-geist-mono, monospace)' }}>◉ FY-END WINDOW · {daysLeft} DAYS</span>
+            <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', fontFamily: 'var(--font-geist-sans, sans-serif)', flex: 1, minWidth: 220, lineHeight: 1.5 }}>
+              Agencies must obligate remaining FY funds by Sep 30 — fast-turnaround awards spike now. Favor near-term deadlines.
+            </span>
+            <button
+              onClick={() => setDueWithin(dueWithin === '60' ? '' : '60')}
+              style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', fontFamily: 'var(--font-geist-mono, monospace)', cursor: 'pointer', background: dueWithin === '60' ? '#b45309' : 'transparent', color: dueWithin === '60' ? '#fff' : '#b45309', border: '1px solid rgba(180,83,9,0.5)' }}
+            >
+              {dueWithin === '60' ? '✓ SHOWING 60-DAY CLOSERS' : 'SHOW 60-DAY CLOSERS'}
+            </button>
+          </div>
+        )
+      })()}
+
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80 }}>
           <MetatronLoader size={150} label="SCANNING THE FEDERAL MARKET…" />

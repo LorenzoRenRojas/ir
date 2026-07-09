@@ -146,6 +146,42 @@ async function updateUserPreference(userId: string, noticeId: string, contractTe
   })
 }
 
+// Outcome learning — the algorithm learns from RESULTS, not just interest.
+// A WIN is the strongest possible signal of "more like this" (alpha 0.4 vs
+// 0.25 for a save, and counts double toward blend confidence). A LOSS nudges
+// the vector away (alpha -0.15): gentle, because losses have many causes
+// besides bad fit — price, a stronger incumbent, a thin proposal.
+async function applyOutcomeToPreference(userId: string, noticeId: string, outcome: 'won' | 'lost') {
+  const cached = await prisma.contractEmbedding.findUnique({
+    where: { noticeId: embeddingCacheKey(noticeId) },
+  })
+  if (!cached) return // never embedded — nothing safe to learn from
+  const contractEmb = JSON.parse(cached.embedding) as number[]
+
+  const current = await prisma.userEmbedding.findUnique({ where: { userId } })
+  const currentVec = current ? (JSON.parse(current.preferenceEmbedding) as number[]) : null
+
+  // A LOSS with no existing vector must NOT initialize the preference TO the
+  // lost contract (updatePreferenceVector's null-fallback would do exactly that)
+  if (outcome === 'lost' && (!currentVec || currentVec.length !== contractEmb.length)) return
+
+  const alpha = outcome === 'won' ? 0.4 : -0.15
+  const updated = updatePreferenceVector(currentVec, contractEmb, alpha)
+
+  await prisma.userEmbedding.upsert({
+    where: { userId },
+    update: {
+      preferenceEmbedding: JSON.stringify(updated),
+      ...(outcome === 'won' ? { saveCount: { increment: 2 } } : {}),
+    },
+    create: {
+      userId,
+      preferenceEmbedding: JSON.stringify(updated),
+      saveCount: 2,
+    },
+  })
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth()
@@ -182,15 +218,39 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { contractId, status, notes } = await req.json()
-    if (!contractId || (status === undefined && notes === undefined)) {
-      return NextResponse.json({ error: 'contractId and a status or notes update are required' }, { status: 400 })
+    const { contractId, status, notes, scorecard } = await req.json()
+    if (!contractId || (status === undefined && notes === undefined && scorecard === undefined)) {
+      return NextResponse.json({ error: 'contractId and a status, notes, or scorecard update are required' }, { status: 400 })
     }
     if (status !== undefined && !PIPELINE_STAGES.includes(status)) {
       return NextResponse.json({ error: `status must be one of: ${PIPELINE_STAGES.join(', ')}` }, { status: 400 })
     }
     if (notes !== undefined && (typeof notes !== 'string' || notes.length > 10_000)) {
       return NextResponse.json({ error: 'notes must be a string under 10k characters' }, { status: 400 })
+    }
+    // Scorecard: object of factor→0|1|2 ratings, stored as a JSON string
+    let scorecardJson: string | undefined
+    if (scorecard !== undefined) {
+      if (scorecard === null) {
+        scorecardJson = undefined // treat null as "no change" — clearing isn't a flow
+      } else if (typeof scorecard === 'object' && !Array.isArray(scorecard)) {
+        const entries = Object.entries(scorecard as Record<string, unknown>)
+          .filter(([k, v]) => typeof k === 'string' && k.length <= 20 && typeof v === 'number' && [0, 1, 2].includes(v))
+          .slice(0, 10)
+        scorecardJson = JSON.stringify(Object.fromEntries(entries))
+      } else {
+        return NextResponse.json({ error: 'scorecard must be an object of 0–2 ratings' }, { status: 400 })
+      }
+    }
+
+    // Prior state — outcome learning must fire only on a real transition,
+    // not on every repeat PATCH to the same stage
+    const existing = await prisma.savedContract.findUnique({
+      where: { userId_contractId: { userId: session.user.id, contractId } },
+      select: { status: true, samNoticeId: true },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Contract is no longer in your pipeline' }, { status: 404 })
     }
 
     let updated
@@ -200,6 +260,7 @@ export async function PATCH(req: NextRequest) {
         data: {
           ...(status !== undefined ? { status } : {}),
           ...(notes !== undefined ? { notes } : {}),
+          ...(scorecardJson !== undefined ? { scorecard: scorecardJson } : {}),
         },
       })
     } catch (err) {
@@ -207,6 +268,21 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Contract is no longer in your pipeline' }, { status: 404 })
       }
       throw err
+    }
+
+    // Outcome learning: a WIN pulls the taste vector toward this contract
+    // much harder than a mere save; a LOSS nudges it away. This is what makes
+    // the algorithm learn from results, not just interest. Non-blocking.
+    if (
+      isEmbeddingEnabled() &&
+      existing.samNoticeId &&
+      status !== undefined &&
+      status !== existing.status &&
+      (status === 'won' || status === 'lost')
+    ) {
+      applyOutcomeToPreference(session.user.id, existing.samNoticeId, status).catch(
+        (err) => console.error('Outcome learning error (non-fatal):', err)
+      )
     }
 
     return NextResponse.json({ saved: updated })
