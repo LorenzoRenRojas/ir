@@ -4,6 +4,10 @@
 every operational detail, and where it's going. Written so that any developer or AI session
 can pick up exactly where the last one left off.
 
+**Companion docs:** `GROWTH_PLAN.md` (GTM strategy) · `COMPETITION.md` (honest
+competitive landscape, per-competitor breakdown, and APEX talking points —
+read before touching any marketing claim).
+
 ---
 
 ## What IR is

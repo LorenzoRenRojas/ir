@@ -39,12 +39,12 @@ const HOW = [
 
 // Head-to-head vs the incumbents
 const COMPARE = [
-  { dim: 'PRICE',              them: '$5,000–$15,000 / year',       ir: 'From $79 / month' },
-  { dim: 'GETTING STARTED',    them: 'Sales call, demo, contract',   ir: 'Self-serve — matching in 5 minutes' },
-  { dim: 'PROPOSAL HELP',      them: 'None — intel only',            ir: 'Full proposal drafts + capability statements' },
-  { dim: 'ALERTS',             them: 'Saved searches',               ir: 'Profile-scored daily digest + deadline reminders' },
-  { dim: 'PRE-RFP INTEL',      them: 'Human analyst reports at $10k+', ir: 'Recompete Radar — expiring contracts, automated' },
-  { dim: 'CONTRACTING OFFICER',them: 'Look it up yourself',          ir: 'One click — proposal sent, replies to your inbox' },
+  { dim: 'PRICE',              them: '$12,000–$40,000 / year',        ir: 'From $79 / month' },
+  { dim: 'GETTING STARTED',    them: 'Sales call, demo, annual contract', ir: 'Self-serve — matching in 5 minutes' },
+  { dim: 'MATCH SCORING',      them: 'Filters + saved searches',      ir: 'Scored to your profile, learns from every save' },
+  { dim: 'PRE-RFP INTEL',      them: 'Analyst reports, premium tier', ir: 'Recompete Radar — scored & automated, included' },
+  { dim: 'PROPOSAL HELP',      them: 'None — intelligence only',      ir: 'Capability statements + proposal drafts' },
+  { dim: 'CONTRACTING OFFICER',them: 'Look it up yourself',           ir: 'One click — proposal sent, replies to your inbox' },
 ]
 
 const PLANS = [
@@ -155,7 +155,7 @@ export default function LandingPage() {
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}></th>
-                  <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>LEGACY TOOLS</th>
+                  <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>ENTERPRISE TERMINALS</th>
                   <th style={{ textAlign: 'left', padding: '14px 20px', fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: crimson, borderBottom: `1px solid ${crimson}` }}>IR</th>
                 </tr>
               </thead>

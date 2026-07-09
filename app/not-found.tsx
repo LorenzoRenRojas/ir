@@ -17,9 +17,7 @@ export default function NotFound() {
       padding: 32,
       textAlign: 'center',
     }}>
-      <div style={{ marginBottom: 24 }}>
-        <span style={{ color: crimson, fontSize: 20, fontWeight: 700 }}>ᛁ</span>
-      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '0.08em', color: crimson, marginBottom: 24 }}>IR</div>
 
       <div style={{ fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginBottom: 20 }}>
         ERROR 404
