@@ -4,9 +4,12 @@ import { fetchContractById, fetchContractDescription } from '@/lib/sam-api'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
+import { buildCapturePlaybook } from '@/lib/capture'
 import { SaveContractButton } from '@/components/contracts/save-contract-button'
 import { fetchIncumbent } from '@/lib/usaspending'
 import ScoreBreakdown from '@/components/contracts/ScoreBreakdown'
+import CapturePlaybook from '@/components/contracts/CapturePlaybook'
+import MarketIntel from '@/components/contracts/MarketIntel'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -43,22 +46,31 @@ export default async function ContractDetailPage({
 
   const session = await auth()
   let breakdown = null
+  let captureProfile: { certifications: string[]; businessTypes: string[] } | null = null
   if (session?.user?.id) {
     const dbProfile = await prisma.companyProfile.findUnique({
       where: { userId: session.user.id },
     })
     if (dbProfile) {
+      const parseArr = (s: string): string[] => {
+        try { const v = JSON.parse(s); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [] } catch { return [] }
+      }
       const profile = {
-        naicsCodes: JSON.parse(dbProfile.naicsCodes) as string[],
-        businessTypes: JSON.parse(dbProfile.businessTypes) as string[],
-        contractSizePrefs: JSON.parse(dbProfile.contractSizePrefs) as string[],
-        contractTypePrefs: JSON.parse(dbProfile.contractTypePrefs) as string[],
-        geoPrefs: JSON.parse(dbProfile.geoPrefs) as string[],
-        certifications: JSON.parse(dbProfile.certifications) as string[],
+        naicsCodes: parseArr(dbProfile.naicsCodes),
+        businessTypes: parseArr(dbProfile.businessTypes),
+        contractSizePrefs: parseArr(dbProfile.contractSizePrefs),
+        contractTypePrefs: parseArr(dbProfile.contractTypePrefs),
+        geoPrefs: parseArr(dbProfile.geoPrefs),
+        certifications: parseArr(dbProfile.certifications),
       }
       breakdown = calculateMatchScore(contract, profile)
+      captureProfile = { certifications: profile.certifications, businessTypes: profile.businessTypes }
     }
   }
+
+  // Capture Playbook — pure/instant, renders even without a profile (it prompts
+  // to complete one). The "how to pursue this" layer.
+  const playbook = buildCapturePlaybook(contract, captureProfile, incumbent)
 
   const fields = [
     { label: 'AGENCY', value: contract.agency },
@@ -87,6 +99,12 @@ export default async function ContractDetailPage({
 
       {/* Full animated match analysis — the "why this score" story */}
       {breakdown && <ScoreBreakdown breakdown={breakdown} />}
+
+      {/* Capture Playbook (how to pursue) + Market Intelligence (who wins here) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, marginBottom: 12 }}>
+        <CapturePlaybook playbook={playbook} />
+        {contract.naicsCode && <MarketIntel naics={contract.naicsCode} agency={contract.agency} />}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12, alignItems: 'start' }}>
         {/* Left */}
