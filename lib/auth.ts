@@ -54,15 +54,40 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
       }
       if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { subscriptionTier: true, onboardingDone: true, role: true, emailVerified: true },
-        })
+        const base = { subscriptionTier: true, onboardingDone: true, role: true, emailVerified: true } as const
+        let dbUser: { subscriptionTier: string; onboardingDone: boolean; role: string; emailVerified: Date | null; passwordChangedAt?: Date | null } | null = null
+        try {
+          try {
+            dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { ...base, passwordChangedAt: true },
+            })
+          } catch {
+            // passwordChangedAt column missing pre-migration — query without it
+            dbUser = await prisma.user.findUnique({ where: { id: token.id as string }, select: base })
+          }
+        } catch {
+          // DB hiccup — keep the session as-is rather than logging everyone out
+          return token
+        }
+
         if (dbUser) {
+          // Password changed after this token was issued → the old session
+          // (possibly a stolen one — that's WHY people change passwords)
+          // must die instead of riding out its 30-day JWT lifetime
+          const issuedAt = typeof token.iat === 'number' ? token.iat * 1000 : 0
+          if (dbUser.passwordChangedAt && issuedAt > 0 && dbUser.passwordChangedAt.getTime() > issuedAt) {
+            delete token.id
+            return token
+          }
           token.subscriptionTier = dbUser.subscriptionTier
           token.onboardingDone = dbUser.onboardingDone
           token.role = dbUser.role
           token.emailVerified = dbUser.emailVerified?.toISOString() ?? null
+        } else {
+          // Account no longer exists (deleted) — kill the session instead of
+          // letting the JWT keep authorizing API calls until it expires
+          delete token.id
         }
       }
       return token

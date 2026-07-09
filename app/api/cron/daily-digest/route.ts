@@ -65,6 +65,10 @@ export async function GET(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
 
     for (const user of users) {
+      if (timeBudgetLeft() <= 0) {
+        problems.push(`Digest stopped at time budget — ${users.length - usersProcessed} users deferred (their contracts stay undigested and send tomorrow)`)
+        break
+      }
       usersProcessed++
       // Whole per-user body inside the try: one corrupt profile or one
       // scoring crash must skip THIS user, not everyone after them
@@ -176,7 +180,12 @@ export async function GET(req: NextRequest) {
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
 
-    for (const user of radarUsers) {
+    // Rotate the starting point daily: if the time budget cuts the loop
+    // short, it must not starve the SAME tail users every single day
+    const rot = radarUsers.length > 0 ? new Date().getUTCDate() % radarUsers.length : 0
+    const rotatedUsers = [...radarUsers.slice(rot), ...radarUsers.slice(0, rot)]
+
+    for (const user of rotatedUsers) {
       if (timeBudgetLeft() <= 0) {
         problems.push(`Radar scan stopped at time budget — ${radarUsers.length - radarAlertsSent} users deferred to tomorrow's run`)
         break
@@ -231,6 +240,11 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error('Recompete scan-and-notify skipped:', err)
   }
+
+  // EmailLog retention: the audit trail grows by every send forever — keep 90 days
+  try {
+    await prisma.emailLog.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } })
+  } catch { /* table missing pre-migration */ }
 
   // Self-report: if anything failed, alert the admin so it never fails silently
   if (problems.length > 0 && ADMIN_EMAIL) {

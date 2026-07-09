@@ -66,6 +66,13 @@ export async function GET() {
     `CREATE TABLE IF NOT EXISTS "Waitlist" ("id" TEXT NOT NULL PRIMARY KEY,"email" TEXT NOT NULL,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "Waitlist_email_key" ON "Waitlist"("email")`,
     `CREATE TABLE IF NOT EXISTS "UserEmbedding" ("userId" TEXT NOT NULL PRIMARY KEY,"preferenceEmbedding" TEXT NOT NULL,"saveCount" INTEGER NOT NULL DEFAULT 0,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "UserEmbedding_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
+    // Session invalidation on password change
+    `ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME`,
+    // Hot-query indexes (dashboard read filter, prune, reminders, doc lists)
+    `CREATE INDEX IF NOT EXISTS "ContractCache_deadline_idx" ON "ContractCache"("deadline")`,
+    `CREATE INDEX IF NOT EXISTS "SavedContract_deadline_idx" ON "SavedContract"("deadline")`,
+    `CREATE INDEX IF NOT EXISTS "EmailLog_createdAt_idx" ON "EmailLog"("createdAt")`,
+    `CREATE INDEX IF NOT EXISTS "GeneratedDocument_userId_idx" ON "GeneratedDocument"("userId")`,
   ]
 
   const results: string[] = []
@@ -83,5 +90,8 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ success: true, tables: results })
+  // Success only when nothing genuinely failed — a broken migration must
+  // not report green
+  const success = results.every(r => !r.startsWith('ERROR'))
+  return NextResponse.json({ success, tables: results }, { status: success ? 200 : 500 })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
@@ -275,6 +275,8 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const reqSeq = useRef(0)
   const [saving, setSaving] = useState<string | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null)
@@ -303,7 +305,9 @@ export default function DashboardPage() {
   }, [searchInput])
 
   const fetchContracts = useCallback(async () => {
+    const seq = ++reqSeq.current
     setLoading(true)
+    setLoadError(false)
     try {
       const params = new URLSearchParams()
       if (q) params.set('q', q)
@@ -312,13 +316,23 @@ export default function DashboardPage() {
       if (setAside) params.set('setAside', setAside)
       if (dueWithin) params.set('dueWithin', dueWithin)
       const res = await fetch(`/api/contracts?${params.toString()}`)
-      const data = await res.json()
-      setContracts(data.contracts ?? [])
-      setFetchedAt(new Date())
+      const data = await res.json().catch(() => ({}))
+      // Ignore a stale response that a newer filter change has superseded —
+      // otherwise a slow broad query can land after a fast narrow one and
+      // show results that don't match the filters on screen
+      if (seq !== reqSeq.current) return
+      if (!res.ok) {
+        setLoadError(true)
+        setContracts([])
+      } else {
+        setContracts(data.contracts ?? [])
+        setFetchedAt(new Date())
+      }
     } catch (err) {
       console.error(err)
+      if (seq === reqSeq.current) setLoadError(true)
     } finally {
-      setLoading(false)
+      if (seq === reqSeq.current) setLoading(false)
     }
   }, [q, agency, type, setAside, dueWithin])
 
@@ -457,6 +471,18 @@ export default function DashboardPage() {
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80 }}>
           <MetatronLoader size={150} label="SCANNING THE FEDERAL MARKET…" />
+        </div>
+      ) : loadError ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: '#C41230', marginBottom: 12 }}>FEED TEMPORARILY UNAVAILABLE</div>
+            <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 20 }}>
+              We couldn&apos;t load live contract data just now. This is usually momentary.
+            </div>
+            <button onClick={() => fetchContracts()} style={{ padding: '10px 22px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', fontFamily: 'var(--font-geist-mono, monospace)', background: '#0A0A0A', color: '#fff', border: 'none', cursor: 'pointer' }}>
+              RETRY →
+            </button>
+          </div>
         </div>
       ) : contracts.length === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>

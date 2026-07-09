@@ -235,80 +235,64 @@ async function scanWindow(
   return rows
 }
 
-async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
-  const naicsCodes = naicsKey.split(',').filter(Boolean).slice(0, 6)
-  if (naicsCodes.length === 0) return []
+const MONTH_MS = 30 * 24 * 60 * 60 * 1000
 
-  const MONTH_MS = 30 * 24 * 60 * 60 * 1000
+// Scan ONE NAICS code: both signing windows in parallel, then the quality
+// gate. Per-code granularity is what makes the cache shareable across users.
+async function scanCode(code: string): Promise<RecompeteAward[]> {
   const now = Date.now()
   const horizon = now + 18 * MONTH_MS
 
-  // All codes in parallel; within a code, both signing windows in parallel.
-  // Individual failures tolerated — partial radar beats no radar.
-  const settled = await Promise.allSettled(
-    naicsCodes.map(async (code) => {
-      const [older, recent] = await Promise.allSettled([
-        scanWindow(code, [6, 2.5], 3, now),
-        scanWindow(code, [2.5, 0], 4, now),
-      ])
-      const rows: RecompeteRow[] = []
-      if (older.status === 'fulfilled') rows.push(...older.value)
-      if (recent.status === 'fulfilled') rows.push(...recent.value)
-      if (rows.length === 0 && older.status === 'rejected') throw older.reason
-      return { code, rows }
-    })
-  )
-
-  const fulfilled = settled.filter((r): r is PromiseFulfilledResult<{ code: string; rows: RecompeteRow[] }> => r.status === 'fulfilled')
-  if (fulfilled.length === 0) {
-    const firstErr = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
-    throw firstErr?.reason ?? new Error('All USAspending queries failed')
-  }
+  const [older, recent] = await Promise.allSettled([
+    scanWindow(code, [6, 2.5], 3, now),
+    scanWindow(code, [2.5, 0], 4, now),
+  ])
+  const rows: RecompeteRow[] = []
+  if (older.status === 'fulfilled') rows.push(...older.value)
+  if (recent.status === 'fulfilled') rows.push(...recent.value)
+  if (rows.length === 0 && older.status === 'rejected') throw older.reason
 
   const results: RecompeteAward[] = []
   const seen = new Set<string>()
 
-  for (const { value: { code, rows } } of fulfilled) {
-    for (const row of rows) {
-      const endStr = rowEnd(row)
-      if (!endStr) continue
-      const end = new Date(endStr).getTime()
-      if (isNaN(end) || end < now || end > horizon) continue
+  for (const row of rows) {
+    const endStr = rowEnd(row)
+    if (!endStr) continue
+    const end = new Date(endStr).getTime()
+    if (isNaN(end) || end < now || end > horizon) continue
 
-      // Quality gate: FPDS is full of thin records — de-obligated/$0 awards,
-      // blank descriptions, missing internal IDs. Those are exactly the rows
-      // that click through to a near-empty USAspending page, so a row has to
-      // earn its card: linkable ID, real description, named incumbent, ≥$10K.
-      const internalId = row.generated_internal_id?.trim()
-      const description = row['Description']?.trim()
-      const incumbent = row['Recipient Name']?.trim()
-      const amount = typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null
-      if (!internalId || !description || !incumbent) continue
-      if (amount === null || amount < 10_000) continue
+    // Quality gate: FPDS is full of thin records — de-obligated/$0 awards,
+    // blank descriptions, missing internal IDs. Those are exactly the rows
+    // that click through to a near-empty USAspending page, so a row has to
+    // earn its card: linkable ID, real description, named incumbent, ≥$10K.
+    const internalId = row.generated_internal_id?.trim()
+    const description = row['Description']?.trim()
+    const incumbent = row['Recipient Name']?.trim()
+    const amount = typeof row['Award Amount'] === 'number' ? row['Award Amount'] : null
+    if (!internalId || !description || !incumbent) continue
+    if (amount === null || amount < 10_000) continue
 
-      const id = row['Award ID'] ?? internalId
-      if (!id || seen.has(id)) continue
-      seen.add(id)
+    const id = row['Award ID'] ?? internalId
+    if (!id || seen.has(id)) continue
+    seen.add(id)
 
-      results.push({
-        awardId: id,
-        internalId,
-        naicsCode: code,
-        description,
-        incumbent,
-        amount,
-        startDate: rowStart(row) ?? null,
-        endDate: endStr,
-        agency: row['Awarding Agency'] ?? 'Unknown agency',
-        subAgency: row['Awarding Sub Agency'] ?? '',
-        monthsUntilExpiry: Math.max(0, Math.round((end - now) / MONTH_MS)),
-        usaspendingUrl: `https://www.usaspending.gov/award/${encodeURIComponent(internalId)}`,
-      })
-    }
+    results.push({
+      awardId: id,
+      internalId,
+      naicsCode: code,
+      description,
+      incumbent,
+      amount,
+      startDate: rowStart(row) ?? null,
+      endDate: endStr,
+      agency: row['Awarding Agency'] ?? 'Unknown agency',
+      subAgency: row['Awarding Sub Agency'] ?? '',
+      monthsUntilExpiry: Math.max(0, Math.round((end - now) / MONTH_MS)),
+      usaspendingUrl: `https://www.usaspending.gov/award/${encodeURIComponent(internalId)}`,
+    })
   }
 
-  // Soonest expirations first — most actionable
-  return results.sort((a, b) => a.monthsUntilExpiry - b.monthsUntilExpiry)
+  return results
 }
 
 // DB-backed cache (Kv table): shared across all serverless instances, serves
@@ -316,45 +300,74 @@ async function _fetchRecompetes(naicsKey: string): Promise<RecompeteAward[]> {
 // a bad day — the radar degrades gracefully instead of erroring.
 const RECOMPETE_TTL_MS = 24 * 60 * 60 * 1000
 
-// v4: quality-gated rows (real description, named incumbent, ≥$10K, linkable).
-// Single source for the Kv key — the sidebar radar count reads it too.
-export function recompeteCacheKey(naicsCodes: string[]): string {
-  return `recompetes:v4:${[...new Set(naicsCodes)].sort().join(',')}`
+// v5: cached PER NAICS CODE, not per user's code-set. Users sharing any code
+// share that code's cache — cold scans per day are O(distinct codes), not
+// O(users), which is what keeps the daily cron and new-user page loads sane.
+export function recompeteCodeKey(code: string): string {
+  return `recompete:v5:${code}`
 }
 
 export async function getRecompetes(naicsCodes: string[]): Promise<RecompeteAward[]> {
-  const key = [...new Set(naicsCodes)].sort().join(',')
-  if (!key) return []
-  const kvKey = recompeteCacheKey(naicsCodes)
+  const codes = [...new Set(naicsCodes)].filter(Boolean).slice(0, 8)
+  if (codes.length === 0) return []
 
   const { prisma } = await import('./prisma')
 
-  let stale: RecompeteAward[] | null = null
-  try {
-    const row = await prisma.kv.findUnique({ where: { key: kvKey } })
-    if (row) {
-      const parsed = JSON.parse(row.value) as RecompeteAward[]
-      // Never trust a cached EMPTY result — an upstream hiccup or a since-
-      // fixed query bug would otherwise pin users at zero for a full day
-      if (parsed.length > 0 && Date.now() - new Date(row.updatedAt).getTime() < RECOMPETE_TTL_MS) {
-        return parsed // fresh — instant, no upstream call
-      }
-      if (parsed.length > 0) stale = parsed
-    }
-  } catch { /* Kv table missing pre-migration — compute live */ }
+  const settled = await Promise.allSettled(
+    codes.map(async (code) => {
+      const kvKey = recompeteCodeKey(code)
+      let stale: RecompeteAward[] | null = null
+      try {
+        const row = await prisma.kv.findUnique({ where: { key: kvKey } })
+        if (row) {
+          const parsed = JSON.parse(row.value) as RecompeteAward[]
+          // Never trust a cached EMPTY result — an upstream hiccup would
+          // otherwise pin the code at zero for a full day
+          if (parsed.length > 0 && Date.now() - new Date(row.updatedAt).getTime() < RECOMPETE_TTL_MS) {
+            return parsed
+          }
+          if (parsed.length > 0) stale = parsed
+        }
+      } catch { /* Kv table missing pre-migration — compute live */ }
 
-  try {
-    const fresh = await _fetchRecompetes(key)
-    try {
-      await prisma.kv.upsert({
-        where: { key: kvKey },
-        update: { value: JSON.stringify(fresh) },
-        create: { key: kvKey, value: JSON.stringify(fresh) },
-      })
-    } catch { /* cache write is best-effort */ }
-    return fresh
-  } catch (err) {
-    if (stale) return stale // upstream down — yesterday's radar beats an error
-    throw err
+      try {
+        const fresh = await scanCode(code)
+        if (fresh.length > 0) {
+          try {
+            await prisma.kv.upsert({
+              where: { key: kvKey },
+              update: { value: JSON.stringify(fresh) },
+              create: { key: kvKey, value: JSON.stringify(fresh) },
+            })
+          } catch { /* cache write is best-effort */ }
+        }
+        return fresh
+      } catch (err) {
+        if (stale) return stale // upstream down — yesterday's radar beats an error
+        throw err
+      }
+    })
+  )
+
+  const fulfilled = settled.filter((r): r is PromiseFulfilledResult<RecompeteAward[]> => r.status === 'fulfilled')
+  if (fulfilled.length === 0) {
+    const firstErr = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+    throw firstErr?.reason ?? new Error('All USAspending queries failed')
   }
+
+  // Merge codes, dedupe by award, drop anything expired since it was cached,
+  // recompute freshness-sensitive fields, soonest expiration first
+  const now = Date.now()
+  const seen = new Set<string>()
+  const merged: RecompeteAward[] = []
+  for (const list of fulfilled.map(f => f.value)) {
+    for (const award of list) {
+      if (seen.has(award.awardId)) continue
+      const end = new Date(award.endDate).getTime()
+      if (isNaN(end) || end < now) continue
+      seen.add(award.awardId)
+      merged.push({ ...award, monthsUntilExpiry: Math.max(0, Math.round((end - now) / MONTH_MS)) })
+    }
+  }
+  return merged.sort((a, b) => a.monthsUntilExpiry - b.monthsUntilExpiry)
 }

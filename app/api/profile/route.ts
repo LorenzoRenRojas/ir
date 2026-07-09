@@ -71,6 +71,15 @@ export async function PUT(req: NextRequest) {
       })
     }
 
+    // Coerce defensively: form inputs deliver strings, the column is Int —
+    // a raw string here is a guaranteed Prisma 500
+    const yearInt =
+      typeof yearFounded === 'number' && Number.isInteger(yearFounded)
+        ? yearFounded
+        : typeof yearFounded === 'string' && /^\d{4}$/.test(yearFounded.trim())
+          ? parseInt(yearFounded.trim(), 10)
+          : null
+
     // Update company profile
     if (companyName !== undefined) {
       await prisma.companyProfile.upsert({
@@ -79,7 +88,7 @@ export async function PUT(req: NextRequest) {
           companyName,
           uei: uei ?? null,
           website: website ?? null,
-          yearFounded: yearFounded ?? null,
+          yearFounded: yearInt,
           businessTypes: JSON.stringify(businessTypes ?? []),
           naicsCodes: JSON.stringify(naicsCodes ?? []),
           contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),
@@ -93,7 +102,7 @@ export async function PUT(req: NextRequest) {
           companyName,
           uei: uei ?? null,
           website: website ?? null,
-          yearFounded: yearFounded ?? null,
+          yearFounded: yearInt,
           businessTypes: JSON.stringify(businessTypes ?? []),
           naicsCodes: JSON.stringify(naicsCodes ?? []),
           contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),

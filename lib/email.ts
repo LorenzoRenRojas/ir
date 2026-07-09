@@ -34,12 +34,43 @@ async function logEmail(to: string, subject: string, status: string, error?: str
   }
 }
 
-async function send(to: string, subject: string, html: string, replyTo?: string): Promise<void> {
+// Resend free tier: 100 emails/day shared by EVERYTHING. Without a budget,
+// a big digest morning eats the quota and then a new signup's VERIFICATION
+// email silently fails — the worst possible casualty. So: bulk sends
+// (digest/radar/reminders) reserve from a Kv-tracked daily budget and stop
+// at a floor that stays reserved for transactional email; transactional
+// sends are counted but never blocked.
+const TRANSACTIONAL_RESERVE = 20
+
+function emailBudget(): number {
+  const fromEnv = parseInt(process.env.RESEND_DAILY_BUDGET ?? '', 10)
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 100
+}
+
+async function tryConsumeEmailBudget(bulk: boolean): Promise<boolean> {
+  const key = `email-quota:${new Date().toISOString().slice(0, 10)}`
+  const ceiling = bulk ? emailBudget() - TRANSACTIONAL_RESERVE : Number.MAX_SAFE_INTEGER
+  try {
+    await prisma.$executeRaw`INSERT INTO "Kv" ("key", "value", "updatedAt") VALUES (${key}, '0', CURRENT_TIMESTAMP) ON CONFLICT ("key") DO NOTHING`
+    const claimed = await prisma.$executeRaw`UPDATE "Kv" SET "value" = CAST(CAST("value" AS INTEGER) + 1 AS TEXT), "updatedAt" = CURRENT_TIMESTAMP WHERE "key" = ${key} AND CAST("value" AS INTEGER) + 1 <= ${ceiling}`
+    return claimed > 0
+  } catch {
+    return true // Kv missing pre-migration — don't block email
+  }
+}
+
+async function send(to: string, subject: string, html: string, replyTo?: string, opts?: { bulk?: boolean }): Promise<void> {
   const key = process.env.RESEND_API_KEY
   if (!key) {
     // No key configured — record it so the admin dashboard makes this visible
     console.log(`[email] SKIPPED (no RESEND_API_KEY) To: ${to} | Subject: ${subject}`)
     await logEmail(to, subject, 'skipped_no_key', 'RESEND_API_KEY is not set in this environment')
+    return
+  }
+
+  if (!(await tryConsumeEmailBudget(opts?.bulk ?? false))) {
+    // Bulk budget spent — skip so verification/reset emails keep working
+    await logEmail(to, subject, 'skipped_quota', 'Daily bulk-email budget spent — reserved remainder for transactional email')
     return
   }
 
@@ -172,7 +203,7 @@ export async function sendProposalEmail(
   content: string,
   viewUrl: string
 ): Promise<void> {
-  const previewLines = content.split('\n').slice(0, 8).join('\n')
+  const previewLines = esc(content.split('\n').slice(0, 8).join('\n'))
 
   const html = `
 <!DOCTYPE html>
@@ -192,10 +223,10 @@ export async function sendProposalEmail(
         <tr>
           <td style="padding:36px 48px 28px;">
             <p style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">PROPOSAL SHARED WITH YOUR TEAM</p>
-            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${contractTitle}</h1>
-            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 28px;font-family:sans-serif;">${agencyName}</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${esc(contractTitle)}</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 28px;font-family:sans-serif;">${esc(agencyName)}</p>
             <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 28px;font-family:sans-serif;">
-              <strong style="color:#ffffff;">${senderName}</strong> has generated a proposal for this opportunity
+              <strong style="color:#ffffff;">${esc(senderName)}</strong> has generated a proposal for this opportunity
               and shared it with your organization on IR.
             </p>
             <a href="${viewUrl}"
@@ -312,7 +343,7 @@ export async function sendDailyDigestEmail(
 </body>
 </html>`
 
-  await send(email, `[IR] ${matches.length} new contract ${matches.length === 1 ? 'match' : 'matches'} for your profile`, html)
+  await send(email, `[IR] ${matches.length} new contract ${matches.length === 1 ? 'match' : 'matches'} for your profile`, html, undefined, { bulk: true })
 }
 
 export async function sendDeadlineReminderEmail(
@@ -364,7 +395,7 @@ export async function sendDeadlineReminderEmail(
 </body>
 </html>`
 
-  await send(email, `[IR] Deadline ${daysLeft <= 1 ? 'tomorrow' : `in ${daysLeft} days`}: ${contractTitle}`, html)
+  await send(email, `[IR] Deadline ${daysLeft <= 1 ? 'tomorrow' : `in ${daysLeft} days`}: ${contractTitle}`, html, undefined, { bulk: true })
 }
 
 export interface RecompeteAlertItem {
@@ -447,7 +478,7 @@ export async function sendRecompeteAlertEmail(
 </body>
 </html>`
 
-  await send(email, `[IR Radar] ${items.length} expiring contract${items.length === 1 ? '' : 's'} in your NAICS codes`, html)
+  await send(email, `[IR Radar] ${items.length} expiring contract${items.length === 1 ? '' : 's'} in your NAICS codes`, html, undefined, { bulk: true })
 }
 
 export async function sendAdminAlertEmail(
@@ -501,20 +532,20 @@ export async function sendProposalToOfficerEmail(
       <table width="640" cellpadding="0" cellspacing="0">
         <tr>
           <td style="padding:0 24px;">
-            <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">Dear ${contactName},</p>
+            <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">Dear ${esc(contactName)},</p>
             <p style="font-size:15px;line-height:1.7;margin:0 0 16px;">
-              Please find below a proposal submitted by <strong>${companyName}</strong> in response to
-              <strong>${contractTitle}</strong>${solicitationNumber ? ` (Solicitation No. ${solicitationNumber})` : ''}.
+              Please find below a proposal submitted by <strong>${esc(companyName)}</strong> in response to
+              <strong>${esc(contractTitle)}</strong>${solicitationNumber ? ` (Solicitation No. ${esc(solicitationNumber)})` : ''}.
             </p>
             <p style="font-size:15px;line-height:1.7;margin:0 0 24px;">
-              For any questions regarding this submission, please contact ${senderName} directly at
-              <a href="mailto:${senderEmail}" style="color:#1a1a1a;">${senderEmail}</a> or simply reply to this email.
+              For any questions regarding this submission, please contact ${esc(senderName)} directly at
+              <a href="mailto:${encodeURIComponent(senderEmail)}" style="color:#1a1a1a;">${esc(senderEmail)}</a> or simply reply to this email.
             </p>
             <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 24px;">
-            <pre style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;margin:0 0 24px;">${content}</pre>
+            <pre style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;margin:0 0 24px;">${esc(content)}</pre>
             <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 16px;">
             <p style="font-size:12px;color:#888888;line-height:1.6;margin:0;">
-              Sent on behalf of ${companyName} via IR (ir-gov.app). Reply-to is set to the sender.
+              Sent on behalf of ${esc(companyName)} via IR (ir-gov.app). Reply-to is set to the sender.
             </p>
           </td>
         </tr>
@@ -557,7 +588,7 @@ export async function sendTeamInviteEmail(
         <tr>
           <td style="padding:40px 48px;">
             <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 20px;">TEAM INVITATION</p>
-            <h1 style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0 0 16px;font-family:sans-serif;">You've been invited to ${teamName}.</h1>
+            <h1 style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0 0 16px;font-family:sans-serif;">You've been invited to ${esc(teamName)}.</h1>
             <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 32px;font-family:sans-serif;">
               Accept the invitation to join your team on IR and start tracking federal contracts together.
             </p>

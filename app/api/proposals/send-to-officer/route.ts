@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { fetchContractById } from '@/lib/sam-api'
 import { sendProposalToOfficerEmail } from '@/lib/email'
+import { rateLimit } from '@/lib/rate-limit'
 
 // POST { documentId, dryRun? }
 // dryRun: true  → resolve and return the contracting officer contact (no send)
@@ -17,6 +18,18 @@ export async function POST(req: NextRequest) {
     const { documentId, dryRun = false } = await req.json()
     if (!documentId) {
       return NextResponse.json({ error: 'documentId is required' }, { status: 400 })
+    }
+
+    // Real sends only: cap how fast a user can email government officers from
+    // our domain — a loop here would be a spam/domain-reputation disaster
+    if (!dryRun) {
+      const { allowed } = rateLimit(`send-to-officer:${session.user.id}`, 10, 60 * 60_000)
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'You can send at most 10 proposals to contracting officers per hour. Try again shortly.' },
+          { status: 429 }
+        )
+      }
     }
 
     const doc = await prisma.generatedDocument.findFirst({

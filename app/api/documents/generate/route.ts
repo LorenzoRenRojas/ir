@@ -46,14 +46,22 @@ export async function POST(req: NextRequest) {
       prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true } }),
     ])
 
+    const parseArr = (s: string | undefined | null): string[] => {
+      try {
+        const v = JSON.parse(s ?? '[]')
+        return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+      } catch {
+        return []
+      }
+    }
     const companyData: CompanyData = {
       companyName: dbProfile?.companyName ?? 'Your Company',
       uei: dbProfile?.uei ?? undefined,
       website: dbProfile?.website ?? undefined,
       yearFounded: dbProfile?.yearFounded ?? undefined,
-      businessTypes: dbProfile ? (JSON.parse(dbProfile.businessTypes) as string[]) : [],
-      naicsCodes: dbProfile ? (JSON.parse(dbProfile.naicsCodes) as string[]) : [],
-      certifications: dbProfile ? (JSON.parse(dbProfile.certifications) as string[]) : [],
+      businessTypes: parseArr(dbProfile?.businessTypes),
+      naicsCodes: parseArr(dbProfile?.naicsCodes),
+      certifications: parseArr(dbProfile?.certifications),
       clearanceLevel: dbProfile?.clearanceLevel ?? undefined,
       contactName: user?.name ?? undefined,
       contactEmail: user?.email ?? undefined,

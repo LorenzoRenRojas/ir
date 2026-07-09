@@ -86,7 +86,24 @@ export default function NewProposalPage() {
   // Persist draft
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) { try { setQ(JSON.parse(saved)) } catch { /* ignore */ } }
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved)
+      if (!parsed || typeof parsed !== 'object') return
+      // Merge over a fresh blank so a draft saved under an OLDER schema (missing
+      // risks/pp/phaseN) can't crash the step renderers (.map/.split on
+      // undefined). Nested objects/arrays fall back to blank when absent.
+      const base = blank()
+      const merged: FullProposalQuestionnaire = { ...base, ...parsed }
+      merged.phase1 = { ...base.phase1, ...(parsed.phase1 ?? {}) }
+      merged.phase2 = { ...base.phase2, ...(parsed.phase2 ?? {}) }
+      merged.phase3 = { ...base.phase3, ...(parsed.phase3 ?? {}) }
+      merged.pm = { ...base.pm, ...(parsed.pm ?? {}) }
+      merged.techLead = { ...base.techLead, ...(parsed.techLead ?? {}) }
+      merged.risks = Array.isArray(parsed.risks) && parsed.risks.length ? parsed.risks : base.risks
+      merged.pp = Array.isArray(parsed.pp) && parsed.pp.length ? parsed.pp : base.pp
+      setQ(merged)
+    } catch { /* corrupt draft — keep the blank form */ }
   }, [])
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(q))

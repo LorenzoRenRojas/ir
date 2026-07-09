@@ -21,11 +21,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 })
     }
 
+    // Coerce defensively: form inputs deliver strings, the column is Int —
+    // a raw string here is a guaranteed Prisma 500
+    const yearInt =
+      typeof yearFounded === 'number' && Number.isInteger(yearFounded)
+        ? yearFounded
+        : typeof yearFounded === 'string' && /^\d{4}$/.test(yearFounded.trim())
+          ? parseInt(yearFounded.trim(), 10)
+          : null
+
     const profileData = {
       companyName: companyName.trim(),
       uei: uei ?? null,
       website: website ?? null,
-      yearFounded: yearFounded ?? null,
+      yearFounded: yearInt,
       businessTypes: JSON.stringify(businessTypes ?? []),
       naicsCodes: JSON.stringify(naicsCodes ?? []),
       contractSizePrefs: JSON.stringify(contractSizePrefs ?? []),

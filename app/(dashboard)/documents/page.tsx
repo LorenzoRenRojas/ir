@@ -99,8 +99,11 @@ export default function ProposalsPage() {
   async function loadSavedContracts() {
     try {
       const res = await fetch('/api/contracts/saved')
+      if (!res.ok) return
       const data = await res.json()
-      setSavedContracts(data.contracts ?? [])
+      // The API returns { saved: [...] } — reading data.contracts left this
+      // array permanently empty and the "generate from saved" UI never showed
+      setSavedContracts(data.saved ?? [])
     } catch { /* non-critical */ }
   }
 

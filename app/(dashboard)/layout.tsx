@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { recompeteCacheKey } from '@/lib/usaspending'
+import { recompeteCodeKey } from '@/lib/usaspending'
 import SideNav, { type SideNavStats } from '@/components/layout/SideNav'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -39,14 +39,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }).then(profile => {
       if (!profile) return null
       const codes = (JSON.parse(profile.naicsCodes) as string[]).slice(0, 8)
-      return prisma.kv.findUnique({ where: { key: recompeteCacheKey(codes) } })
+      if (codes.length === 0) return null
+      // Radar cache is per NAICS code — merge the user's codes
+      return prisma.kv.findMany({ where: { key: { in: codes.map(recompeteCodeKey) } } })
     }).catch(() => null),
   ])
   hasTeam = !!membership
   if (agg) stats.activeValue = agg._sum.value ?? 0
   if (due !== null) stats.dueThisWeek = due
   try {
-    if (radarRow) stats.radarCount = (JSON.parse(radarRow.value) as unknown[]).length
+    if (radarRow && radarRow.length > 0) {
+      const ids = new Set<string>()
+      for (const row of radarRow) {
+        for (const a of JSON.parse(row.value) as { awardId: string }[]) ids.add(a.awardId)
+      }
+      stats.radarCount = ids.size
+    }
   } catch { /* malformed cache — show a dash */ }
 
   return (

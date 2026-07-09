@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { fetchContracts, MOCK_CONTRACTS } from '@/lib/sam-api'
+import { fetchContracts } from '@/lib/sam-api'
 import { rateLimit, ipKey } from '@/lib/rate-limit'
 import { calculateMatchScore } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
@@ -16,6 +16,10 @@ import {
   profileToText,
   embeddingCacheKey,
 } from '@/lib/embeddings'
+
+// Cold path (fresh instance + cold incumbent cache) can exceed the Hobby
+// default ~10s — give the route real headroom instead of 504ing
+export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
   // 60 requests per minute per IP
@@ -186,8 +190,14 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ contracts })
   } catch (err) {
+    // Honest failure: serving MOCK data with a 200 here made real outages
+    // look like a working dashboard full of fabricated contracts. (The
+    // no-SAM-key demo fallback lives inside fetchContracts and still works.)
     console.error('Contracts API error:', err)
-    return NextResponse.json({ contracts: MOCK_CONTRACTS })
+    return NextResponse.json(
+      { error: 'Live contract data is temporarily unavailable. Please retry in a moment.' },
+      { status: 503 }
+    )
   }
 }
 

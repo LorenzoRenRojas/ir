@@ -134,7 +134,7 @@ export default function EnterpriseOnboardingPage() {
     setError('')
     try {
       // Save profile details
-      await fetch('/api/settings', {
+      const settingsRes = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,6 +144,12 @@ export default function EnterpriseOnboardingPage() {
           capabilityStatement: answers.capabilityStatement as string,
         }),
       })
+      if (!settingsRes.ok) {
+        const d = await settingsRes.json().catch(() => ({}))
+        setError(d.error ?? 'Could not save your profile. Please try again.')
+        setLoading(false)
+        return
+      }
 
       // Create team workspace
       const teamName = (answers.teamName as string)?.trim()
@@ -153,7 +159,12 @@ export default function EnterpriseOnboardingPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: teamName }),
         })
-        const teamData = await teamRes.json()
+        const teamData = await teamRes.json().catch(() => ({}))
+        if (!teamRes.ok) {
+          setError(teamData.error ?? 'Could not create your team workspace. Please try again.')
+          setLoading(false)
+          return
+        }
 
         // Send invites if any emails provided
         const emailsRaw = (answers.inviteEmails as string) ?? ''

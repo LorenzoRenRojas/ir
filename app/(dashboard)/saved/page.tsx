@@ -87,7 +87,11 @@ export default function PipelinePage() {
   const [drafting, setDrafting] = useState<string | null>(null)
   const [panelMsg, setPanelMsg] = useState<Record<string, string>>({})
   const [capGenerating, setCapGenerating] = useState(false)
-  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // One debounce timer PER contract — a single shared timer meant editing
+  // contract A then clicking into B within 800ms cancelled A's save forever
+  const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  // Notes typed but not yet persisted, so unmount can flush them
+  const pendingNotes = useRef<Record<string, string>>({})
 
   async function loadSaved() {
     try {
@@ -154,9 +158,27 @@ export default function PipelinePage() {
 
   function handleNotesChange(contractId: string, notes: string) {
     setContracts(cs => cs.map(c => (c.contractId === contractId ? { ...c, notes } : c)))
-    if (notesTimer.current) clearTimeout(notesTimer.current)
-    notesTimer.current = setTimeout(() => { patchSaved(contractId, { notes }) }, 800)
+    pendingNotes.current[contractId] = notes
+    if (notesTimers.current[contractId]) clearTimeout(notesTimers.current[contractId])
+    notesTimers.current[contractId] = setTimeout(() => {
+      patchSaved(contractId, { notes })
+      delete pendingNotes.current[contractId]
+    }, 800)
   }
+
+  // Flush any pending note saves on unmount so navigating away within the
+  // debounce window doesn't lose the last edit
+  useEffect(() => {
+    const timers = notesTimers.current
+    const pending = pendingNotes.current
+    return () => {
+      Object.values(timers).forEach(clearTimeout)
+      for (const [contractId, notes] of Object.entries(pending)) {
+        patchSaved(contractId, { notes })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleQuickDraft(c: SavedContract) {
     setDrafting(c.contractId)

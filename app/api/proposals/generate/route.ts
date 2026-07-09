@@ -31,7 +31,50 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const questionnaire = (await req.json()) as FullProposalQuestionnaire
+    // Sanitize the raw body against a complete default shape — clients restore
+    // drafts from localStorage wholesale, so a draft saved before a field was
+    // added arrives with that field missing, and the generator would either
+    // crash (.map/.split on undefined) or bake the literal string "undefined"
+    // into a federal proposal document
+    const raw = (await req.json()) as Partial<FullProposalQuestionnaire>
+    const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+    const phase = (v: unknown) => {
+      const p = (v ?? {}) as Record<string, unknown>
+      return { name: str(p.name), timeline: str(p.timeline), deliverables: str(p.deliverables), approach: str(p.approach) }
+    }
+    const person = (v: unknown) => {
+      const p = (v ?? {}) as Record<string, unknown>
+      return { name: str(p.name), title: str(p.title), clearance: str(p.clearance), experience: str(p.experience), quals: str(p.quals) }
+    }
+    const questionnaire: FullProposalQuestionnaire = {
+      contractTitle: str(raw.contractTitle), agencyName: str(raw.agencyName),
+      solicitationNumber: str(raw.solicitationNumber), issuingOffice: str(raw.issuingOffice),
+      responseDeadline: str(raw.responseDeadline), estimatedValue: str(raw.estimatedValue),
+      contractType: str(raw.contractType), naicsCode: str(raw.naicsCode),
+      placeOfPerformance: str(raw.placeOfPerformance), requirementSummary: str(raw.requirementSummary),
+      keyObjectives: str(raw.keyObjectives), overallApproach: str(raw.overallApproach),
+      phase1: phase(raw.phase1), phase2: phase(raw.phase2), phase3: phase(raw.phase3),
+      toolsTechnologies: str(raw.toolsTechnologies), qualityApproach: str(raw.qualityApproach),
+      risks: Array.isArray(raw.risks)
+        ? raw.risks.map(r => ({ description: str(r?.description), likelihood: str(r?.likelihood), impact: str(r?.impact), mitigation: str(r?.mitigation) }))
+        : [],
+      pm: person(raw.pm), techLead: person(raw.techLead),
+      additionalPersonnel: str(raw.additionalPersonnel),
+      subName: str(raw.subName), subRole: str(raw.subRole),
+      subPercent: str(raw.subPercent), primePercent: str(raw.primePercent),
+      pp: Array.isArray(raw.pp)
+        ? raw.pp.map(p => ({
+            title: str(p?.title), agency: str(p?.agency), contractNumber: str(p?.contractNumber),
+            contractType: str(p?.contractType), value: str(p?.value), startDate: str(p?.startDate),
+            endDate: str(p?.endDate), description: str(p?.description), relevance: str(p?.relevance),
+            outcomes: str(p?.outcomes), refName: str(p?.refName), refTitle: str(p?.refTitle),
+            refPhone: str(p?.refPhone), refEmail: str(p?.refEmail),
+          }))
+        : [],
+      baseYear: str(raw.baseYear), oy1: str(raw.oy1), oy2: str(raw.oy2),
+      oy3: str(raw.oy3), oy4: str(raw.oy4), totalPrice: str(raw.totalPrice),
+      amendments: str(raw.amendments),
+    }
 
     if (!questionnaire.contractTitle || !questionnaire.agencyName) {
       return NextResponse.json({ error: 'Contract title and agency name are required.' }, { status: 400 })
@@ -42,14 +85,22 @@ export async function POST(req: NextRequest) {
       prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true } }),
     ])
 
+    const parseArr = (s: string | undefined | null): string[] => {
+      try {
+        const v = JSON.parse(s ?? '[]')
+        return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+      } catch {
+        return []
+      }
+    }
     const companyData: CompanyData = {
       companyName: dbProfile?.companyName ?? 'Your Company',
       uei: dbProfile?.uei ?? undefined,
       website: dbProfile?.website ?? undefined,
       yearFounded: dbProfile?.yearFounded ?? undefined,
-      businessTypes: dbProfile ? (JSON.parse(dbProfile.businessTypes) as string[]) : [],
-      naicsCodes: dbProfile ? (JSON.parse(dbProfile.naicsCodes) as string[]) : [],
-      certifications: dbProfile ? (JSON.parse(dbProfile.certifications) as string[]) : [],
+      businessTypes: parseArr(dbProfile?.businessTypes),
+      naicsCodes: parseArr(dbProfile?.naicsCodes),
+      certifications: parseArr(dbProfile?.certifications),
       clearanceLevel: dbProfile?.clearanceLevel ?? undefined,
       contactName: user?.name ?? undefined,
       contactEmail: user?.email ?? undefined,

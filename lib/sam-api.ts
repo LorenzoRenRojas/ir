@@ -452,8 +452,9 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
     total = reported
     if (contracts.length === 0) break
 
-    for (const c of contracts) {
-      if (!c.noticeId) continue
+    // Batch the upserts: one-at-a-time awaits mean one Turso round trip per
+    // contract (~3,000/run) and were eating half the cron's 300s wall clock
+    const ops = contracts.filter(c => c.noticeId).map(c => {
       const postedDate = new Date(c.postedDate)
       // Date-only deadlines ("2026-07-15") parse as UTC midnight, which would
       // expire a 5PM-ET deadline the previous evening — treat them as
@@ -461,25 +462,23 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
       const deadline = /^\d{4}-\d{2}-\d{2}$/.test(c.responseDeadline)
         ? new Date(`${c.responseDeadline}T23:59:59`)
         : new Date(c.responseDeadline)
-      await prisma.contractCache.upsert({
+      const data = {
+        payload: JSON.stringify(c),
+        naicsCode: c.naicsCode,
+        setAside: c.setAsideType,
+        postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
+        deadline: isNaN(deadline.getTime()) ? null : deadline,
+      }
+      return prisma.contractCache.upsert({
         where: { noticeId: c.noticeId },
-        update: {
-          payload: JSON.stringify(c),
-          naicsCode: c.naicsCode,
-          setAside: c.setAsideType,
-          postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
-          deadline: isNaN(deadline.getTime()) ? null : deadline,
-        },
-        create: {
-          noticeId: c.noticeId,
-          payload: JSON.stringify(c),
-          naicsCode: c.naicsCode,
-          setAside: c.setAsideType,
-          postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
-          deadline: isNaN(deadline.getTime()) ? null : deadline,
-        },
+        update: data,
+        create: { noticeId: c.noticeId, ...data },
       })
-      synced++
+    })
+    const CHUNK = 100
+    for (let i = 0; i < ops.length; i += CHUNK) {
+      await prisma.$transaction(ops.slice(i, i + CHUNK))
+      synced += Math.min(CHUNK, ops.length - i)
     }
 
     if (contracts.length < PAGE) break // last page

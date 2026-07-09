@@ -34,13 +34,22 @@ export async function POST(req: NextRequest) {
     const email = record.identifier.replace('reset:', '')
     const hashed = await bcrypt.hash(password, 12)
 
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { email },
-        data: { password: hashed },
-      }),
-      prisma.verificationToken.delete({ where: { token } }),
-    ])
+    try {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { email },
+          data: { password: hashed, passwordChangedAt: new Date() },
+        }),
+        prisma.verificationToken.delete({ where: { token } }),
+      ])
+    } catch (err) {
+      // passwordChangedAt column missing pre-migration — reset without it
+      if ((err as { code?: string })?.code === 'P2025') throw err
+      await prisma.$transaction([
+        prisma.user.update({ where: { email }, data: { password: hashed } }),
+        prisma.verificationToken.delete({ where: { token } }),
+      ])
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

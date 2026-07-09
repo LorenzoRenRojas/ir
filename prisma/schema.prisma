@@ -38,7 +38,8 @@ model User {
   id               String    @id @default(cuid())
   email            String    @unique
   emailVerified    DateTime?
-  password         String?
+  password          String?
+  passwordChangedAt DateTime?
   name             String?
   image            String?
   role             String    @default("user")
@@ -110,6 +111,7 @@ model SavedContract {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contractId])
+  @@index([deadline])
 }
 
 model GeneratedDocument {
@@ -124,6 +126,8 @@ model GeneratedDocument {
   createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Every outbound email attempt is recorded here so failures are visible
@@ -135,6 +139,8 @@ model EmailLog {
   status    String // sent | failed | skipped_no_key
   error     String?
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Full-market contract store, refreshed daily by cron from paginated SAM.gov
@@ -150,6 +156,7 @@ model ContractCache {
 
   @@index([naicsCode])
   @@index([postedDate])
+  @@index([deadline])
 }
 
 // Tiny key-value store for counters and operational state (e.g. the daily

@@ -27,10 +27,17 @@ const REVENUE_CEILINGS: Record<string, number> = {
 
 const SET_ASIDE_ELIGIBILITY: Record<string, string[]> = {
   'SBA':      ['Small Business'],
+  'SBP':      ['Small Business'], // partial small-business set-aside
   '8A':       ['8(a) Certified'],
+  '8AN':      ['8(a) Certified'], // 8(a) sole source
   'SDVOSBC':  ['SDVOSB'],
+  'SDVOSBS':  ['SDVOSB'], // sole source
   'WOSB':     ['WOSB'],
+  'WOSBSS':   ['WOSB'], // sole source
+  'EDWOSB':   ['WOSB'],
   'HUBZONE':  ['HUBZone'],
+  'HZC':      ['HUBZone'],
+  'HZS':      ['HUBZone'], // sole source
 }
 
 export function calculateWinProbability(
@@ -54,10 +61,11 @@ export function calculateWinProbability(
   }
 
   // ── 2. NAICS match (20 pts) ───────────────────────────────────────────────
-  if (profile.naicsCodes.includes(contract.naicsCode)) {
+  if (contract.naicsCode && profile.naicsCodes.includes(contract.naicsCode)) {
     score += 20
-  } else {
-    // Partial match on 4-digit prefix
+  } else if (contract.naicsCode) {
+    // Partial match on 4-digit prefix (empty code must NOT award points —
+    // startsWith('') is true for everything)
     const prefix = contract.naicsCode.slice(0, 4)
     if (profile.naicsCodes.some((n) => n.startsWith(prefix))) {
       score += 10
