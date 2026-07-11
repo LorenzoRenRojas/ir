@@ -453,8 +453,11 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
     if (contracts.length === 0) break
 
     // Batch the upserts: one-at-a-time awaits mean one Turso round trip per
-    // contract (~3,000/run) and were eating half the cron's 300s wall clock
-    const ops = contracts.filter(c => c.noticeId).map(c => {
+    // contract (~3,000/run) and were eating half the cron's 300s wall clock.
+    // Row data is kept separate from the Prisma calls so the fallback below
+    // can rebuild fresh upserts — a PrismaPromise handed to $transaction is
+    // consumed and must never be awaited again.
+    const rows = contracts.filter(c => c.noticeId).map(c => {
       const postedDate = new Date(c.postedDate)
       // Date-only deadlines ("2026-07-15") parse as UTC midnight, which would
       // expire a 5PM-ET deadline the previous evening — treat them as
@@ -462,23 +465,42 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
       const deadline = /^\d{4}-\d{2}-\d{2}$/.test(c.responseDeadline)
         ? new Date(`${c.responseDeadline}T23:59:59`)
         : new Date(c.responseDeadline)
-      const data = {
-        payload: JSON.stringify(c),
-        naicsCode: c.naicsCode,
-        setAside: c.setAsideType,
-        postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
-        deadline: isNaN(deadline.getTime()) ? null : deadline,
+      return {
+        noticeId: c.noticeId,
+        data: {
+          payload: JSON.stringify(c),
+          naicsCode: c.naicsCode,
+          setAside: c.setAsideType,
+          postedDate: isNaN(postedDate.getTime()) ? null : postedDate,
+          deadline: isNaN(deadline.getTime()) ? null : deadline,
+        },
       }
-      return prisma.contractCache.upsert({
-        where: { noticeId: c.noticeId },
-        update: data,
-        create: { noticeId: c.noticeId, ...data },
-      })
     })
+    const upsertRow = (row: (typeof rows)[number]) =>
+      prisma.contractCache.upsert({
+        where: { noticeId: row.noticeId },
+        update: row.data,
+        create: { noticeId: row.noticeId, ...row.data },
+      })
     const CHUNK = 100
-    for (let i = 0; i < ops.length; i += CHUNK) {
-      await prisma.$transaction(ops.slice(i, i + CHUNK))
-      synced += Math.min(CHUNK, ops.length - i)
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK)
+      try {
+        await prisma.$transaction(chunk.map(upsertRow))
+        synced += chunk.length
+      } catch (err) {
+        // Turso can reject batch transactions — fall back to per-row upserts
+        // so one bad batch doesn't fail the whole sync and page the admin
+        console.error(`Contract sync: batch upsert failed (rows ${i}–${i + chunk.length - 1}), retrying individually:`, err)
+        for (const row of chunk) {
+          try {
+            await upsertRow(row)
+            synced++
+          } catch (rowErr) {
+            console.error(`Contract sync: skipping notice ${row.noticeId}:`, rowErr)
+          }
+        }
+      }
     }
 
     if (contracts.length < PAGE) break // last page
