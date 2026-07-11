@@ -30,7 +30,15 @@ export async function GET(req: NextRequest) {
         deadline: { gte: new Date(now), lte: new Date(now + 3 * DAY_MS) },
         status: { notIn: ['submitted', 'won', 'lost', 'archived'] },
       },
-      include: { user: { select: { id: true, email: true, name: true, emailVerified: true, notifyDeadlines: true } } },
+      // Explicit select, never include/default: schema columns are added in
+      // code before RUN DB MIGRATION creates them in prod, and a default
+      // SELECT * over a not-yet-migrated column crashes the whole cron
+      select: {
+        title: true,
+        agency: true,
+        deadline: true,
+        user: { select: { id: true, email: true, name: true, emailVerified: true, notifyDeadlines: true } },
+      },
     })
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
