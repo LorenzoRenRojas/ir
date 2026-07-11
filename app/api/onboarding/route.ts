@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     await prisma.user.update({
       where: { id: session.user.id },
       data: { onboardingDone: true },
+      select: { id: true },
     })
 
     // Auto-create team if user doesn't have one

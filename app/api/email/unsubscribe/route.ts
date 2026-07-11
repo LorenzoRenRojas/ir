@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       : { notifyRadar: false }
 
   try {
-    await prisma.user.update({ where: { id: userId }, data })
+    await prisma.user.update({ where: { id: userId }, data, select: { id: true } })
   } catch {
     return page('Something went wrong', 'We could not update your preferences. Try again, or manage them from your account settings.', false)
   }

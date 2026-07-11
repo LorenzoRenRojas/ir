@@ -18,7 +18,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'New password must be at least 8 characters.' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, password: true },
+    })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     if (user.password) {
@@ -61,7 +64,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Type DELETE to confirm.' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, password: true, stripeCustomerId: true },
+    })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     // Password-holders must prove it; Google-only accounts confirm via the word alone

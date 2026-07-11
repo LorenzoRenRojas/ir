@@ -25,9 +25,13 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        // Emails are stored lowercased (register normalizes) — match that here
+        // Emails are stored lowercased (register normalizes) — match that here.
+        // Explicit select: a default SELECT * includes columns added in code
+        // but not yet created in prod (RUN DB MIGRATION is manual), and a
+        // "no such column" here reads as "wrong password" to every user
         const user = await prisma.user.findUnique({
           where: { email: (credentials.email as string).toLowerCase().trim() },
+          select: { id: true, email: true, name: true, image: true, password: true },
         })
 
         if (!user || !user.password) return null

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const normalized = email.toLowerCase().trim()
 
     // Always return success to prevent email enumeration
-    const user = await prisma.user.findUnique({ where: { email: normalized } })
+    const user = await prisma.user.findUnique({ where: { email: normalized }, select: { password: true } })
     if (!user || !user.password) {
       // No account or Google-only account — return success anyway
       return NextResponse.json({ success: true })

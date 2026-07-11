@@ -68,6 +68,7 @@ export async function PUT(req: NextRequest) {
       await prisma.user.update({
         where: { id: session.user.id },
         data: { name },
+        select: { id: true },
       })
     }
 
