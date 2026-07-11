@@ -49,8 +49,20 @@ category-2 excellent today (we mostly are), ship a real category-3 feature
   small business — on price, self-serve onboarding, and the fact that we help
   you *respond*, not just *find*.
 
-### 2. HigherGov — our closest direct competitor
-- **Price:** **$500 / $2,500 / $5,000 per year** (free trial, no free tier).
+### 2. HigherGov — our closest direct competitor (now part of Procurement Sciences)
+- **UPDATE (May 2026): HigherGov was acquired by Procurement Sciences** —
+  verified via the Procurement Sciences announcement blog. PSci now owns
+  Awarded AI + Rogue AI + HigherGov: data, AI proposals, and search under one
+  enterprise-oriented roof. Expect HigherGov's roadmap, pricing, and sales
+  motion to drift upmarket toward PSci's capture-team buyer.
+- **What this means for IR:** the value-leader independent in our segment just
+  got consolidated. That makes **"the independent tool for the small shop"**
+  IR's truthful new positioning — every other credible option is now either
+  enterprise (GovWin), sales-gated AI (GovDash), or part of the PSci
+  conglomerate. Say it at APEX: we're not owned by anyone selling upmarket;
+  the small contractor IS the business, not the entry tier of one.
+- **Price:** **$500 / $2,500 / $5,000 per year** (free trial, no free tier) —
+  pre-acquisition pricing; watch for changes under PSci.
 - **Strength:** the value leader. 65M+ prime/sub awards to 2000, contact &
   incumbent research, grants, **recompete identification built in**, SLED data.
   Broad, cheap, trusted by small businesses.
@@ -82,7 +94,9 @@ category-2 excellent today (we mostly are), ship a real category-3 feature
 
 ### 5. Procurement Sciences (Awarded AI) + Sweetspot / GovEagle — the AI pack
 - **Procurement Sciences:** end-to-end "Awarded AI," acquired Rogue AI (Feb
-  2026). Enterprise, capture-team focused.
+  2026) **and HigherGov (May 2026)** — now the consolidator of the mid-market.
+  Enterprise, capture-team focused; the acquisitions point upmarket, away from
+  the sub-$500/yr small-shop buyer.
 - **Sweetspot / GovEagle / LotusPetal / BidWritePro:** AI proposal tools aimed
   squarely at small-business federal contractors — our exact segment.
 - **How we win:** we're not just a proposal tool bolted onto search — we're the
@@ -140,3 +154,4 @@ category-2 excellent today (we mostly are), ship a real category-3 feature
 - GovTribe, SamSearch, Jorpex — pursuit.us/blog/govwin-alternatives; samsearch.co/blog; jorpex.com/compare/govwin-alternatives
 - GovDash — govdash.com; sweetspot.so/blog/govcon-ai-tools-small-business
 - Procurement Sciences / Rogue — procurementsciences.com; prnewswire (Rogue acquisition, Feb 2026)
+- Procurement Sciences × HigherGov — Procurement Sciences announcement blog (May 2026)

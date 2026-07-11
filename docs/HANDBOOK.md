@@ -6,7 +6,8 @@ can pick up exactly where the last one left off.
 
 **Companion docs:** `GROWTH_PLAN.md` (GTM strategy) · `COMPETITION.md` (honest
 competitive landscape, per-competitor breakdown, and APEX talking points —
-read before touching any marketing claim).
+read before touching any marketing claim) · `LAUNCH_SPRINT.md` (the July 28 →
+Sept 30 launch plan: 30 paid users, demo cadence, pricing, critical path).
 
 ---
 
