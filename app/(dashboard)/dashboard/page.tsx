@@ -188,7 +188,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
         )}
         <div style={{ display: 'flex', gap: 12, marginTop: 2, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span style={{ fontSize: 11, color: '#0A0A0A', fontWeight: 700, fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            {contract.value ? formatValue(contract.value) : prevValue ? `~${prevValue} prev.` : 'Value not posted'}
+            {contract.value ? formatValue(contract.value) : 'Value not posted'}
           </span>
           {contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' && (
             <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>📍 {contract.placeOfPerformance}</span>
@@ -205,7 +205,11 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
       {incumbent && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(0,0,0,0.025)', borderLeft: `2px solid ${accentColor}` }}>
           <div>
-            <div style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 1 }}>DEFENDING THIS CONTRACT</div>
+            {/* fetchIncumbent returns the largest award in this NAICS since
+                2022 government-wide — a market-dominance signal, NOT the
+                holder of this specific contract. The label must say what the
+                data is (marketing claims policy: never overstate). */}
+            <div style={{ fontSize: 8, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)', marginBottom: 1 }}>TOP AWARDEE — THIS NAICS SINCE 2022</div>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{incumbent.awardee}</div>
           </div>
           {prevValue && (

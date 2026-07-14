@@ -153,11 +153,11 @@ export default async function ContractDetailPage({
           {/* Incumbent */}
           {incumbent && (
             <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>INCUMBENT — DEFENDING THIS WORK</div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16 }}>MARKET LEADER — TOP AWARD IN THIS NAICS</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 8 }}>{incumbent.awardee}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div>
-                  <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', marginBottom: 2 }}>LAST AWARD VALUE</div>
+                  <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', marginBottom: 2 }}>AWARD VALUE</div>
                   <div style={{ fontSize: 12, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{formatValue(incumbent.amount)}</div>
                 </div>
                 {incumbent.periodOfPerformanceEnd && (
