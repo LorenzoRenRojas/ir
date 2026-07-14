@@ -43,7 +43,10 @@ const SET_ASIDE_ELIGIBILITY: Record<string, string[]> = {
 export function calculateWinProbability(
   contract: Contract,
   profile: Profile,
-  incumbent: IncumbentData | null | undefined
+  incumbent: IncumbentData | null | undefined,
+  // Fraction of recent awards in this NAICS won by small businesses
+  // (fetchSmallBizShares) — null/omitted degrades to incumbent-size only
+  smallBizShare?: number | null
 ): WinProbabilityResult {
   let score = 0
 
@@ -85,16 +88,24 @@ export function calculateWinProbability(
     score += 10 // no data, neutral
   }
 
-  // ── 4. Incumbent signal (15 pts) ─────────────────────────────────────────
+  // ── 4. Competition signal (15 pts) ───────────────────────────────────────
+  // Who wins in this market: the top player's award size, blended with the
+  // share of recent awards actually won by small businesses. A market where
+  // small shops win 60% of awards is beatable even if one big award exists.
+  let compPts: number
   if (!incumbent) {
-    score += 12 // new requirement — no entrenched incumbent
+    compPts = 12 // new requirement — no entrenched player
   } else if (incumbent.amount < 2_000_000) {
-    score += 15 // small incumbent, easier to compete
+    compPts = 15 // small players, easier to compete
   } else if (incumbent.amount < 20_000_000) {
-    score += 8
+    compPts = 8
   } else {
-    score += 2 // large prime holds it
+    compPts = 2 // large prime dominates
   }
+  if (typeof smallBizShare === 'number') {
+    compPts = Math.round(0.5 * compPts + 0.5 * (smallBizShare * 15))
+  }
+  score += compPts
 
   // ── 5. Agency relationship (5 pts) ───────────────────────────────────────
   if (profile.agencyHistory?.some((a) =>
@@ -106,9 +117,12 @@ export function calculateWinProbability(
 
   const clamped = Math.min(100, Math.max(0, score))
 
-  // Top factor for display
+  // Top factor for display — a strong small-business win share is the most
+  // actionable message we can show, so it outranks the generic labels
   let topFactor: string
-  if (!required) topFactor = 'Open competition'
+  if (typeof smallBizShare === 'number' && smallBizShare >= 0.4) {
+    topFactor = `Small businesses win ${Math.round(smallBizShare * 100)}% of this market`
+  } else if (!required) topFactor = 'Open competition'
   else if (score >= 70) topFactor = `Eligible set-aside + NAICS match`
   else if (profile.naicsCodes.includes(contract.naicsCode)) topFactor = 'Strong NAICS alignment'
   else if (!incumbent) topFactor = 'No incumbent — fresh competition'

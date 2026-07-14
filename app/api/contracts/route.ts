@@ -4,7 +4,7 @@ import { fetchContracts } from '@/lib/sam-api'
 import { rateLimit, ipKey } from '@/lib/rate-limit'
 import { calculateMatchScore } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
-import { fetchIncumbents } from '@/lib/usaspending'
+import { fetchIncumbents, fetchSmallBizShares } from '@/lib/usaspending'
 import { calculateWinProbability } from '@/lib/win-probability'
 import {
   isEmbeddingEnabled,
@@ -172,7 +172,12 @@ export async function GET(req: NextRequest) {
     // cache across thousands of rows was the main dashboard-lag culprit.
     const enriched = contracts.slice(0, ENRICH_LIMIT)
     try {
-      const incumbents = await fetchIncumbents(enriched)
+      const [incumbents, sbShares] = await Promise.all([
+        fetchIncumbents(enriched),
+        // Small-business win share per NAICS — feeds the competition-size
+        // factor of win probability ("beatable market" signal)
+        fetchSmallBizShares(enriched.map((c) => c.naicsCode)),
+      ])
       const winProfile = profile && dbProfile
         ? {
             businessTypes: profile.businessTypes,
@@ -189,7 +194,7 @@ export async function GET(req: NextRequest) {
         return {
           ...c,
           incumbent,
-          ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent) } : {}),
+          ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
         }
       })
     } catch (err) {

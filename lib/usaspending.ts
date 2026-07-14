@@ -84,6 +84,64 @@ export async function fetchIncumbents(
   )
 }
 
+// ─── Small-business win share ─────────────────────────────────────────────────
+// The "beatable competition" signal: what fraction of recent prime awards in
+// a NAICS went to small businesses. High share = markets where companies like
+// our users actually win; low share = big-prime turf. Free API, cached 24h.
+
+async function _fetchSmallBizShare(naicsCode: string): Promise<number | null> {
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const to = new Date()
+  const from = new Date()
+  from.setFullYear(from.getFullYear() - 3)
+
+  const countFor = async (smallBizOnly: boolean): Promise<number | null> => {
+    try {
+      const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award_count/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filters: {
+            award_type_codes: ['A', 'B', 'C', 'D'],
+            naics_codes: [naicsCode],
+            time_period: [{ start_date: iso(from), end_date: iso(to) }],
+            ...(smallBizOnly ? { recipient_type_names: ['small_business'] } : {}),
+          },
+        }),
+        signal: AbortSignal.timeout(8_000),
+        cache: 'no-store',
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      const contracts = data?.results?.contracts
+      return typeof contracts === 'number' ? contracts : null
+    } catch {
+      return null
+    }
+  }
+
+  const [all, small] = await Promise.all([countFor(false), countFor(true)])
+  // Thin markets (<20 awards in 3 years) are noise, not signal — skip
+  if (all === null || small === null || all < 20) return null
+  return Math.min(1, small / all)
+}
+
+const getCachedSmallBizShare = unstable_cache(
+  _fetchSmallBizShare,
+  ['usaspending-sbshare'],
+  { revalidate: 86400 }
+)
+
+// Batch + dedupe by NAICS, same pattern as fetchIncumbents. Always resolves —
+// a failed lookup yields null for that code, never a throw.
+export async function fetchSmallBizShares(naicsCodes: string[]): Promise<Map<string, number | null>> {
+  const unique = [...new Set(naicsCodes.filter(Boolean))]
+  const entries = await Promise.all(
+    unique.map(async (c) => [c, await getCachedSmallBizShare(c)] as const)
+  )
+  return new Map(entries)
+}
+
 // ─── Recompete Radar ──────────────────────────────────────────────────────────
 // Every federal contract expires on a known date, and most become recompete
 // solicitations. Surfacing awards in the user's NAICS codes that end in the
