@@ -160,6 +160,23 @@ model ContractCache {
   @@index([deadline])
 }
 
+// Every notice that ages out of ContractCache lands here instead of
+// vanishing — the historical dataset (award research, market trends, future
+// training data) accumulates for free from syncs we already run. Time is
+// the moat: this table only gets more valuable and can't be copied.
+model ContractArchive {
+  noticeId   String   @id
+  payload    String // full Contract JSON as last seen
+  naicsCode  String   @default("")
+  setAside   String   @default("")
+  postedDate DateTime?
+  deadline   DateTime?
+  archivedAt DateTime @default(now())
+
+  @@index([naicsCode])
+  @@index([postedDate])
+}
+
 // Tiny key-value store for counters and operational state (e.g. the daily
 // SAM.gov API request budget shared across all serverless instances).
 model Kv {

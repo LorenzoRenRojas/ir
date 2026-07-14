@@ -290,17 +290,23 @@ export default function DashboardPage() {
   const [type, setType] = useState('')
   const [setAside, setSetAside] = useState('')
   const [dueWithin, setDueWithin] = useState('')
+  const [naics, setNaics] = useState('')
 
   const refreshAge = useRefreshAge(fetchedAt)
 
   // Deep-linked search (e.g. Recompete Radar's "SCAN LIVE RFPs") — read ?q=
   // straight off the URL to avoid the useSearchParams Suspense requirement
   useEffect(() => {
-    const preset = new URLSearchParams(window.location.search).get('q')
+    const sp = new URLSearchParams(window.location.search)
+    const preset = sp.get('q')
     if (preset) {
       setSearchInput(preset)
       setQ(preset)
     }
+    // Radar's SCAN LIVE RFPs also narrows to the award's industry so the
+    // keyword scan can't drift into unrelated NAICS codes
+    const presetNaics = sp.get('naics')
+    if (presetNaics) setNaics(presetNaics)
   }, [])
 
   useEffect(() => {
@@ -319,6 +325,7 @@ export default function DashboardPage() {
       if (type) params.set('type', type)
       if (setAside) params.set('setAside', setAside)
       if (dueWithin) params.set('dueWithin', dueWithin)
+      if (naics) params.set('naics', naics)
       const res = await fetch(`/api/contracts?${params.toString()}`)
       const data = await res.json().catch(() => ({}))
       // Ignore a stale response that a newer filter change has superseded —
@@ -338,7 +345,7 @@ export default function DashboardPage() {
     } finally {
       if (seq === reqSeq.current) setLoading(false)
     }
-  }, [q, agency, type, setAside, dueWithin])
+  }, [q, agency, type, setAside, dueWithin, naics])
 
   useEffect(() => { fetchContracts() }, [fetchContracts])
 
@@ -457,13 +464,22 @@ export default function DashboardPage() {
             <option value="60">Due in 60 days</option>
           </select>
         </div>
-        {(q || agency || type || setAside || dueWithin) && (
+        {(q || agency || type || setAside || dueWithin || naics) && (
           <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
               {contracts.length} RESULT{contracts.length === 1 ? '' : 'S'}
             </span>
+            {naics && (
+              <button
+                onClick={() => setNaics('')}
+                title="Showing this industry and closely related codes — click to remove"
+                style={{ fontSize: 9, letterSpacing: '0.08em', fontWeight: 700, color: '#b45309', background: 'rgba(180,83,9,0.06)', border: '1px solid rgba(180,83,9,0.3)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', padding: '3px 8px' }}
+              >
+                NAICS {naics} + RELATED ✕
+              </button>
+            )}
             <button
-              onClick={() => { setSearchInput(''); setAgency(''); setType(''); setSetAside(''); setDueWithin('') }}
+              onClick={() => { setSearchInput(''); setAgency(''); setType(''); setSetAside(''); setDueWithin(''); setNaics('') }}
               style={{ fontSize: 9, letterSpacing: '0.1em', fontWeight: 700, color: '#C41230', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', padding: '2px 4px' }}
             >
               ✕ CLEAR FILTERS

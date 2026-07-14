@@ -75,6 +75,10 @@ export async function GET() {
     `CREATE INDEX IF NOT EXISTS "SavedContract_deadline_idx" ON "SavedContract"("deadline")`,
     `CREATE INDEX IF NOT EXISTS "EmailLog_createdAt_idx" ON "EmailLog"("createdAt")`,
     `CREATE INDEX IF NOT EXISTS "GeneratedDocument_userId_idx" ON "GeneratedDocument"("userId")`,
+    // Historical contract archive — pruned notices accumulate here forever
+    `CREATE TABLE IF NOT EXISTS "ContractArchive" ("noticeId" TEXT NOT NULL PRIMARY KEY,"payload" TEXT NOT NULL,"naicsCode" TEXT NOT NULL DEFAULT '',"setAside" TEXT NOT NULL DEFAULT '',"postedDate" DATETIME,"deadline" DATETIME,"archivedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS "ContractArchive_naicsCode_idx" ON "ContractArchive"("naicsCode")`,
+    `CREATE INDEX IF NOT EXISTS "ContractArchive_postedDate_idx" ON "ContractArchive"("postedDate")`,
   ]
 
   const results: string[] = []

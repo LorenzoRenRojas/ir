@@ -294,7 +294,7 @@ export default function RecompetesPage() {
                 >
                   {trackState === 'done' ? '✓ IN PIPELINE' : trackState === 'saving' ? 'TRACKING…' : '+ TRACK IN PIPELINE'}
                 </button>
-                <Link href={`/dashboard?q=${encodeURIComponent(liveSearchQuery(r.description))}`} style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono }}>
+                <Link href={`/dashboard?q=${encodeURIComponent(liveSearchQuery(r.description))}${r.naicsCode ? `&naics=${encodeURIComponent(r.naicsCode)}` : ''}`} style={{ padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.5)', textDecoration: 'none', fontFamily: mono }}>
                   SCAN LIVE RFPs
                 </Link>
                 {r.usaspendingUrl && (

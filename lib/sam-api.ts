@@ -510,14 +510,44 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
   const now = new Date()
   const ageCutoff = new Date()
   ageCutoff.setDate(ageCutoff.getDate() - 90)
-  const { count: pruned } = await prisma.contractCache.deleteMany({
-    where: {
-      OR: [
-        { deadline: { lt: now } },
-        { deadline: null, postedDate: { lt: ageCutoff } },
-      ],
-    },
-  })
+  const pruneWhere = {
+    OR: [
+      { deadline: { lt: now } },
+      { deadline: null, postedDate: { lt: ageCutoff } },
+    ],
+  }
+
+  // Archive before pruning: expired notices move to ContractArchive instead
+  // of vanishing — historical market data accumulates for free, forever.
+  // Strictly best-effort: any failure here (table missing pre-migration,
+  // Turso rejecting the batch) must never block the prune or fail the cron.
+  try {
+    const toArchive = await prisma.contractCache.findMany({
+      where: pruneWhere,
+      select: { noticeId: true, payload: true, naicsCode: true, setAside: true, postedDate: true, deadline: true },
+    })
+    const archiveRow = (r: (typeof toArchive)[number]) =>
+      prisma.contractArchive.upsert({
+        where: { noticeId: r.noticeId },
+        update: { payload: r.payload, naicsCode: r.naicsCode, setAside: r.setAside, postedDate: r.postedDate, deadline: r.deadline },
+        create: r,
+      })
+    const ARCHIVE_CHUNK = 100
+    for (let i = 0; i < toArchive.length; i += ARCHIVE_CHUNK) {
+      const chunk = toArchive.slice(i, i + ARCHIVE_CHUNK)
+      try {
+        await prisma.$transaction(chunk.map(archiveRow))
+      } catch {
+        for (const row of chunk) {
+          try { await archiveRow(row) } catch { /* skip row */ }
+        }
+      }
+    }
+  } catch (archiveErr) {
+    console.error('Contract archive failed (non-fatal, prune continues):', archiveErr)
+  }
+
+  const { count: pruned } = await prisma.contractCache.deleteMany({ where: pruneWhere })
 
   if (synced > 0) invalidateContractMemCache()
   return { synced, total, pruned, quotaBlocked }

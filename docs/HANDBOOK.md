@@ -7,7 +7,9 @@ can pick up exactly where the last one left off.
 **Companion docs:** `GROWTH_PLAN.md` (GTM strategy) · `COMPETITION.md` (honest
 competitive landscape, per-competitor breakdown, and APEX talking points —
 read before touching any marketing claim) · `LAUNCH_SPRINT.md` (the July 28 →
-Sept 30 launch plan: 30 paid users, demo cadence, pricing, critical path).
+Sept 30 launch plan: 30 paid users, demo cadence, pricing, critical path) ·
+`YEAR_ONE.md` (Aug 2026–Aug 2027 operating plan: quarterly gates, backup
+plans, the Knowledge/Capital/Execution pillars).
 
 ---
 
@@ -64,6 +66,9 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
 - Contract descriptions: SAM search returns a URL, not text. `fetchContractDescription()` fetches
   on demand (budget-gated), strips HTML, and writes back into ContractCache — each notice fetched
   at most once ever.
+- `ContractArchive` = the history moat. Every notice pruned from ContractCache is copied here
+  first (best-effort, never blocks the sync) and accumulates forever — future award research,
+  market trends, training data. Grows free from syncs we already run.
 - **USAspending.gov is free and keyless** — incumbents (`fetchIncumbent`) and Recompete Radar
   (`getRecompetes`) live there. Radar: per-NAICS parallel queries (single-code queries only —
   multi-code + end-date sort times out), dual strategy (end-date walk + value sweep), cached in

@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get('type') ?? ''
     const setAside = searchParams.get('setAside') ?? ''
     const dueWithin = searchParams.get('dueWithin') ? Number(searchParams.get('dueWithin')) : undefined
+    const naics = (searchParams.get('naics') ?? '').replace(/\D/g, '')
 
     // Load company profile
     let profile = null
@@ -108,6 +109,13 @@ export async function GET(req: NextRequest) {
       contracts = contracts.filter((c) =>
         (c.setAsideDescription ?? c.setAsideType ?? '').toLowerCase().includes(setAside.toLowerCase())
       )
+    }
+    if (naics.length >= 4) {
+      // Industry-group (4-digit) match, not exact 6-digit: recompete
+      // solicitations often re-post under a sibling code, and this filter's
+      // main caller is the Radar's SCAN LIVE RFPs deep link
+      const prefix = naics.slice(0, 4)
+      contracts = contracts.filter((c) => c.naicsCode.startsWith(prefix))
     }
     if (dueWithin !== undefined && Number.isFinite(dueWithin)) {
       const cutoff = Date.now() + dueWithin * 86_400_000
