@@ -20,10 +20,13 @@ const btnStyle: React.CSSProperties = {
 export default function AdminActions() {
   const [output, setOutput] = useState('')
   const [busy, setBusy] = useState('')
+  const [posts, setPosts] = useState<{ label: string; text: string }[]>([])
+  const [copied, setCopied] = useState('')
 
   async function run(label: string, fn: () => Promise<string>) {
     setBusy(label)
     setOutput('')
+    setPosts([])
     try {
       setOutput(await fn())
     } catch (err) {
@@ -31,6 +34,14 @@ export default function AdminActions() {
     } finally {
       setBusy('')
     }
+  }
+
+  async function copyPost(label: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(label)
+      setTimeout(() => setCopied(''), 2000)
+    } catch { /* clipboard unavailable — text is still selectable */ }
   }
 
   return (
@@ -102,7 +113,44 @@ export default function AdminActions() {
         >
           {busy === 'health' ? 'CHECKING…' : 'CHECK SYSTEM HEALTH'}
         </button>
+
+        <button
+          style={btnStyle}
+          disabled={!!busy}
+          onClick={() =>
+            run('linkedin', async () => {
+              const res = await fetch('/api/admin/linkedin-post', { method: 'POST' })
+              const data = await res.json()
+              if (!data.ok) return `Draft failed: ${data.error}`
+              setPosts(data.posts ?? [])
+              return `${(data.posts ?? []).length} drafts ready below — copy, tweak in your voice, post.`
+            })
+          }
+        >
+          {busy === 'linkedin' ? 'DRAFTING…' : 'DRAFT LINKEDIN POSTS'}
+        </button>
       </div>
+
+      {posts.length > 0 && (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {posts.map(p => (
+            <div key={p.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: crimson, fontFamily: mono }}>{p.label}</span>
+                <button
+                  style={{ ...btnStyle, padding: '6px 14px', fontSize: 9 }}
+                  onClick={() => copyPost(p.label, p.text)}
+                >
+                  {copied === p.label ? 'COPIED ✓' : 'COPY'}
+                </button>
+              </div>
+              <pre style={{ margin: 0, padding: 16, color: 'rgba(255,255,255,0.65)', fontSize: 11, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                {p.text}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
 
       {output && (
         <pre
