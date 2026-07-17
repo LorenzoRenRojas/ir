@@ -171,6 +171,9 @@ app pages; the bypass list includes all public/marketing pages: `/coming-soon`, 
 5. Referral system; annual billing (2 months free)
 6. SLED (state/local) expansion — explicitly deferred until federal PMF
 7. Raise Pro to $299 after 10 paying logos (grandfather early users, tell them so)
+8. **IR Compliance** (CMMC copilot) — the next big project AFTER IR is scaled;
+   full plan + build gate in `docs/COMPLIANCE_MODULE.md`. Gate: ≥200 paying,
+   churn <4%, proposal engine earning. Do not start early.
 
 ## Working with the founder
 
