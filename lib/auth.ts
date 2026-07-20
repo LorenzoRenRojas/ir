@@ -15,6 +15,11 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      // Without this, a Google sign-in whose email already has a password
+      // account bounces back to /login with no visible error. Safe for
+      // Google specifically: Google verifies email ownership before OAuth
+      // completes, so linking by email can't be used to hijack an account.
+      allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -52,6 +57,24 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  events: {
+    // Google verified the email before OAuth completed — mark it verified so
+    // Google signups get digests/reminders (gated on emailVerified) without
+    // a pointless verification email round trip
+    async linkAccount({ user, account }) {
+      if (account.provider === 'google' && user.id) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { emailVerified: new Date() },
+            select: { id: true },
+          })
+        } catch (err) {
+          console.error('Failed to mark Google account email as verified:', err)
+        }
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
