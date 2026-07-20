@@ -13,6 +13,29 @@ export default function LoginPage() {
   )
 }
 
+// NextAuth redirects failed OAuth flows back here as /login?error=<code>.
+// Without mapping these, a failed Google sign-in reloads a page that looks
+// identical to the one the user left — "the button did nothing".
+function mapAuthError(code: string | null): string {
+  if (!code) return ''
+  switch (code) {
+    case 'OAuthAccountNotLinked':
+      return 'This email already has a password account. Sign in with your password below — Google linking is enabled for future sign-ins.'
+    case 'OAuthSignin':
+    case 'OAuthCreateAccount':
+    case 'Configuration':
+      return 'Google sign-in could not start — the server is missing or has invalid Google credentials. (Admin: check GOOGLE_CLIENT_ID/SECRET in the env grid and redeploy.)'
+    case 'OAuthCallback':
+      return 'Google sign-in failed during the callback. Check that the redirect URI in the Google console is exactly https://ir-gov.app/api/auth/callback/google.'
+    case 'AccessDenied':
+      return 'Google sign-in was cancelled or denied.'
+    case 'CredentialsSignin':
+      return 'Incorrect email or password.'
+    default:
+      return `Sign-in failed (${code}). Please try again or use your password.`
+  }
+}
+
 function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
@@ -20,7 +43,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => mapAuthError(params.get('error')))
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
