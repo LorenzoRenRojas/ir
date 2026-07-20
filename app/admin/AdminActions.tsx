@@ -129,6 +129,21 @@ export default function AdminActions() {
         >
           {busy === 'linkedin' ? 'DRAFTING…' : 'DRAFT LINKEDIN POSTS'}
         </button>
+
+        <button
+          style={btnStyle}
+          disabled={!!busy}
+          onClick={() =>
+            run('ai', async () => {
+              const res = await fetch('/api/admin/test-ai', { method: 'POST' })
+              const data = await res.json()
+              if (!data.ok) return `CLAUDE KEY TEST FAILED\n${data.error}`
+              return `CLAUDE KEY WORKS ✓\nModel: ${data.model}\nReply: "${data.reply}"\nTokens: ${data.usage.inputTokens} in / ${data.usage.outputTokens} out — the proposal engine is unblocked.`
+            })
+          }
+        >
+          {busy === 'ai' ? 'TESTING…' : 'TEST CLAUDE KEY'}
+        </button>
       </div>
 
       {posts.length > 0 && (
