@@ -280,6 +280,7 @@ export default function DashboardPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [loadErrorDetail, setLoadErrorDetail] = useState('')
   const reqSeq = useRef(0)
   const [saving, setSaving] = useState<string | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
@@ -318,6 +319,7 @@ export default function DashboardPage() {
     const seq = ++reqSeq.current
     setLoading(true)
     setLoadError(false)
+    setLoadErrorDetail('')
     try {
       const params = new URLSearchParams()
       if (q) params.set('q', q)
@@ -334,6 +336,7 @@ export default function DashboardPage() {
       if (seq !== reqSeq.current) return
       if (!res.ok) {
         setLoadError(true)
+        setLoadErrorDetail(typeof data.detail === 'string' ? data.detail : '')
         setContracts([])
       } else {
         setContracts(data.contracts ?? [])
@@ -523,6 +526,11 @@ export default function DashboardPage() {
             <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 20 }}>
               We couldn&apos;t load live contract data just now. This is usually momentary.
             </div>
+            {loadErrorDetail && (
+              <div style={{ maxWidth: 520, margin: '0 auto 20px', padding: '10px 14px', background: 'rgba(196,18,48,0.04)', border: '1px solid rgba(196,18,48,0.15)', fontSize: 10, color: 'rgba(0,0,0,0.5)', fontFamily: 'var(--font-geist-mono, monospace)', textAlign: 'left', wordBreak: 'break-word' }}>
+                ADMIN DETAIL: {loadErrorDetail}
+              </div>
+            )}
             <button onClick={() => fetchContracts()} style={{ padding: '10px 22px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', fontFamily: 'var(--font-geist-mono, monospace)', background: '#0A0A0A', color: '#fff', border: 'none', cursor: 'pointer' }}>
               RETRY →
             </button>

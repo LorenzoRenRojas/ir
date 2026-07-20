@@ -44,13 +44,21 @@ export async function GET(req: NextRequest) {
     const dueWithin = searchParams.get('dueWithin') ? Number(searchParams.get('dueWithin')) : undefined
     const naics = (searchParams.get('naics') ?? '').replace(/\D/g, '')
 
-    // Load company profile
+    // Load company profile. Guarded: a failed profile read (DB hiccup,
+    // unmigrated column) must degrade to an unscored feed, not 503 the
+    // whole dashboard — the contract store itself may be perfectly healthy
     let profile = null
     let dbProfile = null
-    if (session?.user?.id) {
-      dbProfile = await prisma.companyProfile.findUnique({
-        where: { userId: session.user.id },
-      })
+    try {
+      if (session?.user?.id) {
+        dbProfile = await prisma.companyProfile.findUnique({
+          where: { userId: session.user.id },
+        })
+      }
+    } catch (profileErr) {
+      console.error('Company profile load failed (serving unscored feed):', profileErr)
+    }
+    {
       if (dbProfile) {
         // Guarded parse: one malformed column must degrade to "no preference",
         // not throw into the outer catch (which serves mock data with a 200)
@@ -207,8 +215,17 @@ export async function GET(req: NextRequest) {
     // look like a working dashboard full of fabricated contracts. (The
     // no-SAM-key demo fallback lives inside fetchContracts and still works.)
     console.error('Contracts API error:', err)
+    // Admins get the real error in the response so production failures are
+    // diagnosable from the dashboard itself, without Vercel log access
+    let detail: string | undefined
+    try {
+      const { requireAdmin } = await import('@/lib/admin')
+      if (await requireAdmin()) {
+        detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 500) : String(err).slice(0, 500)
+      }
+    } catch { /* admin check unavailable — no detail */ }
     return NextResponse.json(
-      { error: 'Live contract data is temporarily unavailable. Please retry in a moment.' },
+      { error: 'Live contract data is temporarily unavailable. Please retry in a moment.', ...(detail ? { detail } : {}) },
       { status: 503 }
     )
   }
