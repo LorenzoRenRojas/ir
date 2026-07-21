@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
         deadline: deadline ? new Date(deadline) : null,
         matchScore: matchScore ?? null,
       },
+      // Explicit select: the implicit RETURNING reads every column, so a
+      // schema column not yet created in prod (RUN DB MIGRATION is manual)
+      // would fail the whole save even though the write itself is fine
+      select: { id: true, contractId: true, status: true },
     })
 
     // Update learned preference vector in background (non-blocking)

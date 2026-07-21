@@ -23,9 +23,15 @@ export function SaveContractButton({ contract }: { contract: Contract }) {
           matchScore: contract.matchScore,
         }),
       })
-      if (res.ok) setSaved(true)
+      if (res.ok) {
+        setSaved(true)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(`Save failed: ${data.error ?? `server error ${res.status}`}. Try again in a moment.`)
+      }
     } catch (err) {
       console.error(err)
+      alert('Save failed: network error. Check your connection and try again.')
     } finally {
       setLoading(false)
     }

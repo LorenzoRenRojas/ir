@@ -370,9 +370,16 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contractId: contract.id, samNoticeId: contract.noticeId, title: contract.title, agency: contract.agency, value: contract.value, deadline: contract.responseDeadline, matchScore: contract.matchScore, contractText: [contract.title, contract.agency, contract.naicsCode, contract.description].filter(Boolean).join('\n') }),
       })
-      if (res.ok) setSavedIds((prev) => new Set([...prev, contract.id]))
+      if (res.ok) {
+        setSavedIds((prev) => new Set([...prev, contract.id]))
+      } else {
+        // A silent failure looks like "the button did nothing" — say so
+        const data = await res.json().catch(() => ({}))
+        alert(`Save failed: ${data.error ?? `server error ${res.status}`}. Try again in a moment — if it keeps happening, tell the admin.`)
+      }
     } catch (err) {
       console.error(err)
+      alert('Save failed: network error. Check your connection and try again.')
     } finally {
       setSaving(null)
     }
