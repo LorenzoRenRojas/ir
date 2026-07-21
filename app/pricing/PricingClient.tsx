@@ -23,6 +23,66 @@ const PLANS = [
   },
 ]
 
+// Upmarket expansion — the ladder that scales with the customer. Marked
+// "coming soon": architecture visible now, tiers light up as the product earns
+// them. Keeps the small-business wedge above while signalling where IR grows.
+const EXPANSION = [
+  {
+    name: 'TEAM', tag: 'Per seat',
+    tagline: 'Your whole capture shop on one pipeline.',
+    features: ['Per-seat pricing that scales with your team', 'Shared pipeline + assignments', 'Role permissions (watchlist, proposals, billing)'],
+  },
+  {
+    name: 'AI PROPOSAL STUDIO', tag: 'Module',
+    tagline: 'AI-drafted narratives, reviewer sign-off, one-click send.',
+    features: ['Claude-drafted 4-volume proposals', 'Route drafts to a reviewer before they go out', 'Send to the contracting officer from IR'],
+  },
+  {
+    name: 'COMPLIANCE', tag: 'Module',
+    tagline: 'CMMC / NIST 800-171 readiness, guided.',
+    features: ['Plain-English self-assessment wizard', 'SSP + POA&M document generation', 'SPRS-ready scoring & audit prep'],
+  },
+  {
+    name: 'PRIME', tag: 'Enterprise',
+    tagline: 'Supplier-base intelligence for primes.',
+    features: ['Flow-down compliance visibility', 'Teaming & subcontractor discovery', 'Dedicated success + custom terms'],
+  },
+]
+
+function ExpansionTiers() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.15)
+  return (
+    <div ref={ref} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+      {EXPANSION.map((tier, i) => (
+        <div
+          key={tier.name}
+          style={{
+            position: 'relative', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.14)',
+            padding: '30px 26px',
+            opacity: inView ? 1 : 0,
+            transform: inView ? 'translateY(0)' : 'translateY(20px)',
+            transition: `all 0.55s cubic-bezier(0.22,1,0.36,1) ${i * 120}ms`,
+          }}
+        >
+          <div style={{ position: 'absolute', top: 16, right: 16, fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.18)', padding: '3px 8px' }}>
+            COMING SOON
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: crimson, marginBottom: 6 }}>{tier.name}</div>
+          <div style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', marginBottom: 18 }}>{tier.tag.toUpperCase()}</div>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: '0 0 20px', fontFamily: sans, lineHeight: 1.5 }}>{tier.tagline}</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
+            {tier.features.map((f) => (
+              <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: 'rgba(255,255,255,0.4)', fontFamily: sans, lineHeight: 1.5 }}>
+                <span style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0, marginTop: 1 }}>—</span>{f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // 3-year total cost of ownership (legacy figures: typical reported pricing; estimates)
 const TCO = [
   { name: 'GOVWIN IQ', total: 36000, ir: false },
@@ -214,8 +274,19 @@ export default function PricingClient() {
         </section>
 
         {/* Plans */}
-        <section style={{ padding: '24px 0 72px' }}>
+        <section style={{ padding: '24px 0 48px' }}>
           <PlanCards />
+        </section>
+
+        {/* Expansion tiers — coming soon */}
+        <section style={{ padding: '0 0 72px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 24 }}>
+            <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: 0 }}>GROWING WITH YOU</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0, fontFamily: sans }}>
+              As your shop grows, IR grows with it. These tiers are in active development — early members help shape them.
+            </p>
+          </div>
+          <ExpansionTiers />
         </section>
 
         {/* ROI */}

@@ -154,6 +154,75 @@ function RadarSection() {
   )
 }
 
+// ─── AI Proposal Studio: the draft → review → send flow ───────────────────────
+const PROPOSAL_FLOW = [
+  {
+    n: '01', title: 'ANSWER', tag: 'You',
+    body: 'A guided questionnaire captures your approach, past performance, and pricing — the raw material, in your words.',
+  },
+  {
+    n: '02', title: 'DRAFT', tag: 'AI',
+    body: 'IR turns your answers into a compliant, formatted 4-volume federal proposal — technical, management, past performance, and price narratives written for you to refine, not from scratch.',
+  },
+  {
+    n: '03', title: 'REVIEW', tag: 'Optional',
+    body: 'Route the draft to a reviewer you choose — a teammate, a capture consultant, or your attorney — for sign-off before anything leaves your hands. Nothing is ever sent without your approval.',
+  },
+  {
+    n: '04', title: 'SEND', tag: 'One click',
+    body: 'Deliver the finished proposal to the contracting officer on the SAM.gov notice, directly from IR. Replies route to your inbox.',
+  },
+]
+
+function ProposalStudio() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.2)
+  return (
+    <section ref={ref} style={{ padding: '72px 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: crimson, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        AI PROPOSAL STUDIO
+        <span style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.25)', padding: '3px 8px' }}>IN DEVELOPMENT</span>
+      </p>
+      <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+        From a blank page to the contracting officer.
+      </h2>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 660, fontFamily: sans, lineHeight: 1.7 }}>
+        The proposal is where most small businesses stall — the work is real, the deadline is close, and
+        a blank Word document is intimidating. IR&apos;s Proposal Studio turns your answers into a compliant
+        first draft, lets a reviewer you trust sign off, and sends it to the contracting officer without you
+        ever leaving the platform. You stay in control at every step.
+      </p>
+
+      {/* Flow rail */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 28 }}>
+        {PROPOSAL_FLOW.map((step, i) => (
+          <div
+            key={step.n}
+            style={{
+              position: 'relative', border: '1px solid rgba(255,255,255,0.09)', background: '#111', padding: '26px 22px',
+              opacity: inView ? 1 : 0,
+              transform: inView ? 'translateY(0)' : 'translateY(20px)',
+              transition: `all 0.55s cubic-bezier(0.22,1,0.36,1) ${i * 150}ms`,
+            }}
+          >
+            <div style={{ position: 'absolute', top: 0, left: 0, height: 2, background: crimson, width: inView ? '100%' : '0%', transition: `width 0.5s ease ${i * 150 + 250}ms` }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontFamily: mono, fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em' }}>{step.n}</span>
+              <span style={{ fontFamily: mono, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.14)', padding: '2px 7px' }}>{step.tag.toUpperCase()}</span>
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: crimson, marginBottom: 12 }}>{step.title}</div>
+            <p style={{ fontSize: 12.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', margin: 0, fontFamily: sans }}>{step.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.3)', margin: 0, lineHeight: 1.7, maxWidth: 660 }}>
+        NOTE: IR DRAFTS AND FORMATS — IT DOES NOT PROVIDE LEGAL REVIEW OR GUARANTEE AWARD. THE REVIEW STEP
+        ROUTES YOUR DRAFT TO A PERSON YOU CHOOSE; NOTHING IS SENT WITHOUT YOUR SIGN-OFF.
+      </p>
+    </section>
+  )
+}
+
 function PriceChart() {
   const { ref, inView } = useInView<HTMLDivElement>(0.3)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -300,6 +369,9 @@ export default function CapabilitiesClient() {
 
         {/* Recompete Radar — the price-tier differentiator */}
         <RadarSection />
+
+        {/* AI Proposal Studio — the draft → review → send flow */}
+        <ProposalStudio />
 
         {/* Price chart */}
         <section style={{ padding: '72px 0' }}>
