@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/prisma'
 import { samQuotaStatus } from '@/lib/sam-quota'
+import { aiDraftStatus } from '@/lib/ai-budget'
+import { isAiDraftingConfigured } from '@/lib/proposal-engine'
 import AdminActions from './AdminActions'
 
 export const dynamic = 'force-dynamic'
@@ -82,6 +84,10 @@ export default async function AdminPage() {
 
   // SAM.gov daily budget
   const quota = await samQuotaStatus()
+
+  // AI proposal drafting: is Claude wired in, and how many drafts today
+  const aiConfigured = isAiDraftingConfigured()
+  const aiDrafts = await aiDraftStatus()
 
   // Pipeline totals across all users
   let pipelineByStage: { status: string; _count: number }[] = []
@@ -166,6 +172,13 @@ export default async function AdminPage() {
             title="SAM.GOV BUDGET TODAY"
             value={`${quota.used}/${quota.budget}`}
             sub={quota.used >= quota.budget ? 'EXHAUSTED — resets at midnight UTC' : 'requests used'}
+          />
+          <StatCard
+            title="AI PROPOSAL DRAFTS TODAY"
+            value={aiConfigured ? `${aiDrafts.used}/${aiDrafts.budget}` : 'TEMPLATE MODE'}
+            sub={aiConfigured
+              ? (aiDrafts.used >= aiDrafts.budget ? 'daily cap reached — template fallback active' : 'Claude drafts used')
+              : 'no ANTHROPIC_API_KEY — proposals use templates'}
           />
           {pipelineByStage.length > 0 && (
             <StatCard

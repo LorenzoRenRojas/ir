@@ -78,7 +78,7 @@ export default function NewProposalPage() {
   const [step, setStep] = useState(1)
   const [q, setQ] = useState<FullProposalQuestionnaire>(blank)
   const [generating, setGenerating] = useState(false)
-  const [generated, setGenerated] = useState<{ id: string; content: string } | null>(null)
+  const [generated, setGenerated] = useState<{ id: string; content: string; mode?: 'ai' | 'template' } | null>(null)
   const [error, setError] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailResult, setEmailResult] = useState<{ sent: number; total: number } | null>(null)
@@ -148,7 +148,7 @@ export default function NewProposalPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Generation failed'); return }
-      setGenerated({ id: data.document.id, content: data.content })
+      setGenerated({ id: data.document.id, content: data.content, mode: data.mode })
       localStorage.removeItem(STORAGE_KEY)
     } catch {
       setError('Something went wrong. Please try again.')
@@ -193,7 +193,16 @@ export default function NewProposalPage() {
       <div style={{ padding: '40px', maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
           <div>
-            <div style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>PROPOSAL READY</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.25)', fontFamily: 'var(--font-geist-mono, monospace)' }}>PROPOSAL READY</span>
+              {/* Honest badge: which engine drafted this. AI when the key is
+                  live + funded; template otherwise. */}
+              {generated.mode === 'ai' ? (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: '#C41230', border: '1px solid rgba(196,18,48,0.35)', padding: '3px 7px', fontFamily: 'var(--font-geist-mono, monospace)' }}>✦ AI-DRAFTED</span>
+              ) : (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.15)', padding: '3px 7px', fontFamily: 'var(--font-geist-mono, monospace)' }}>TEMPLATE DRAFT</span>
+              )}
+            </div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{q.contractTitle}</h1>
             <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', margin: '6px 0 0', fontFamily: 'var(--font-geist-mono, monospace)' }}>{q.agencyName}</p>
           </div>

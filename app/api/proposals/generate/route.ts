@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { generateFullProposal } from '@/lib/documents'
+import { draftProposal } from '@/lib/proposal-engine'
 import type { CompanyData, FullProposalQuestionnaire } from '@/lib/documents'
+
+// A Claude-drafted 4-volume proposal streams for a while — give the route
+// real headroom instead of the Hobby ~10s default
+export const maxDuration = 300
 
 export async function POST(req: NextRequest) {
   try {
@@ -106,7 +110,7 @@ export async function POST(req: NextRequest) {
       contactEmail: user?.email ?? undefined,
     }
 
-    const content = generateFullProposal(companyData, questionnaire)
+    const { content, mode } = await draftProposal(companyData, questionnaire)
 
     const doc = await prisma.generatedDocument.create({
       data: {
@@ -118,9 +122,12 @@ export async function POST(req: NextRequest) {
         agencyName: questionnaire.agencyName,
         noticeId: null,
       },
+      select: { id: true, title: true, content: true, createdAt: true },
     })
 
-    return NextResponse.json({ document: doc, content })
+    // mode tells the UI whether Claude drafted this or the template did, so it
+    // can badge the result honestly ("AI-drafted" vs "Template draft")
+    return NextResponse.json({ document: doc, content, mode })
   } catch (err) {
     console.error('Full proposal generate error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
