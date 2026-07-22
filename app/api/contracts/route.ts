@@ -162,7 +162,11 @@ export async function GET(req: NextRequest) {
     // costs per-contract work (embeddings, USAspending lookups) or response
     // bytes, so rank on the cheap score first and enrich only the top slice.
     const PAGE_LIMIT = 100
+    // Win-probability is computed for this many rows; the *network* enrichment
+    // (incumbents + win-share) only fetches for NET_ENRICH_LIMIT to bound the
+    // USAspending fan-out that was timing out the feed on cold instances.
     const ENRICH_LIMIT = 40
+    const NET_ENRICH_LIMIT = 12
     contracts = contracts.slice(0, PAGE_LIMIT)
 
     // Semantic + behavioral layer on the visible page (non-fatal)
@@ -176,38 +180,54 @@ export async function GET(req: NextRequest) {
     }
 
     // Incumbent + win probability for the contracts users actually look at.
-    // fetchIncumbents dedupes by NAICS+agency and caches 24h, but a cold
-    // cache across thousands of rows was the main dashboard-lag culprit.
-    const enriched = contracts.slice(0, ENRICH_LIMIT)
+    // The USAspending calls (incumbents + win-share) are the dashboard-lag
+    // culprit on a cold cache, so they are (a) limited to the top few rows and
+    // (b) hard-bounded by a deadline — if the network is slow, the feed still
+    // returns with match scores, and enrichment simply fills in what it can.
+    const netEnriched = contracts.slice(0, NET_ENRICH_LIMIT)
+    let incumbents: (Awaited<ReturnType<typeof fetchIncumbents>>[number])[] = []
+    let sbShares = new Map<string, number | null>()
     try {
-      const [incumbents, sbShares] = await Promise.all([
-        fetchIncumbents(enriched),
-        // Small-business win share per NAICS — feeds the competition-size
-        // factor of win probability ("beatable market" signal)
-        fetchSmallBizShares(enriched.map((c) => c.naicsCode)),
+      const ENRICH_DEADLINE_MS = 6_000
+      const result = await Promise.race([
+        Promise.all([
+          fetchIncumbents(netEnriched),
+          fetchSmallBizShares(netEnriched.map((c) => c.naicsCode)),
+        ]),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ENRICH_DEADLINE_MS)),
       ])
-      const winProfile = profile && dbProfile
-        ? {
-            businessTypes: profile.businessTypes,
-            naicsCodes: profile.naicsCodes,
-            certifications: profile.certifications,
-            contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
-            annualRevenue: dbProfile.annualRevenue ?? null,
-            agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
-          }
-        : null
-      contracts = contracts.map((c, i) => {
-        if (i >= ENRICH_LIMIT) return c
-        const incumbent = incumbents[i]
-        return {
-          ...c,
-          incumbent,
-          ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
-        }
-      })
+      if (result) {
+        incumbents = result[0]
+        sbShares = result[1]
+      } else {
+        console.warn('Contract enrichment exceeded deadline — serving scored feed unenriched')
+      }
     } catch (err) {
       console.error('Enrichment error (non-fatal):', err)
     }
+
+    const winProfile = profile && dbProfile
+      ? {
+          businessTypes: profile.businessTypes,
+          naicsCodes: profile.naicsCodes,
+          certifications: profile.certifications,
+          contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
+          annualRevenue: dbProfile.annualRevenue ?? null,
+          agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+        }
+      : null
+    contracts = contracts.map((c, i) => {
+      if (i >= ENRICH_LIMIT) return c
+      // Incumbent only exists for the network-enriched top slice; win
+      // probability still computes for the rest (it degrades gracefully
+      // without an incumbent or a win-share signal)
+      const incumbent = i < NET_ENRICH_LIMIT ? incumbents[i] : null
+      return {
+        ...c,
+        ...(incumbent ? { incumbent } : {}),
+        ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
+      }
+    })
 
     return NextResponse.json({ contracts })
   } catch (err) {
