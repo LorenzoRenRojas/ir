@@ -53,6 +53,28 @@ const SET_ASIDE_MAPPINGS: Record<string, string[]> = {
   'VOSBC': ['SDVOSB'],
 }
 
+// Can this company PRIME this contract as-is? A cert-specific set-aside the
+// company doesn't hold is a hard legal wall (you can't win an 8(a) set-aside
+// without being 8(a)); everything else is eligible-or-unknown. Used to filter
+// the feed to what a company can realistically pursue, not just rank it.
+//
+// Deliberately conservative — returns true (eligible) whenever we CAN'T rule
+// the company out: open competition, a set-aside they hold, or a set-aside
+// type we can't map. It only returns false for a mapped cert-specific
+// set-aside the company demonstrably lacks. Teaming can still make an
+// "ineligible" contract winnable, so the feed keeps a "show all" override.
+export function isSetAsideEligible(
+  contract: Contract,
+  profile: Pick<CompanyProfile, 'businessTypes' | 'certifications'>
+): boolean {
+  const code = contract.setAsideType || ''
+  if (code === '' || code === 'NONE' || code === 'FULL') return true // open to all
+  const requiredCerts = SET_ASIDE_MAPPINGS[code] || []
+  if (requiredCerts.length === 0) return true // unmappable set-aside — don't hide
+  const yourStatuses = [...profile.businessTypes, ...profile.certifications]
+  return requiredCerts.some(cert => yourStatuses.some(t => t.includes(cert)))
+}
+
 // Contract value ranges — matched by keyword so both legacy keys ("micro")
 // and onboarding labels ("Micro (<$10K)", "Mid ($250K–$5M)") resolve
 const SIZE_RANGES: { pattern: RegExp; range: [number, number] }[] = [

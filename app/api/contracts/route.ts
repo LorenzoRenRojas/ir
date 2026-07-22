@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { fetchContracts } from '@/lib/sam-api'
 import { rateLimit, ipKey } from '@/lib/rate-limit'
-import { calculateMatchScore } from '@/lib/matching'
+import { calculateMatchScore, isSetAsideEligible, type CompanyProfile } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
 import { fetchIncumbents, fetchSmallBizShares } from '@/lib/usaspending'
 import { calculateWinProbability } from '@/lib/win-probability'
@@ -43,11 +43,14 @@ export async function GET(req: NextRequest) {
     const setAside = searchParams.get('setAside') ?? ''
     const dueWithin = searchParams.get('dueWithin') ? Number(searchParams.get('dueWithin')) : undefined
     const naics = (searchParams.get('naics') ?? '').replace(/\D/g, '')
+    // Personalized eligibility filter — hide set-asides the company can't prime.
+    // Default ON; the dashboard offers a "show all" toggle that sends 'false'.
+    const eligibleOnly = searchParams.get('eligibleOnly') !== 'false'
 
     // Load company profile. Guarded: a failed profile read (DB hiccup,
     // unmigrated column) must degrade to an unscored feed, not 503 the
     // whole dashboard — the contract store itself may be perfectly healthy
-    let profile = null
+    let profile: CompanyProfile | null = null
     let dbProfile = null
     try {
       if (session?.user?.id) {
@@ -141,6 +144,20 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // Personalized eligibility filter: hide set-asides the company can't prime
+    // (e.g. an 8(a) sole-source when they aren't 8(a)). Only applied when the
+    // company has declared statuses — otherwise we can't judge, so we show all.
+    // NAICS/size stay ranking signals, not hard filters: a company can pursue
+    // adjacent work or team up, so hiding on those would cost real opportunities.
+    let hiddenIneligible = 0
+    const canJudgeEligibility =
+      !!profile && (profile.businessTypes.length > 0 || profile.certifications.length > 0)
+    if (profile && eligibleOnly && canJudgeEligibility) {
+      const before = contracts.length
+      contracts = contracts.filter((c) => isSetAsideEligible(c, profile!))
+      hiddenIneligible = before - contracts.length
+    }
+
     // Personal ranking signal beyond the visible 100-pt score: agencies the
     // company has worked with before rank ahead on ties/near-ties. (Invisible
     // boost — the displayed score stays the honest 4-factor breakdown.)
@@ -229,7 +246,7 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ contracts })
+    return NextResponse.json({ contracts, hiddenIneligible, eligibilityFiltered: eligibleOnly && canJudgeEligibility })
   } catch (err) {
     // Honest failure: serving MOCK data with a 200 here made real outages
     // look like a working dashboard full of fabricated contracts. (The

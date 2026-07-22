@@ -292,6 +292,8 @@ export default function DashboardPage() {
   const [setAside, setSetAside] = useState('')
   const [dueWithin, setDueWithin] = useState('')
   const [naics, setNaics] = useState('')
+  const [eligibleOnly, setEligibleOnly] = useState(true)
+  const [hiddenIneligible, setHiddenIneligible] = useState(0)
 
   const refreshAge = useRefreshAge(fetchedAt)
 
@@ -328,6 +330,7 @@ export default function DashboardPage() {
       if (setAside) params.set('setAside', setAside)
       if (dueWithin) params.set('dueWithin', dueWithin)
       if (naics) params.set('naics', naics)
+      if (!eligibleOnly) params.set('eligibleOnly', 'false')
       const res = await fetch(`/api/contracts?${params.toString()}`)
       const data = await res.json().catch(() => ({}))
       // Ignore a stale response that a newer filter change has superseded —
@@ -340,6 +343,7 @@ export default function DashboardPage() {
         setContracts([])
       } else {
         setContracts(data.contracts ?? [])
+        setHiddenIneligible(data.hiddenIneligible ?? 0)
         setFetchedAt(new Date())
       }
     } catch (err) {
@@ -348,7 +352,7 @@ export default function DashboardPage() {
     } finally {
       if (seq === reqSeq.current) setLoading(false)
     }
-  }, [q, agency, type, setAside, dueWithin, naics])
+  }, [q, agency, type, setAside, dueWithin, naics, eligibleOnly])
 
   useEffect(() => { fetchContracts() }, [fetchContracts])
 
@@ -496,6 +500,30 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
+
+        {/* Personalized eligibility toggle — hide set-asides you can't prime */}
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setEligibleOnly(v => !v)}
+            role="switch"
+            aria-checked={eligibleOnly}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <span style={{ width: 34, height: 18, borderRadius: 10, background: eligibleOnly ? '#C41230' : 'rgba(0,0,0,0.15)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', top: 2, left: eligibleOnly ? 18 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#0A0A0A', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              CONTRACTS I CAN PRIME
+            </span>
+          </button>
+          <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+            {eligibleOnly
+              ? (hiddenIneligible > 0
+                  ? `${hiddenIneligible} set-aside${hiddenIneligible === 1 ? '' : 's'} you're not certified for ${hiddenIneligible === 1 ? 'is' : 'are'} hidden. Turn off to see them (you can still team up to bid).`
+                  : 'Showing only set-asides your certifications qualify you to bid as prime.')
+              : 'Showing every opportunity, including set-asides you’d need to team up to pursue.'}
+          </span>
+        </div>
       </div>
 
       {(() => {
