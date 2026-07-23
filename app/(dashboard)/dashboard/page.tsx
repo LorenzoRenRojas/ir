@@ -379,7 +379,8 @@ export default function DashboardPage() {
       } else {
         // A silent failure looks like "the button did nothing" — say so
         const data = await res.json().catch(() => ({}))
-        alert(`Save failed: ${data.error ?? `server error ${res.status}`}. Try again in a moment — if it keeps happening, tell the admin.`)
+        const detail = typeof data.detail === 'string' ? `\n\nAdmin detail: ${data.detail}` : ''
+        alert(`Save failed: ${data.error ?? `server error ${res.status}`}. Try again in a moment — if it keeps happening, tell the admin.${detail}`)
       }
     } catch (err) {
       console.error(err)

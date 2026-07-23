@@ -17,25 +17,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'contractId, title, and agency are required' }, { status: 400 })
     }
 
-    const saved = await prisma.savedContract.upsert({
+    // Sanitize every value crossing into the DB — a bad type here is the
+    // classic silent 500. A malformed/date-only deadline becomes an Invalid
+    // Date that Prisma rejects; a float matchScore rejects on the Int column.
+    const d = deadline ? new Date(deadline) : null
+    const safeDeadline = d && !isNaN(d.getTime()) ? d : null
+    const safeMatchScore =
+      typeof matchScore === 'number' && Number.isFinite(matchScore) ? Math.round(matchScore) : null
+    const safeValue = typeof value === 'number' && Number.isFinite(value) ? value : null
+
+    // find → update/create instead of upsert: upsert's ON CONFLICT depends on
+    // the DB carrying the composite unique index, which may not have applied
+    // cleanly; a plain find works regardless. P2002 on create (a concurrent
+    // double-save) falls back to update, keeping double-click safety.
+    const existing = await prisma.savedContract.findUnique({
       where: { userId_contractId: { userId: session.user.id, contractId } },
-      // Don't reset status on re-save — it would wipe the user's pipeline stage
-      update: { matchScore },
-      create: {
-        userId: session.user.id,
-        contractId,
-        samNoticeId: samNoticeId ?? null,
-        title,
-        agency,
-        value: value ?? null,
-        deadline: deadline ? new Date(deadline) : null,
-        matchScore: matchScore ?? null,
-      },
-      // Explicit select: the implicit RETURNING reads every column, so a
-      // schema column not yet created in prod (RUN DB MIGRATION is manual)
-      // would fail the whole save even though the write itself is fine
-      select: { id: true, contractId: true, status: true },
+      select: { id: true },
     })
+
+    let saved
+    if (existing) {
+      // Don't reset status on re-save — it would wipe the user's pipeline stage
+      saved = await prisma.savedContract.update({
+        where: { id: existing.id },
+        data: { matchScore: safeMatchScore },
+        select: { id: true, contractId: true, status: true },
+      })
+    } else {
+      try {
+        saved = await prisma.savedContract.create({
+          data: {
+            userId: session.user.id,
+            contractId,
+            samNoticeId: samNoticeId ?? null,
+            title,
+            agency,
+            value: safeValue,
+            deadline: safeDeadline,
+            matchScore: safeMatchScore,
+          },
+          select: { id: true, contractId: true, status: true },
+        })
+      } catch (err) {
+        if ((err as { code?: string })?.code === 'P2002') {
+          // Raced with another save of the same contract — treat as success
+          saved = await prisma.savedContract.update({
+            where: { userId_contractId: { userId: session.user.id, contractId } },
+            data: { matchScore: safeMatchScore },
+            select: { id: true, contractId: true, status: true },
+          })
+        } else {
+          throw err
+        }
+      }
+    }
 
     // Update learned preference vector in background (non-blocking)
     if (isEmbeddingEnabled() && samNoticeId) {
@@ -47,7 +82,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ saved })
   } catch (err) {
     console.error('Save contract error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Surface the real error to admins so a production save failure is
+    // diagnosable from the dashboard, without Vercel log access
+    let detail: string | undefined
+    try {
+      const { requireAdmin } = await import('@/lib/admin')
+      if (await requireAdmin()) {
+        detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 400) : String(err).slice(0, 400)
+      }
+    } catch { /* admin check unavailable */ }
+    return NextResponse.json({ error: 'Internal server error', ...(detail ? { detail } : {}) }, { status: 500 })
   }
 }
 
