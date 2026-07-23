@@ -82,16 +82,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ saved })
   } catch (err) {
     console.error('Save contract error:', err)
-    // Surface the real error to admins so a production save failure is
-    // diagnosable from the dashboard, without Vercel log access
-    let detail: string | undefined
+    const detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 500) : String(err).slice(0, 500)
+
+    // Record the exact error to Kv so it shows on the (server-rendered) admin
+    // page — immune to client-JS caching and admin-detection issues that can
+    // hide the inline detail. Best-effort; never mask the original failure.
     try {
-      const { requireAdmin } = await import('@/lib/admin')
-      if (await requireAdmin()) {
-        detail = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 400) : String(err).slice(0, 400)
-      }
-    } catch { /* admin check unavailable */ }
-    return NextResponse.json({ error: 'Internal server error', ...(detail ? { detail } : {}) }, { status: 500 })
+      const value = `${new Date().toISOString()} | ${detail}`
+      await prisma.kv.upsert({
+        where: { key: 'last-save-error' },
+        update: { value },
+        create: { key: 'last-save-error', value },
+      })
+    } catch { /* Kv unavailable — inline detail still returned below */ }
+
+    // Also return it inline for any signed-in user (pre-launch debugging;
+    // the site is invite-gated so only trusted accounts can reach this).
+    let inline: string | undefined
+    try {
+      const s = await auth()
+      if (s?.user?.id) inline = detail
+    } catch { /* auth unavailable */ }
+    return NextResponse.json({ error: 'Internal server error', ...(inline ? { detail: inline } : {}) }, { status: 500 })
   }
 }
 

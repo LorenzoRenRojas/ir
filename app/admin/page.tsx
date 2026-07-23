@@ -89,6 +89,13 @@ export default async function AdminPage() {
   const aiConfigured = isAiDraftingConfigured()
   const aiDrafts = await aiDraftStatus()
 
+  // Last save-contract error (recorded server-side for diagnosis)
+  let lastSaveError: string | null = null
+  try {
+    const row = await prisma.kv.findUnique({ where: { key: 'last-save-error' } })
+    lastSaveError = row?.value ?? null
+  } catch { /* Kv missing */ }
+
   // Pipeline totals across all users
   let pipelineByStage: { status: string; _count: number }[] = []
   try {
@@ -150,6 +157,14 @@ export default async function AdminPage() {
           <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', marginLeft: 8 }}>IR</span>
           <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.1em', marginLeft: 6 }}>ADMIN CONSOLE</span>
         </div>
+
+        {lastSaveError && (
+          <div style={{ marginBottom: 32, padding: '16px 20px', background: 'rgba(196,18,48,0.08)', border: `1px solid ${crimson}` }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.16em', color: crimson, fontWeight: 700, marginBottom: 8 }}>⚠ LAST SAVE-CONTRACT ERROR</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontFamily: mono, lineHeight: 1.6, wordBreak: 'break-word' }}>{lastSaveError}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 8 }}>Most recent failed save. Clears when a save next succeeds enough to overwrite it, or ignore once resolved.</div>
+          </div>
+        )}
 
         <div style={label}>PLATFORM METRICS</div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
