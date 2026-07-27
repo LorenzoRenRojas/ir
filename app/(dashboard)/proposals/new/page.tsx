@@ -176,15 +176,14 @@ export default function NewProposalPage() {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!generated) return
-    const blob = new Blob([generated.content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `proposal-${q.contractTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    const { downloadTextAsPdf } = await import('@/lib/pdf')
+    await downloadTextAsPdf(
+      `Proposal — ${q.contractTitle}`,
+      generated.content,
+      `proposal-${q.contractTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`
+    )
   }
 
   // ── Generated result view ─────────────────────────────────────────────────
@@ -217,7 +216,7 @@ export default function NewProposalPage() {
               onClick={handleDownload}
               style={{ padding: '10px 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid #0A0A0A', color: '#0A0A0A', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
             >
-              ↓ DOWNLOAD .TXT
+              ↓ DOWNLOAD PDF
             </button>
           </div>
         </div>

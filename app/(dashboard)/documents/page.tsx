@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { downloadTextAsPdf } from '@/lib/pdf'
+
+const slug = (s: string) => s.replace(/[^a-z0-9]/gi, '-').toLowerCase()
 
 interface Proposal {
   id: string
@@ -183,14 +186,8 @@ export default function ProposalsPage() {
         setCapError(data.error ?? 'Generation failed.')
         return
       }
-      // Download immediately and refresh the list so it shows under documents
-      const blob = new Blob([data.content], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'capability-statement.txt'
-      a.click()
-      URL.revokeObjectURL(url)
+      // Download as a branded PDF and refresh the list so it shows under documents
+      await downloadTextAsPdf('Capability Statement', data.content, 'capability-statement.pdf')
       loadProposals()
     } catch {
       setCapError('Failed to generate capability statement.')
@@ -201,13 +198,7 @@ export default function ProposalsPage() {
 
   function handleDownload() {
     if (!generatedContent) return
-    const blob = new Blob([generatedContent], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${generatedTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadTextAsPdf(generatedTitle, generatedContent, `${slug(generatedTitle)}.pdf`)
   }
 
   // Group proposals by contract
@@ -224,10 +215,10 @@ export default function ProposalsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>PROPOSAL SUITE</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Proposals</h1>
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>DOCUMENT SUITE</div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Documents</h1>
           <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '8px 0 0', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.5 }}>
-            Generate a fully structured government contract proposal ready for attorney review.
+            Generate every document a bid needs — proposals, capability statements, and more — pre-filled from your profile, formatted to federal norms, exported as PDF.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
@@ -406,7 +397,7 @@ export default function ProposalsPage() {
                       onClick={handleDownload}
                       style={{ padding: '8px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', flexShrink: 0 }}
                     >
-                      ↓ DOWNLOAD .TXT
+                      ↓ DOWNLOAD PDF
                     </button>
                   </div>
                   <pre style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.08)', padding: 16, fontSize: 11, color: 'rgba(0,0,0,0.7)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 420, fontFamily: 'var(--font-geist-mono, monospace)', lineHeight: 1.7, margin: 0 }}>
@@ -498,13 +489,7 @@ function ProposalRow({ proposal }: { proposal: Proposal }) {
 
   function handleDownload() {
     if (!content) return
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${proposal.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadTextAsPdf(proposal.title, content, `${slug(proposal.title)}.pdf`)
   }
 
   return (
