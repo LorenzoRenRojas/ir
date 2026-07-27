@@ -166,9 +166,7 @@ export default function PipelinePage() {
   const [removing, setRemoving] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [drafting, setDrafting] = useState<string | null>(null)
   const [panelMsg, setPanelMsg] = useState<Record<string, string>>({})
-  const [capGenerating, setCapGenerating] = useState(false)
   // One debounce timer PER contract — a single shared timer meant editing
   // contract A then clicking into B within 800ms cancelled A's save forever
   const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -272,42 +270,6 @@ export default function PipelinePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleQuickDraft(c: SavedContract) {
-    setDrafting(c.contractId)
-    setPanelMsg(m => ({ ...m, [c.contractId]: '' }))
-    try {
-      const res = await fetch('/api/documents/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractTitle: c.title,
-          agencyName: c.agency,
-          responseDeadline: c.deadline ?? undefined,
-          estimatedValue: c.value ? `$${c.value.toLocaleString()}` : undefined,
-          noticeId: c.samNoticeId ?? undefined,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setPanelMsg(m => ({ ...m, [c.contractId]: data.error ?? 'Draft failed.' }))
-        return
-      }
-      setPanelMsg(m => ({ ...m, [c.contractId]: 'Draft created ✓' }))
-      loadProposals()
-    } catch {
-      setPanelMsg(m => ({ ...m, [c.contractId]: 'Network error.' }))
-    } finally {
-      setDrafting(null)
-    }
-  }
-
-  async function handleDownloadProposal(p: Proposal) {
-    const res = await fetch(`/api/documents/${p.id}`)
-    const data = await res.json()
-    if (!data.content) return
-    await downloadTextAsPdf(p.title, data.content, `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`)
-  }
-
   async function handleDownloadPdf(p: Proposal) {
     const res = await fetch(`/api/documents/${p.id}`)
     const data = await res.json()
@@ -342,18 +304,6 @@ export default function PipelinePage() {
     }
   }
 
-  async function handleCapabilityStatement() {
-    setCapGenerating(true)
-    try {
-      const res = await fetch('/api/documents/capability-statement', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) { alert(data.error ?? 'Generation failed'); return }
-      await downloadTextAsPdf('Capability Statement', data.content, 'capability-statement.pdf')
-    } finally {
-      setCapGenerating(false)
-    }
-  }
-
   const visible = filter === 'all' ? contracts : contracts.filter(c => c.status === filter)
   const activeValue = contracts.filter(c => ['saved', 'pursuing', 'submitted'].includes(c.status)).reduce((s, c) => s + (c.value ?? 0), 0)
   const wonValue = contracts.filter(c => c.status === 'won').reduce((s, c) => s + (c.value ?? 0), 0)
@@ -366,11 +316,7 @@ export default function PipelinePage() {
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>Pipeline</h1>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={handleCapabilityStatement} disabled={capGenerating} style={btn}>
-            {capGenerating ? 'GENERATING…' : '⚡ CAPABILITY STATEMENT'}
-          </button>
-          <Link href="/documents" style={btn}>☰ ALL PROPOSALS</Link>
-          <Link href="/proposals/new" style={btnPrimary}>+ FULL QUESTIONNAIRE →</Link>
+          <Link href="/documents" style={btn}>☰ DOC SUITE →</Link>
         </div>
       </div>
 
@@ -496,14 +442,16 @@ export default function PipelinePage() {
                 {/* The pursuit workspace */}
                 {isOpen && (
                   <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, background: '#FAFAF9' }}>
-                    {/* Drafts */}
+                    {/* Delivery — send an existing draft to the officer.
+                        Document GENERATION lives in the Doc Suite; the pipeline
+                        is for pursuing and delivering. */}
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 12 }}>PROPOSAL DRAFTS</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 12 }}>DELIVERY</div>
                       {proposals === null ? (
                         <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>LOADING…</div>
                       ) : cProposals.length === 0 ? (
                         <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', fontFamily: sans, margin: '0 0 12px', lineHeight: 1.6 }}>
-                          No drafts yet for this contract.
+                          No documents for this contract yet. <Link href="/documents" style={{ color: crimson, textDecoration: 'none', fontWeight: 600 }}>Generate one in the Doc Suite →</Link>
                         </p>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
@@ -511,7 +459,6 @@ export default function PipelinePage() {
                             <div key={p.id} style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '10px 12px' }}>
                               <div style={{ fontSize: 11.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 6 }}>{p.title}</div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button onClick={() => handleDownloadProposal(p)} style={{ ...btn, padding: '5px 10px', fontSize: 8 }}>↓ TXT</button>
                                 <button onClick={() => handleDownloadPdf(p)} style={{ ...btn, padding: '5px 10px', fontSize: 8 }}>↓ PDF</button>
                                 {c.samNoticeId && (
                                   <button onClick={() => handleSendToOfficer(c, p)} style={{ ...btn, padding: '5px 10px', fontSize: 8, borderColor: 'rgba(196,18,48,0.35)', color: crimson }}>SEND TO PO →</button>
@@ -521,12 +468,6 @@ export default function PipelinePage() {
                           ))}
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button onClick={() => handleQuickDraft(c)} disabled={drafting === c.contractId} style={btnPrimary}>
-                          {drafting === c.contractId ? 'DRAFTING…' : <><MetatronIcon size={11} /> QUICK DRAFT</>}
-                        </button>
-                        <Link href="/proposals/new" style={btn}>FULL QUESTIONNAIRE →</Link>
-                      </div>
                       {msg && (
                         <div style={{ marginTop: 10, fontSize: 10, fontFamily: mono, color: msg.endsWith('✓') ? '#16a34a' : crimson }}>{msg}</div>
                       )}
