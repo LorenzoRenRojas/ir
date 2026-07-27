@@ -14,6 +14,7 @@ const NAV = [
   { href: '/dashboard', label: 'CONTRACTS' },
   { href: '/recompetes', label: 'RECOMPETES' },
   { href: '/saved', label: 'PIPELINE' },
+  { href: '/documents', label: 'DOC SUITE' },
   { href: '/settings', label: 'SETTINGS' },
 ]
 
