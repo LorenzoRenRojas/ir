@@ -294,6 +294,10 @@ export default function DashboardPage() {
   const [naics, setNaics] = useState('')
   const [eligibleOnly, setEligibleOnly] = useState(true)
   const [hiddenIneligible, setHiddenIneligible] = useState(0)
+  // Saved contracts are in the pipeline already — hide them from the "find new
+  // work" feed by default so it stays a clean triage queue. Client-side filter
+  // using the saved IDs we already fetch, so no extra request and no lag.
+  const [hideSaved, setHideSaved] = useState(true)
 
   const refreshAge = useRefreshAge(fetchedAt)
 
@@ -588,25 +592,52 @@ export default function DashboardPage() {
               once the feed recovers.
             </div>
           )}
-          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em', marginBottom: 16 }}>{contracts.length} OPPORTUNITIES FOUND</div>
-          <style>{`
-            @keyframes fadeSlideIn {
-              from { opacity: 0; transform: translateY(12px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-          `}</style>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
-            {contracts.map((contract, i) => (
-              <ContractCard
-                key={contract.id}
-                contract={contract}
-                onSave={handleSave}
-                isSaved={savedIds.has(contract.id)}
-                saving={saving === contract.id}
-                index={i}
-              />
-            ))}
-          </div>
+          {(() => {
+            const savedInFeed = contracts.filter(c => savedIds.has(c.id)).length
+            const visible = hideSaved ? contracts.filter(c => !savedIds.has(c.id)) : contracts
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+                  <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.1em' }}>{visible.length} {hideSaved ? 'NEW' : ''} OPPORTUNIT{visible.length === 1 ? 'Y' : 'IES'}</span>
+                  {savedInFeed > 0 && (
+                    <button
+                      onClick={() => setHideSaved(v => !v)}
+                      style={{ fontSize: 9, letterSpacing: '0.08em', fontWeight: 700, color: '#C41230', background: 'transparent', border: '1px solid rgba(196,18,48,0.3)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', padding: '3px 9px' }}
+                    >
+                      {hideSaved ? `${savedInFeed} SAVED HIDDEN · SHOW` : `HIDE ${savedInFeed} SAVED`}
+                    </button>
+                  )}
+                </div>
+                <style>{`
+                  @keyframes fadeSlideIn {
+                    from { opacity: 0; transform: translateY(12px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                  }
+                `}</style>
+                {visible.length === 0 ? (
+                  <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 24px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#16a34a', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>ALL CAUGHT UP ✓</div>
+                    <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+                      You&apos;ve saved every match here. New opportunities land daily — check back, or turn off &ldquo;hide saved&rdquo; to review your pipeline.
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+                    {visible.map((contract, i) => (
+                      <ContractCard
+                        key={contract.id}
+                        contract={contract}
+                        onSave={handleSave}
+                        isSaved={savedIds.has(contract.id)}
+                        saving={saving === contract.id}
+                        index={i}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </>
       )}
     </div>
