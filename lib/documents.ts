@@ -850,6 +850,105 @@ export interface CapabilityExtras {
   annualRevenue?: string | null
 }
 
+// ─── Sources Sought / RFI response ────────────────────────────────────────────
+// Agencies post Sources Sought notices before a solicitation exists to gauge
+// the small-business market. Responding gets you on the radar and can shape the
+// eventual RFP. Most small businesses never respond well — this is high leverage.
+export interface SourcesSoughtOpts {
+  noticeTitle: string
+  agencyName: string
+  solicitationNumber?: string
+  requirementSummary?: string
+}
+
+export function generateSourcesSought(company: CompanyData, o: SourcesSoughtOpts): string {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const thin = '─'.repeat(78)
+  const certs = [...company.businessTypes, ...company.certifications]
+  const setAsides = certs.length ? certs.join(', ') : '[your certifications]'
+  const naics = company.naicsCodes.length ? company.naicsCodes.join(', ') : '[your NAICS codes]'
+
+  return `RESPONSE TO SOURCES SOUGHT NOTICE
+
+${o.noticeTitle}
+${o.agencyName}${o.solicitationNumber ? `\nNotice / Reference No.: ${o.solicitationNumber}` : ''}
+Date: ${today}
+
+${thin}
+1. FIRM INFORMATION
+${thin}
+Company Name:        ${company.companyName}
+UEI:                 ${company.uei || '[UEI]'}
+CAGE Code:           ${company.cageCode || '[CAGE]'}
+Point of Contact:    ${company.contactName || '[Name]'}
+Email:               ${company.contactEmail || '[Email]'}
+Phone:               ${company.contactPhone || '[Phone]'}
+Business Size/Status: ${setAsides}
+NAICS Codes:         ${naics}
+
+${thin}
+2. STATEMENT OF INTEREST
+${thin}
+${company.companyName} is interested in and capable of performing the requirement described in the referenced notice. As a ${company.businessTypes.join(', ') || 'small'} business, we respectfully request consideration and, where applicable, that this requirement be structured as a small-business set-aside.
+
+${thin}
+3. CAPABILITY & RELEVANT EXPERIENCE
+${thin}
+${o.requirementSummary?.trim() || `${company.companyName} has directly relevant capability in the work described. [Summarize 2–3 sentences on how your firm meets this specific requirement — the systems, services, or expertise you bring.]`}
+
+Our core competencies align to NAICS ${naics}. [List 3–5 specific, relevant capabilities and any comparable contracts of similar scope, size, and complexity — agency, value, period of performance.]
+
+${thin}
+4. RESPONSE TO ANY SPECIFIC QUESTIONS IN THE NOTICE
+${thin}
+[If the notice asked specific questions — capacity, capacity, bonding, clearances, ability to meet the schedule — answer each here, numbered to match the notice.]
+
+${thin}
+This response is submitted for market-research purposes only and does not constitute a proposal or a commitment on the part of either party.
+
+Respectfully submitted,
+${company.contactName || '[Name]'}
+${company.companyName}
+Prepared ${today}`
+}
+
+// ─── Cover letter / letter of interest ────────────────────────────────────────
+export interface CoverLetterOpts {
+  contractTitle: string
+  agencyName: string
+  solicitationNumber?: string
+  officerName?: string
+}
+
+export function generateCoverLetter(company: CompanyData, o: CoverLetterOpts): string {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const certs = [...company.businessTypes, ...company.certifications]
+  const status = certs.length ? ` and ${certs.join('/')} concern` : ''
+
+  return `${today}
+
+${o.officerName || '[Contracting Officer Name]'}
+${o.agencyName}${o.solicitationNumber ? `\nRE: Solicitation ${o.solicitationNumber}` : ''}
+
+RE: ${o.contractTitle}
+
+Dear ${o.officerName || 'Contracting Officer'}:
+
+${company.companyName} is pleased to submit the enclosed response for ${o.contractTitle}. As a ${company.businessTypes.join(', ') || 'small'} business${status}, we are fully qualified and eager to support ${o.agencyName} on this requirement.
+
+[One short paragraph: why your firm is a strong fit — your directly relevant experience, the specific value you bring, and your understanding of the agency's mission.]
+
+We confirm our firm is registered and active in SAM.gov (UEI ${company.uei || '[UEI]'}) and holds the certifications and capabilities required to perform. We are committed to delivering on time, on budget, and to the standard ${o.agencyName} expects.
+
+Thank you for your consideration. Please direct any questions to me directly.
+
+Respectfully,
+
+${company.contactName || '[Name]'}
+${company.contactName ? '' : '[Title]\n'}${company.companyName}
+${company.contactEmail || '[Email]'} · ${company.contactPhone || '[Phone]'}`
+}
+
 export function generateCapabilityStatement(company: CompanyData, extras: CapabilityExtras): string {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const line = '═'.repeat(78)

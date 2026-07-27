@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { downloadTextAsPdf } from '@/lib/pdf'
 
 const slug = (s: string) => s.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+const mono = 'var(--font-geist-mono, monospace)'
+const sans = 'var(--font-geist-sans, sans-serif)'
+const crimson = '#C41230'
 
-interface Proposal {
+interface Doc {
   id: string
   type: string
   title: string
@@ -16,411 +19,231 @@ interface Proposal {
   createdAt: string
 }
 
-interface SavedContract {
-  id: string
-  contractId: string
-  title: string
-  agency: string
-  deadline: string | null
-  samNoticeId: string | null
+// The document types the suite can generate. Each is pre-filled from the
+// company profile; guided types ask only the notice-specific fields.
+type Field = { key: string; label: string; required?: boolean; placeholder?: string; textarea?: boolean }
+const GUIDED: Record<string, { title: string; fields: Field[] }> = {
+  sources_sought: {
+    title: 'Sources Sought Response',
+    fields: [
+      { key: 'noticeTitle', label: 'NOTICE TITLE', required: true, placeholder: 'Enterprise IT Support Services' },
+      { key: 'agencyName', label: 'AGENCY', required: true, placeholder: 'Department of Veterans Affairs' },
+      { key: 'solicitationNumber', label: 'NOTICE / REFERENCE NO.', placeholder: '36C10B24R0001' },
+      { key: 'requirementSummary', label: 'HOW YOU MEET THE NEED (optional)', textarea: true, placeholder: 'Two or three sentences on the specific capability, systems, or experience you bring to this requirement.' },
+    ],
+  },
+  cover_letter: {
+    title: 'Cover Letter',
+    fields: [
+      { key: 'contractTitle', label: 'CONTRACT TITLE', required: true, placeholder: 'Enterprise IT Support Services' },
+      { key: 'agencyName', label: 'AGENCY', required: true, placeholder: 'Department of Veterans Affairs' },
+      { key: 'solicitationNumber', label: 'SOLICITATION NUMBER', placeholder: '36C10B24R0001' },
+      { key: 'officerName', label: 'CONTRACTING OFFICER NAME', placeholder: 'Jane Smith' },
+    ],
+  },
 }
 
-interface ModalState {
-  open: boolean
-  // pre-filled from a saved contract
-  noticeId: string
-  contractTitle: string
-  agencyName: string
-  // optional detail fields
-  solicitationNumber: string
-  issuingOffice: string
-  responseDeadline: string
-  estimatedValue: string
-  placeOfPerformance: string
+const DOC_TYPES: { key: string; name: string; desc: string; mode: 'oneclick' | 'link' | 'guided' | 'soon'; href?: string }[] = [
+  { key: 'capability', name: 'Capability Statement', desc: 'One-page company overview government buyers scan in seconds.', mode: 'oneclick' },
+  { key: 'proposal', name: 'Full Proposal', desc: 'Guided four-volume federal proposal, ready to submit.', mode: 'link', href: '/proposals/new' },
+  { key: 'sources_sought', name: 'Sources Sought Response', desc: 'Get on the agency’s radar before the RFP exists.', mode: 'guided' },
+  { key: 'cover_letter', name: 'Cover Letter', desc: 'A sharp letter of interest for any submission.', mode: 'guided' },
+  { key: 'past_performance', name: 'Past Performance Sheet', desc: 'Your reference table of similar contracts.', mode: 'soon' },
+]
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 12px', background: '#F8F8F7',
+  border: '1px solid rgba(0,0,0,0.1)', color: '#0A0A0A', fontSize: 13,
+  fontFamily: sans, outline: 'none', boxSizing: 'border-box',
+}
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
+  color: 'rgba(0,0,0,0.35)', marginBottom: 8, fontFamily: mono,
 }
 
-const blankModal: ModalState = {
-  open: false,
-  noticeId: '',
-  contractTitle: '',
-  agencyName: '',
-  solicitationNumber: '',
-  issuingOffice: '',
-  responseDeadline: '',
-  estimatedValue: '',
-  placeOfPerformance: '',
-}
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  background: '#F8F8F7',
-  border: '1px solid rgba(0,0,0,0.1)',
-  color: '#0A0A0A',
-  fontSize: 13,
-  fontFamily: 'var(--font-geist-sans, sans-serif)',
-  outline: 'none',
-  boxSizing: 'border-box' as const,
-}
-
-const labelStyle = {
-  display: 'block',
-  fontSize: 9,
-  fontWeight: 700,
-  letterSpacing: '0.12em',
-  color: 'rgba(0,0,0,0.35)',
-  marginBottom: 8,
-  fontFamily: 'var(--font-geist-mono, monospace)',
-}
-
-export default function ProposalsPage() {
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [savedContracts, setSavedContracts] = useState<SavedContract[]>([])
+export default function DocumentSuitePage() {
+  const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<ModalState>(blankModal)
-  const [generating, setGenerating] = useState(false)
-  const [generatedContent, setGeneratedContent] = useState<string | null>(null)
-  const [generatedTitle, setGeneratedTitle] = useState('')
+  const [busy, setBusy] = useState('')          // which doc-type card is generating
   const [error, setError] = useState('')
-  const [capGenerating, setCapGenerating] = useState(false)
-  const [capError, setCapError] = useState('')
+  const [modalType, setModalType] = useState<string | null>(null)
+  const [fields, setFields] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    Promise.all([loadProposals(), loadSavedContracts()])
-  }, [])
+  useEffect(() => { loadDocs() }, [])
 
-  async function loadProposals() {
+  async function loadDocs() {
     try {
       const res = await fetch('/api/documents/generate')
       const data = await res.json()
-      setProposals(data.documents ?? [])
+      setDocs(data.documents ?? [])
     } finally {
       setLoading(false)
     }
   }
 
-  async function loadSavedContracts() {
-    try {
-      const res = await fetch('/api/contracts/saved')
-      if (!res.ok) return
-      const data = await res.json()
-      // The API returns { saved: [...] } — reading data.contracts left this
-      // array permanently empty and the "generate from saved" UI never showed
-      setSavedContracts(data.saved ?? [])
-    } catch { /* non-critical */ }
-  }
-
-  function openBlank() {
-    setModal({ ...blankModal, open: true })
-    setGeneratedContent(null)
-    setError('')
-  }
-
-  function openFromContract(c: SavedContract) {
-    setModal({
-      open: true,
-      noticeId: c.samNoticeId ?? c.contractId,
-      contractTitle: c.title,
-      agencyName: c.agency,
-      solicitationNumber: '',
-      issuingOffice: '',
-      responseDeadline: c.deadline ? new Date(c.deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '',
-      estimatedValue: '',
-      placeOfPerformance: '',
-    })
-    setGeneratedContent(null)
-    setError('')
-  }
-
-  function closeModal() {
-    setModal(blankModal)
-    setGeneratedContent(null)
-    setError('')
-    loadProposals()
-  }
-
-  function set(key: keyof ModalState, val: string) {
-    setModal((m) => ({ ...m, [key]: val }))
-  }
-
-  async function handleGenerate() {
-    if (!modal.contractTitle || !modal.agencyName) {
-      setError('Contract title and agency name are required.')
-      return
-    }
-    setGenerating(true)
-    setError('')
-    try {
-      const res = await fetch('/api/documents/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractTitle: modal.contractTitle,
-          agencyName: modal.agencyName,
-          solicitationNumber: modal.solicitationNumber || undefined,
-          issuingOffice: modal.issuingOffice || undefined,
-          responseDeadline: modal.responseDeadline || undefined,
-          estimatedValue: modal.estimatedValue || undefined,
-          placeOfPerformance: modal.placeOfPerformance || undefined,
-          noticeId: modal.noticeId || undefined,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Generation failed'); return }
-      setGeneratedContent(data.content)
-      setGeneratedTitle(data.document.title)
-    } catch {
-      setError('Failed to generate proposal.')
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  async function handleCapabilityStatement() {
-    setCapGenerating(true)
-    setCapError('')
+  async function generateCapability() {
+    setBusy('capability'); setError('')
     try {
       const res = await fetch('/api/documents/capability-statement', { method: 'POST' })
       const data = await res.json()
-      if (!res.ok) {
-        setCapError(data.error ?? 'Generation failed.')
-        return
-      }
-      // Download as a branded PDF and refresh the list so it shows under documents
+      if (!res.ok) { setError(data.error ?? 'Generation failed.'); return }
       await downloadTextAsPdf('Capability Statement', data.content, 'capability-statement.pdf')
-      loadProposals()
+      loadDocs()
     } catch {
-      setCapError('Failed to generate capability statement.')
+      setError('Failed to generate. Try again.')
     } finally {
-      setCapGenerating(false)
+      setBusy('')
     }
   }
 
-  function handleDownload() {
-    if (!generatedContent) return
-    downloadTextAsPdf(generatedTitle, generatedContent, `${slug(generatedTitle)}.pdf`)
+  function openGuided(type: string) {
+    setModalType(type); setFields({}); setError('')
   }
 
-  // Group proposals by contract
-  const grouped = proposals.reduce<Record<string, Proposal[]>>((acc, p) => {
-    const key = p.contractTitle ?? 'Uncategorized'
-    if (!acc[key]) acc[key] = []
-    acc[key].push(p)
-    return acc
-  }, {})
+  async function submitGuided() {
+    if (!modalType) return
+    const cfg = GUIDED[modalType]
+    for (const f of cfg.fields) {
+      if (f.required && !fields[f.key]?.trim()) { setError(`${f.label.replace(' (optional)', '')} is required.`); return }
+    }
+    setBusy(modalType); setError('')
+    try {
+      const res = await fetch('/api/documents/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docType: modalType, ...fields }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Generation failed.'); return }
+      await downloadTextAsPdf(data.title, data.content, `${slug(data.title)}.pdf`)
+      setModalType(null)
+      loadDocs()
+    } catch {
+      setError('Failed to generate. Try again.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function deleteDoc(id: string) {
+    if (!window.confirm('Delete this document? This cannot be undone.')) return
+    await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+    loadDocs()
+  }
+
+  async function clearAll() {
+    if (docs.length === 0) return
+    if (!window.confirm(`Delete all ${docs.length} generated documents? This cannot be undone.`)) return
+    setBusy('clear')
+    try {
+      await Promise.all(docs.map((d) => fetch(`/api/documents/${d.id}`, { method: 'DELETE' })))
+      loadDocs()
+    } finally {
+      setBusy('')
+    }
+  }
 
   return (
     <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
-
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>DOCUMENT SUITE</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Documents</h1>
-          <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '8px 0 0', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.5 }}>
-            Generate every document a bid needs — proposals, capability statements, and more — pre-filled from your profile, formatted to federal norms, exported as PDF.
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>DOCUMENT SUITE</div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>Documents</h1>
+          <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '8px 0 0', maxWidth: 560, fontFamily: sans, lineHeight: 1.5 }}>
+            Every document a bid needs — pre-filled from your company profile, formatted to federal norms, exported as PDF. Review with counsel before submission.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-          <button
-            onClick={handleCapabilityStatement}
-            disabled={capGenerating}
-            style={{ padding: '11px 16px', background: 'transparent', color: '#0A0A0A', border: '1px solid rgba(0,0,0,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: capGenerating ? 'not-allowed' : 'pointer', opacity: capGenerating ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
-          >
-            {capGenerating ? 'GENERATING…' : '⚡ CAPABILITY STATEMENT'}
+        {docs.length > 0 && (
+          <button onClick={clearAll} disabled={!!busy} style={{ padding: '9px 14px', background: 'transparent', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.12)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: mono, flexShrink: 0 }}>
+            {busy === 'clear' ? 'CLEARING…' : `CLEAR ALL (${docs.length})`}
           </button>
-          <button
-            onClick={openBlank}
-            style={{ padding: '11px 16px', background: 'transparent', color: '#0A0A0A', border: '1px solid rgba(0,0,0,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
-          >
-            QUICK DRAFT
-          </button>
-          <Link
-            href="/proposals/new"
-            style={{ padding: '11px 20px', background: '#C41230', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', display: 'inline-block' }}
-          >
-            + FULL QUESTIONNAIRE →
-          </Link>
-        </div>
-      </div>
-
-      {capError && (
-        <div style={{ marginBottom: 20, padding: '10px 16px', border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)', fontSize: 11, color: '#C41230', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-          {capError}
-        </div>
-      )}
-
-      {/* Saved contracts — quick start */}
-      {savedContracts.length > 0 && (
-        <div style={{ marginBottom: 36 }}>
-          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 14, fontFamily: 'var(--font-geist-mono, monospace)' }}>GENERATE FROM SAVED CONTRACTS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {savedContracts.map((c) => (
-              <div
-                key={c.id}
-                style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {c.title}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', marginTop: 3, letterSpacing: '0.04em', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-                    {c.agency}{c.deadline ? ` · DUE ${new Date(c.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}` : ''}
-                  </div>
-                </div>
-                <button
-                  onClick={() => openFromContract(c)}
-                  style={{ padding: '7px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid #C41230', color: '#C41230', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', flexShrink: 0 }}
-                >
-                  GENERATE →
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Proposals list grouped by contract */}
-      <div>
-        <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16, fontFamily: 'var(--font-geist-mono, monospace)' }}>YOUR PROPOSALS</div>
-
-        {loading ? (
-          <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.2)', fontFamily: 'var(--font-geist-mono, monospace)' }}>LOADING…</div>
-        ) : proposals.length === 0 ? (
-          <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.2)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>NO PROPOSALS YET</div>
-            <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '0 0 20px', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-              Generate your first proposal from a saved contract or click New Proposal.
-            </p>
-            <button
-              onClick={openBlank}
-              style={{ padding: '10px 20px', background: '#C41230', color: '#fff', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
-            >
-              + NEW PROPOSAL
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {Object.entries(grouped).map(([contractTitle, group]) => (
-              <div key={contractTitle}>
-                {/* Contract header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <div style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 420 }}>
-                    {contractTitle}
-                  </div>
-                  {group[0].agencyName && (
-                    <>
-                      <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.15)', flexShrink: 0 }} />
-                      <div style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.2)', fontFamily: 'var(--font-geist-mono, monospace)' }}>{group[0].agencyName}</div>
-                    </>
-                  )}
-                </div>
-
-                {/* Proposals under this contract */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {group.map((p) => (
-                    <ProposalRow key={p.id} proposal={p} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </div>
 
-      {/* Modal */}
-      {modal.open && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}>
-          <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.1)', width: '100%', maxWidth: 600, maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+      {error && (
+        <div style={{ marginBottom: 20, padding: '10px 16px', border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)', fontSize: 12, color: crimson, fontFamily: sans }}>
+          {error}
+        </div>
+      )}
 
-            {/* Modal header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C41230', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-                {generatedContent ? 'PROPOSAL READY' : 'GENERATE PROPOSAL'}
-              </div>
-              <button onClick={closeModal} style={{ fontSize: 20, color: 'rgba(0,0,0,0.35)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
+      {/* Generate a document */}
+      <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 14, fontFamily: mono }}>GENERATE A DOCUMENT</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12, marginBottom: 40 }}>
+        {DOC_TYPES.map((d) => {
+          const generating = busy === d.key
+          const soon = d.mode === 'soon'
+          const card = (
+            <div style={{ background: soon ? 'rgba(0,0,0,0.02)' : '#FFFFFF', border: soon ? '1px dashed rgba(0,0,0,0.14)' : '1px solid rgba(0,0,0,0.08)', padding: '20px 20px', height: '100%', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
+              {soon && <span style={{ position: 'absolute', top: 14, right: 14, fontSize: 7.5, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', border: '1px solid rgba(0,0,0,0.15)', padding: '3px 6px', fontFamily: mono }}>COMING SOON</span>}
+              <div style={{ fontSize: 13, fontWeight: 700, color: soon ? 'rgba(0,0,0,0.4)' : '#0A0A0A', fontFamily: sans }}>{d.name}</div>
+              <div style={{ fontSize: 11.5, color: 'rgba(0,0,0,0.42)', fontFamily: sans, lineHeight: 1.5, flex: 1 }}>{d.desc}</div>
+              {!soon && (
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: crimson, fontFamily: mono, marginTop: 4 }}>
+                  {generating ? 'GENERATING…' : d.mode === 'link' ? 'OPEN →' : 'GENERATE →'}
+                </div>
+              )}
             </div>
+          )
+          if (soon) return <div key={d.key}>{card}</div>
+          if (d.mode === 'link') return <Link key={d.key} href={d.href!} style={{ textDecoration: 'none' }}>{card}</Link>
+          return (
+            <button
+              key={d.key}
+              onClick={() => (d.mode === 'oneclick' ? generateCapability() : openGuided(d.key))}
+              disabled={!!busy}
+              style={{ padding: 0, border: 'none', background: 'transparent', cursor: busy ? 'not-allowed' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+            >
+              {card}
+            </button>
+          )
+        })}
+      </div>
 
-            {/* Modal body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              {!generatedContent ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={labelStyle}>CONTRACT / SOLICITATION TITLE <span style={{ color: '#C41230' }}>*</span></label>
-                      <input value={modal.contractTitle} onChange={(e) => set('contractTitle', e.target.value)} style={inputStyle} placeholder="Enterprise IT Modernization Services" />
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={labelStyle}>ISSUING AGENCY <span style={{ color: '#C41230' }}>*</span></label>
-                      <input value={modal.agencyName} onChange={(e) => set('agencyName', e.target.value)} style={inputStyle} placeholder="Department of Veterans Affairs" />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>SOLICITATION NUMBER</label>
-                      <input value={modal.solicitationNumber} onChange={(e) => set('solicitationNumber', e.target.value)} style={inputStyle} placeholder="36C10B24R0001" />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>RESPONSE DEADLINE</label>
-                      <input value={modal.responseDeadline} onChange={(e) => set('responseDeadline', e.target.value)} style={inputStyle} placeholder="August 15, 2026" />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>ISSUING OFFICE</label>
-                      <input value={modal.issuingOffice} onChange={(e) => set('issuingOffice', e.target.value)} style={inputStyle} placeholder="Network Contracting Office 4" />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>ESTIMATED VALUE</label>
-                      <input value={modal.estimatedValue} onChange={(e) => set('estimatedValue', e.target.value)} style={inputStyle} placeholder="$2.5M" />
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={labelStyle}>PLACE OF PERFORMANCE</label>
-                      <input value={modal.placeOfPerformance} onChange={(e) => set('placeOfPerformance', e.target.value)} style={inputStyle} placeholder="Washington, DC / Remote" />
-                    </div>
-                  </div>
+      {/* Your documents */}
+      <div style={{ fontSize: 9, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 16, fontFamily: mono }}>YOUR DOCUMENTS</div>
+      {loading ? (
+        <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.2)', fontFamily: mono }}>LOADING…</div>
+      ) : docs.length === 0 ? (
+        <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.2)', marginBottom: 10, fontFamily: mono }}>NO DOCUMENTS YET</div>
+          <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: 0, fontFamily: sans }}>Generate one above — it appears here and downloads as a PDF.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {docs.map((d) => <DocRow key={d.id} doc={d} onDelete={() => deleteDoc(d.id)} />)}
+        </div>
+      )}
 
-                  <div style={{ padding: '12px 14px', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', fontSize: 11, color: 'rgba(0,0,0,0.45)', lineHeight: 1.6, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-                    The generated proposal includes a cover page, executive summary, technical approach, management plan, past performance section, and price cover sheet — structured for attorney review and agency submission.
-                  </div>
-
-                  {error && (
-                    <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 11, fontFamily: 'var(--font-geist-mono, monospace)' }}>{error}</div>
+      {/* Guided modal */}
+      {modalType && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}>
+          <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.1)', width: '100%', maxWidth: 560, maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: crimson, fontFamily: mono }}>{GUIDED[modalType].title.toUpperCase()}</div>
+              <button onClick={() => setModalType(null)} style={{ fontSize: 20, color: 'rgba(0,0,0,0.35)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {GUIDED[modalType].fields.map((f) => (
+                <div key={f.key}>
+                  <label style={labelStyle}>{f.label}{f.required && <span style={{ color: crimson }}> *</span>}</label>
+                  {f.textarea ? (
+                    <textarea value={fields[f.key] ?? ''} onChange={(e) => setFields((s) => ({ ...s, [f.key]: e.target.value }))} style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }} placeholder={f.placeholder} />
+                  ) : (
+                    <input value={fields[f.key] ?? ''} onChange={(e) => setFields((s) => ({ ...s, [f.key]: e.target.value }))} style={inputStyle} placeholder={f.placeholder} />
                   )}
                 </div>
-              ) : (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div>
-                      <span style={{ fontSize: 10, letterSpacing: '0.1em', color: '#16a34a', fontFamily: 'var(--font-geist-mono, monospace)' }}>PROPOSAL GENERATED ✓</span>
-                      <p style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', margin: '4px 0 0', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-                        Fill in all <strong>[BRACKETED]</strong> fields before submission. Review with counsel.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleDownload}
-                      style={{ padding: '8px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', flexShrink: 0 }}
-                    >
-                      ↓ DOWNLOAD PDF
-                    </button>
-                  </div>
-                  <pre style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.08)', padding: 16, fontSize: 11, color: 'rgba(0,0,0,0.7)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 420, fontFamily: 'var(--font-geist-mono, monospace)', lineHeight: 1.7, margin: 0 }}>
-                    {generatedContent}
-                  </pre>
-                </div>
-              )}
+              ))}
+              <div style={{ padding: '11px 13px', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', fontSize: 11, color: 'rgba(0,0,0,0.45)', lineHeight: 1.6, fontFamily: sans }}>
+                Pre-filled from your company profile. Fill any <strong>[BRACKETED]</strong> fields in the draft, and review with counsel before submission.
+              </div>
+              {error && <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: crimson, fontSize: 11, fontFamily: mono }}>{error}</div>}
             </div>
-
-            {/* Modal footer */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-              <button onClick={closeModal} style={{ padding: '9px 16px', fontSize: 10, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-                {generatedContent ? 'CLOSE' : 'CANCEL'}
+              <button onClick={() => setModalType(null)} style={{ padding: '9px 16px', fontSize: 10, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: mono }}>CANCEL</button>
+              <button onClick={submitGuided} disabled={!!busy} style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: crimson, color: '#fff', border: 'none', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, fontFamily: mono }}>
+                {busy === modalType ? 'GENERATING…' : 'GENERATE PDF →'}
               </button>
-              {!generatedContent && (
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: '#C41230', color: '#ffffff', border: 'none', cursor: generating ? 'not-allowed' : 'pointer', opacity: generating ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
-                >
-                  {generating ? 'GENERATING…' : 'GENERATE PROPOSAL →'}
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -429,102 +252,82 @@ export default function ProposalsPage() {
   )
 }
 
-function ProposalRow({ proposal }: { proposal: Proposal }) {
+function DocRow({ doc, onDelete }: { doc: Doc; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false)
   const [content, setContent] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sendingPO, setSendingPO] = useState(false)
   const [poStatus, setPoStatus] = useState('')
 
+  async function loadContent(): Promise<string | null> {
+    if (content) return content
+    const res = await fetch(`/api/documents/${doc.id}`)
+    const data = await res.json()
+    setContent(data.content ?? null)
+    return data.content ?? null
+  }
+
+  async function handleView() {
+    if (expanded) { setExpanded(false); return }
+    setLoading(true)
+    try { await loadContent(); setExpanded(true) } finally { setLoading(false) }
+  }
+
+  async function handleDownload() {
+    const c = await loadContent()
+    if (!c) return
+    await downloadTextAsPdf(doc.title, c, `${slug(doc.title)}.pdf`)
+  }
+
   async function handleSendToOfficer() {
-    setSendingPO(true)
-    setPoStatus('')
+    setSendingPO(true); setPoStatus('')
     try {
-      // Step 1: resolve the contracting officer from SAM.gov (no send yet)
       const preview = await fetch('/api/proposals/send-to-officer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: proposal.id, dryRun: true }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: doc.id, dryRun: true }),
       })
-      const previewData = await preview.json()
-      if (!preview.ok) {
-        setPoStatus(previewData.error ?? 'Could not find a contracting officer for this notice.')
-        return
-      }
-
-      // Step 2: explicit confirmation before anything leaves the platform
-      const c = previewData.contact
-      const ok = window.confirm(
-        `Send this proposal to the government point of contact?\n\n${c.name}\n${c.email}\n\nReplies will go to your email. This cannot be undone.`
-      )
-      if (!ok) return
-
+      const pd = await preview.json()
+      if (!preview.ok) { setPoStatus(pd.error ?? 'No contracting officer found.'); return }
+      if (!window.confirm(`Send "${doc.title}" to the government point of contact?\n\n${pd.contact.name}\n${pd.contact.email}\n\nReplies go to your email. This cannot be undone.`)) return
       const res = await fetch('/api/proposals/send-to-officer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: proposal.id }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: doc.id }),
       })
       const data = await res.json()
       setPoStatus(res.ok ? `SENT TO ${data.to} ✓` : (data.error ?? 'Send failed.'))
     } catch {
-      setPoStatus('Network error. Please try again.')
+      setPoStatus('Network error.')
     } finally {
       setSendingPO(false)
     }
   }
 
-  async function handleView() {
-    if (expanded) { setExpanded(false); return }
-    if (content) { setExpanded(true); return }
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/documents/${proposal.id}`)
-      const data = await res.json()
-      setContent(data.content)
-      setExpanded(true)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function handleDownload() {
-    if (!content) return
-    downloadTextAsPdf(proposal.title, content, `${slug(proposal.title)}.pdf`)
-  }
+  const btn: React.CSSProperties = { padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: mono }
 
   return (
     <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)' }}>
       <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 12, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{proposal.title}</div>
-          <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', marginTop: 3, letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            {new Date(proposal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: '#0A0A0A', fontFamily: sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.title}</div>
+          <div style={{ fontSize: 9, color: 'rgba(0,0,0,0.25)', marginTop: 3, letterSpacing: '0.06em', fontFamily: mono }}>
+            {doc.type.replace(/_/g, ' ').toUpperCase()} · {new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {poStatus && (
-            <span style={{ fontSize: 9, letterSpacing: '0.05em', color: poStatus.endsWith('✓') ? '#16A34A' : '#C41230', fontFamily: 'var(--font-geist-mono, monospace)', maxWidth: 260 }}>
-              {poStatus}
-            </span>
-          )}
-          {proposal.noticeId && !poStatus.endsWith('✓') && (
-            <button onClick={handleSendToOfficer} disabled={sendingPO} style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(196,18,48,0.35)', color: '#C41230', cursor: sendingPO ? 'not-allowed' : 'pointer', opacity: sendingPO ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {poStatus && <span style={{ fontSize: 9, letterSpacing: '0.05em', color: poStatus.endsWith('✓') ? '#16A34A' : crimson, fontFamily: mono, maxWidth: 220 }}>{poStatus}</span>}
+          {doc.noticeId && !poStatus.endsWith('✓') && (
+            <button onClick={handleSendToOfficer} disabled={sendingPO} style={{ ...btn, borderColor: 'rgba(196,18,48,0.35)', color: crimson, opacity: sendingPO ? 0.6 : 1 }}>
               {sendingPO ? 'SENDING…' : 'SEND TO PO →'}
             </button>
           )}
-          {content && (
-            <button onClick={handleDownload} style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-              ↓ DOWNLOAD
-            </button>
-          )}
-          <button onClick={handleView} style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.12)', color: '#0A0A0A', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            {loading ? '…' : expanded ? 'COLLAPSE' : 'VIEW'}
-          </button>
+          <button onClick={handleDownload} style={btn}>↓ PDF</button>
+          <button onClick={handleView} style={btn}>{loading ? '…' : expanded ? 'HIDE' : 'VIEW'}</button>
+          <button onClick={onDelete} title="Delete" style={{ ...btn, color: crimson, borderColor: 'rgba(196,18,48,0.25)' }}>✕</button>
         </div>
       </div>
       {expanded && content && (
         <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: '0 16px 16px' }}>
-          <pre style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', padding: 14, fontSize: 10, color: 'rgba(0,0,0,0.65)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 400, fontFamily: 'var(--font-geist-mono, monospace)', lineHeight: 1.7, margin: '12px 0 0' }}>
+          <pre style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', padding: 14, fontSize: 10, color: 'rgba(0,0,0,0.65)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 400, fontFamily: mono, lineHeight: 1.7, margin: '12px 0 0' }}>
             {content}
           </pre>
         </div>
