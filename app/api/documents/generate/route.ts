@@ -90,6 +90,8 @@ export async function POST(req: NextRequest) {
         contractTitle,
         agencyName,
       },
+      // Explicit select — a future unmigrated column must not fail the write
+      select: { id: true, title: true, createdAt: true },
     })
 
     return NextResponse.json({ document: doc, content })

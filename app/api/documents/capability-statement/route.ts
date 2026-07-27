@@ -65,6 +65,7 @@ export async function POST() {
         title: `Capability Statement — ${dbProfile.companyName}`,
         content,
       },
+      select: { id: true, title: true },
     })
 
     return NextResponse.json({ id: doc.id, title: doc.title, content })

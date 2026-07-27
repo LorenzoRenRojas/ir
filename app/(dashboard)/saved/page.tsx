@@ -305,13 +305,7 @@ export default function PipelinePage() {
     const res = await fetch(`/api/documents/${p.id}`)
     const data = await res.json()
     if (!data.content) return
-    const blob = new Blob([data.content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    await downloadTextAsPdf(p.title, data.content, `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`)
   }
 
   async function handleDownloadPdf(p: Proposal) {
@@ -354,13 +348,7 @@ export default function PipelinePage() {
       const res = await fetch('/api/documents/capability-statement', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { alert(data.error ?? 'Generation failed'); return }
-      const blob = new Blob([data.content], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'capability-statement.txt'
-      a.click()
-      URL.revokeObjectURL(url)
+      await downloadTextAsPdf('Capability Statement', data.content, 'capability-statement.pdf')
     } finally {
       setCapGenerating(false)
     }

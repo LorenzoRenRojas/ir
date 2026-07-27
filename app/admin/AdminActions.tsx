@@ -22,6 +22,9 @@ export default function AdminActions() {
   const [busy, setBusy] = useState('')
   const [posts, setPosts] = useState<{ label: string; text: string }[]>([])
   const [copied, setCopied] = useState('')
+  const [tierEmail, setTierEmail] = useState('')
+  const [tierValue, setTierValue] = useState('pro')
+  const [tierMsg, setTierMsg] = useState('')
 
   async function run(label: string, fn: () => Promise<string>) {
     setBusy(label)
@@ -42,6 +45,24 @@ export default function AdminActions() {
       setCopied(label)
       setTimeout(() => setCopied(''), 2000)
     } catch { /* clipboard unavailable — text is still selectable */ }
+  }
+
+  async function setTier() {
+    setTierMsg('')
+    if (!tierEmail.trim()) { setTierMsg('Enter an email.'); return }
+    try {
+      const res = await fetch('/api/admin/set-tier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: tierEmail.trim(), tier: tierValue }),
+      })
+      const data = await res.json()
+      setTierMsg(res.ok
+        ? `✓ ${data.user.email} → ${data.user.subscriptionTier.toUpperCase()}. They must sign out/in for it to take effect.`
+        : `Failed: ${data.error}`)
+    } catch {
+      setTierMsg('Network error — try again.')
+    }
   }
 
   return (
@@ -144,6 +165,34 @@ export default function AdminActions() {
         >
           {busy === 'ai' ? 'TESTING…' : 'TEST CLAUDE KEY'}
         </button>
+      </div>
+
+      {/* Set a user's tier — grant yourself Pro to test, or comp founding
+          members / APEX counselors before Stripe is live */}
+      <div style={{ marginTop: 20, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)' }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: crimson, fontFamily: mono, marginBottom: 12 }}>SET USER TIER</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            value={tierEmail}
+            onChange={e => setTierEmail(e.target.value)}
+            placeholder="user@email.com"
+            style={{ flex: 1, minWidth: 200, padding: '10px 12px', background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontFamily: mono }}
+          />
+          <select
+            value={tierValue}
+            onChange={e => setTierValue(e.target.value)}
+            style={{ padding: '10px 12px', background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontFamily: mono }}
+          >
+            <option value="free">free</option>
+            <option value="starter">starter</option>
+            <option value="pro">pro</option>
+            <option value="enterprise">enterprise</option>
+          </select>
+          <button style={btnStyle} onClick={setTier}>SET TIER</button>
+        </div>
+        {tierMsg && (
+          <div style={{ marginTop: 10, fontSize: 11, color: tierMsg.startsWith('✓') ? '#4ADE80' : crimson, fontFamily: mono, lineHeight: 1.6 }}>{tierMsg}</div>
+        )}
       </div>
 
       {posts.length > 0 && (
