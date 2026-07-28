@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import MetatronAvatar from '@/components/MetatronAvatar'
+import MetatronBackdrop from '@/components/MetatronBackdrop'
+import MetatronEyeIcon from '@/components/MetatronEyeIcon'
+import { mono, sans, crimson, surface } from '@/components/marketing'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -139,6 +141,14 @@ const initial: Answers = {
   geoPrefs: [], pastPerformance: '', uei: '',
 }
 
+interface OnbPrefs {
+  feedEligibleOnly: boolean
+  feedDensity: 'comfortable' | 'compact'
+  notifyDigest: boolean
+  notifyDeadlines: boolean
+}
+const initialPrefs: OnbPrefs = { feedEligibleOnly: true, feedDensity: 'comfortable', notifyDigest: true, notifyDeadlines: true }
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function toggle<T>(arr: T[], item: T): T[] {
@@ -147,13 +157,13 @@ function toggle<T>(arr: T[], item: T): T[] {
 
 function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} style={{
-      padding: '6px 12px', fontSize: 11,
-      border: selected ? '1px solid rgba(196,18,48,0.5)' : '1px solid rgba(255,255,255,0.12)',
-      background: selected ? 'rgba(196,18,48,0.12)' : 'rgba(255,255,255,0.04)',
-      color: selected ? '#f87171' : 'rgba(255,255,255,0.55)',
-      cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)',
-      letterSpacing: '0.04em', transition: 'all 0.15s', borderRadius: 2,
+    <button type="button" onClick={onClick} className="ir-onb-chip" style={{
+      padding: '8px 13px', fontSize: 11.5,
+      border: selected ? '1px solid rgba(196,18,48,0.55)' : '1px solid rgba(255,255,255,0.12)',
+      background: selected ? 'rgba(196,18,48,0.14)' : 'rgba(255,255,255,0.04)',
+      color: selected ? '#f87171' : 'rgba(255,255,255,0.6)',
+      cursor: 'pointer', fontFamily: mono,
+      letterSpacing: '0.03em', transition: 'all 0.15s ease', borderRadius: 7,
     }}>
       {selected ? '✓ ' : ''}{label}
     </button>
@@ -162,149 +172,143 @@ function Chip({ label, selected, onClick }: { label: string; selected: boolean; 
 
 function Radio({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 12px', border: selected ? '1px solid rgba(196,18,48,0.4)' : '1px solid rgba(255,255,255,0.08)', background: selected ? 'rgba(196,18,48,0.08)' : 'transparent', transition: 'all 0.15s', borderRadius: 2 }}>
-      <div style={{ width: 12, height: 12, borderRadius: '50%', border: selected ? '2px solid #C41230' : '2px solid rgba(255,255,255,0.2)', background: selected ? '#C41230' : 'transparent', flexShrink: 0 }} />
-      <span style={{ fontSize: 12, color: selected ? '#f87171' : 'rgba(255,255,255,0.5)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{label}</span>
+    <div onClick={onClick} className="ir-onb-radio" style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', padding: '12px 15px', border: selected ? '1px solid rgba(196,18,48,0.45)' : '1px solid rgba(255,255,255,0.09)', background: selected ? 'rgba(196,18,48,0.08)' : 'rgba(255,255,255,0.02)', transition: 'all 0.15s ease', borderRadius: 8 }}>
+      <div style={{ width: 14, height: 14, borderRadius: '50%', border: selected ? '2px solid #C41230' : '2px solid rgba(255,255,255,0.22)', background: selected ? '#C41230' : 'transparent', flexShrink: 0, transition: 'all 0.15s', boxShadow: selected ? '0 0 0 3px rgba(196,18,48,0.15)' : 'none' }} />
+      <span style={{ fontSize: 13.5, color: selected ? '#fff' : 'rgba(255,255,255,0.6)', fontFamily: sans }}>{label}</span>
     </div>
   )
 }
 
-// ── Typewriter hook ───────────────────────────────────────────────────────────
+function DarkSwitch({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={onClick}
+      style={{ width: 44, height: 25, borderRadius: 13, background: on ? crimson : 'rgba(255,255,255,0.14)', position: 'relative', flexShrink: 0, border: 'none', cursor: 'pointer', transition: 'background 0.22s ease', padding: 0, boxShadow: on ? '0 0 0 3px rgba(196,18,48,0.18)' : 'none' }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 22 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.22s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }} />
+    </button>
+  )
+}
 
-function useTypewriter(text: string, speed = 18) {
-  const [displayed, setDisplayed] = useState('')
-  const [done, setDone] = useState(false)
-
-  useEffect(() => {
-    setDisplayed('')
-    setDone(false)
-    if (!text) return
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setDisplayed(text.slice(0, i))
-      if (i >= text.length) { clearInterval(interval); setDone(true) }
-    }, speed)
-    return () => clearInterval(interval)
-  }, [text, speed])
-
-  return { displayed, done }
+function DarkToggleRow({ title, desc, on, onClick }: { title: string; desc: string; on: boolean; onClick: () => void }) {
+  return (
+    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.09)', background: 'rgba(255,255,255,0.02)', borderRadius: 10, cursor: 'pointer' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontFamily: sans, marginBottom: 3 }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: sans, lineHeight: 1.5 }}>{desc}</div>
+      </div>
+      <DarkSwitch on={on} onClick={onClick} />
+    </div>
+  )
 }
 
 // ── Question definitions ──────────────────────────────────────────────────────
 
+type QType = 'text' | 'textarea' | 'chips' | 'radio' | 'chips-search' | 'preferences' | 'review'
 type Question = {
-  id: keyof Answers | 'review'
+  id: keyof Answers | 'preferences' | 'review'
+  section: string
   ask: string | ((a: Answers) => string)
-  type: 'text' | 'textarea' | 'chips' | 'radio' | 'chips-search' | 'review'
+  type: QType
   hint?: string
   optional?: boolean
 }
 
 const QUESTIONS: Question[] = [
   {
-    id: 'uei',
-    ask: "Welcome to IR. Got a SAM.gov UEI or CAGE code? Paste either and I'll pull your official registration — company name, NAICS codes, set-aside status — automatically.",
-    type: 'text',
-    optional: true,
-    hint: '12-character UEI or 5-character CAGE code from SAM.gov. Skip if you don\'t have one yet — you can add it later.',
+    id: 'uei', section: 'IDENTITY',
+    ask: 'Start with your SAM.gov UEI or CAGE code.',
+    type: 'text', optional: true,
+    hint: 'Paste either and we pull your official registration — company name, NAICS codes, set-aside status — automatically. 12-character UEI or 5-character CAGE. Skip if you don\'t have one yet.',
   },
   {
-    id: 'companyName',
-    ask: (a) => a.companyName
-      ? `Found it — ${a.companyName}. Confirm your company name, or correct it below.`
-      : "What's your company name?",
-    type: 'text',
-    hint: 'Legal name or DBA is fine.',
+    id: 'companyName', section: 'COMPANY',
+    ask: (a) => a.companyName ? 'Confirm your company name.' : "What's your company name?",
+    type: 'text', hint: 'Legal name or DBA is fine.',
   },
   {
-    id: 'website',
-    ask: 'Company website? Contracting officers check — a live site builds trust.',
-    type: 'text',
-    optional: true,
-    hint: 'e.g. yourcompany.com — skip if you don\'t have one yet.',
+    id: 'website', section: 'COMPANY',
+    ask: 'What\'s your company website?',
+    type: 'text', optional: true,
+    hint: 'Contracting officers check — a live site builds trust. e.g. yourcompany.com. Skip if you don\'t have one yet.',
   },
   {
-    id: 'yearFounded',
+    id: 'yearFounded', section: 'COMPANY',
     ask: 'What year was the company founded?',
-    type: 'text',
-    optional: true,
+    type: 'text', optional: true,
     hint: 'Longevity is a win factor on past-performance evaluations.',
   },
   {
-    id: 'capabilityStatement',
-    ask: (a) => `Got it — ${a.companyName}. In 1–2 sentences, what does your company actually do? Be specific — this is the most important field for your match quality.`,
+    id: 'capabilityStatement', section: 'CAPABILITY',
+    ask: 'In a sentence or two, what does your company actually do?',
     type: 'textarea',
-    hint: 'E.g. "We deliver zero-trust architecture and cloud migration for civilian federal agencies, specializing in AWS GovCloud deployments."',
+    hint: 'Be specific — this is the single most important field for match quality. E.g. "We deliver zero-trust architecture and cloud migration for civilian federal agencies, specializing in AWS GovCloud deployments."',
   },
   {
-    id: 'businessTypes',
-    ask: 'What type of business is it? Select all that apply.',
-    type: 'chips',
-    hint: 'These determine which set-aside contracts you\'re eligible for.',
+    id: 'businessTypes', section: 'QUALIFICATION',
+    ask: 'What type of business is it?',
+    type: 'chips', hint: 'Select all that apply. These determine which set-aside contracts you\'re eligible for.',
   },
   {
-    id: 'naicsCodes',
-    ask: 'Which NAICS codes cover your work? Search and select all that apply.',
-    type: 'chips-search',
-    hint: 'NAICS codes are how the government categorizes contract work.',
+    id: 'naicsCodes', section: 'QUALIFICATION',
+    ask: 'Which NAICS codes cover your work?',
+    type: 'chips-search', hint: 'Search and select all that apply — NAICS codes are how the government categorizes contract work.',
   },
   {
-    id: 'agencyHistory',
+    id: 'agencyHistory', section: 'BACKGROUND',
     ask: 'Which federal agencies have you worked with before?',
-    type: 'chips',
-    optional: true,
+    type: 'chips', optional: true,
     hint: 'Prior relationships are a major win factor. Select all that apply.',
   },
   {
-    id: 'annualRevenue',
+    id: 'annualRevenue', section: 'BACKGROUND',
     ask: "What's your annual revenue range?",
-    type: 'radio',
-    hint: 'Used to calculate which contract sizes are realistic for you to win.',
+    type: 'radio', hint: 'Used to calculate which contract sizes are realistic for you to win.',
   },
   {
-    id: 'orgSize',
+    id: 'orgSize', section: 'BACKGROUND',
     ask: 'How many employees does your company have?',
     type: 'radio',
   },
   {
-    id: 'contractVehicles',
-    ask: 'Do you hold any contract vehicles or IDIQ vehicles?',
-    type: 'chips',
-    optional: true,
+    id: 'contractVehicles', section: 'QUALIFICATION',
+    ask: 'Do you hold any contract or IDIQ vehicles?',
+    type: 'chips', optional: true,
     hint: 'Many large contracts require these. Leave blank if none.',
   },
   {
-    id: 'certifications',
+    id: 'certifications', section: 'QUALIFICATION',
     ask: 'Any certifications or security clearances?',
-    type: 'chips',
-    optional: true,
+    type: 'chips', optional: true,
   },
   {
-    id: 'contractSizePref',
+    id: 'contractSizePref', section: 'TARGETING',
     ask: 'What size contracts do you typically pursue?',
     type: 'radio',
   },
   {
-    id: 'contractTypePrefs',
+    id: 'contractTypePrefs', section: 'TARGETING',
     ask: 'What type of work do you prefer?',
     type: 'chips',
   },
   {
-    id: 'geoPrefs',
+    id: 'geoPrefs', section: 'TARGETING',
     ask: 'Where do you work?',
     type: 'chips',
   },
   {
-    id: 'pastPerformance',
-    ask: "Almost done. Describe your best past performance — agency, contract size, and what you delivered. This trains your match engine.",
-    type: 'textarea',
-    optional: true,
-    hint: 'E.g. "Delivered $2.1M cybersecurity assessment for DHS, covering 14 field offices. Zero findings at final audit."',
+    id: 'pastPerformance', section: 'PAST PERFORMANCE',
+    ask: 'Describe your best past performance.',
+    type: 'textarea', optional: true,
+    hint: 'Agency, contract size, and what you delivered — this trains your match engine. E.g. "Delivered $2.1M cybersecurity assessment for DHS across 14 field offices. Zero findings at final audit."',
   },
   {
-    id: 'review',
-    ask: (a) => `Perfect. Here's your IR profile, ${a.companyName}. Ready to find your first match?`,
+    id: 'preferences', section: 'PREFERENCES',
+    ask: 'How should your feed work?',
+    type: 'preferences',
+    hint: 'Set your defaults now — you can fine-tune everything later in Settings.',
+  },
+  {
+    id: 'review', section: 'REVIEW',
+    ask: (a) => a.companyName ? `Here's your IR profile, ${a.companyName}.` : "Here's your IR profile.",
     type: 'review',
   },
 ]
@@ -315,6 +319,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>(initial)
+  const [prefs, setPrefs] = useState<OnbPrefs>(initialPrefs)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ueiLoading, setUeiLoading] = useState(false)
@@ -323,11 +328,12 @@ export default function OnboardingPage() {
 
   const q = QUESTIONS[step]
   const question = typeof q.ask === 'function' ? q.ask(answers) : q.ask
-  const { displayed, done } = useTypewriter(question)
 
+  // Focus the primary input as soon as the step renders (no typewriter wait).
   useEffect(() => {
-    if (done && inputRef.current) inputRef.current.focus()
-  }, [done, step])
+    const t = setTimeout(() => inputRef.current?.focus(), 60)
+    return () => clearTimeout(t)
+  }, [step])
 
   function setField<K extends keyof Answers>(key: K, value: Answers[K]) {
     setAnswers((prev) => ({ ...prev, [key]: value }))
@@ -335,7 +341,7 @@ export default function OnboardingPage() {
 
   function canAdvance() {
     if (q.optional) return true
-    if (q.id === 'review') return true
+    if (q.id === 'review' || q.id === 'preferences') return true
     const id = q.id as keyof Answers
     const val = answers[id]
     if (Array.isArray(val)) return val.length > 0
@@ -377,9 +383,7 @@ export default function OnboardingPage() {
       }
     }
 
-    if (step < QUESTIONS.length - 1) {
-      setStep((s) => s + 1)
-    }
+    if (step < QUESTIONS.length - 1) setStep((s) => s + 1)
   }
 
   async function handleSubmit() {
@@ -410,6 +414,19 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong'); return }
+      // Persist the onboarding preference choices (best-effort — never block
+      // the redirect on it; the migration-safe endpoint won't throw).
+      try {
+        await fetch('/api/preferences', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            feedEligibleOnly: prefs.feedEligibleOnly,
+            feedDensity: prefs.feedDensity,
+            notifyDigest: prefs.notifyDigest,
+            notifyDeadlines: prefs.notifyDeadlines,
+          }),
+        })
+      } catch { /* non-blocking */ }
       try { localStorage.setItem('ir-welcome', '1') } catch { /* private mode */ }
       router.push('/dashboard')
     } catch {
@@ -426,76 +443,78 @@ export default function OnboardingPage() {
   )
 
   const progress = step / (QUESTIONS.length - 1)
+  const inputBase: React.CSSProperties = {
+    width: '100%', padding: '15px 17px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+    color: '#fff', fontFamily: sans, outline: 'none', borderRadius: 8, boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0A0A0A', color: '#ffffff', fontFamily: 'var(--font-geist-mono, monospace)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: surface, color: '#fff', fontFamily: mono, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <MetatronBackdrop pulse />
+
       {/* Top bar */}
-      <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 2 }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <span style={{ color: '#C41230', fontSize: 18, fontWeight: 700 }}>ᛁ</span>
-          <span style={{ color: '#ffffff', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
+          <span style={{ color: crimson, fontSize: 18, fontWeight: 700 }}>ᛁ</span>
+          <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em' }}>IR</span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 160, height: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }}>
-            <div style={{ height: '100%', width: `${progress * 100}%`, background: '#C41230', borderRadius: 1, transition: 'width 0.4s ease' }} />
+          <div style={{ width: 180, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progress * 100}%`, background: crimson, borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.22,1,0.36,1)' }} />
           </div>
-          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em' }}>{step + 1} / {QUESTIONS.length}</span>
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.14em', fontFamily: mono }}>{String(step + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}</span>
         </div>
       </div>
 
-      {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 680, width: '100%', margin: '0 auto', padding: '48px 24px 32px' }}>
-
-        {/* Metatron message */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 32, animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ width: 96, height: 96, flexShrink: 0, marginTop: 0, filter: 'drop-shadow(0 0 16px rgba(196,18,48,0.5)) drop-shadow(0 0 5px rgba(196,18,48,0.55))' }}>
-            <MetatronAvatar size={96} />
+      {/* Step area */}
+      <div style={{ flex: 1, width: '100%', maxWidth: 720, margin: '0 auto', padding: '64px 24px 48px', position: 'relative', zIndex: 1 }}>
+        {/* Keyed by step → the whole block re-animates on advance (no typewriter) */}
+        <div key={step} className="ir-onb-step">
+          {/* Kicker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18 }}>
+            <MetatronEyeIcon size={20} />
+            <span style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.2em', color: crimson }}>STEP {String(step + 1).padStart(2, '0')} · {q.section}</span>
           </div>
-          <div style={{ flex: 1 }}>
-            <div className="matrix-font" style={{ fontSize: 16, color: '#e0e0e0', lineHeight: 1.7, minHeight: 28, letterSpacing: '0.02em' }}>
-              {displayed}
-              {!done && <span style={{ opacity: 0.5, animation: 'blink 1s step-end infinite' }}>|</span>}
-            </div>
-            {q.hint && done && (
-              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.5 }}>
-                {q.hint}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Input area */}
-        {done && q.type !== 'review' && (
-          <div style={{ marginLeft: 44, animation: 'fadeSlideUp 0.25s ease' }}>
+          {/* Headline */}
+          <h1 style={{ fontSize: 'clamp(27px, 4.2vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, fontFamily: sans, color: '#fff' }}>
+            {question}
+          </h1>
 
-            {/* Text input */}
+          {/* Hint */}
+          {q.hint && (
+            <p style={{ marginTop: 16, fontSize: 14, color: 'rgba(255,255,255,0.42)', fontFamily: sans, lineHeight: 1.65, maxWidth: 620 }}>
+              {q.hint}
+            </p>
+          )}
+
+          {/* Inputs */}
+          <div style={{ marginTop: 30 }}>
             {q.type === 'text' && (
               <input
                 ref={inputRef as React.RefObject<HTMLInputElement>}
-                type="text"
+                className="ir-onb-input" type="text"
                 value={answers[q.id as keyof Answers] as string}
                 onChange={(e) => setField(q.id as keyof Answers, e.target.value as never)}
                 onKeyDown={(e) => e.key === 'Enter' && advance()}
                 placeholder="Type your answer…"
-                style={{ width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#ffffff', fontSize: 15, fontFamily: 'var(--font-geist-sans, sans-serif)', outline: 'none', borderRadius: 4, boxSizing: 'border-box' }}
+                style={{ ...inputBase, fontSize: 16 }}
               />
             )}
 
-            {/* Textarea */}
             {q.type === 'textarea' && (
               <textarea
                 ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                className="ir-onb-input"
                 value={answers[q.id as keyof Answers] as string}
                 onChange={(e) => setField(q.id as keyof Answers, e.target.value as never)}
-                placeholder="Type your answer…"
-                rows={4}
-                style={{ width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#ffffff', fontSize: 14, fontFamily: 'var(--font-geist-sans, sans-serif)', outline: 'none', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }}
+                placeholder="Type your answer…" rows={4}
+                style={{ ...inputBase, fontSize: 15, resize: 'vertical', lineHeight: 1.6 }}
               />
             )}
 
-            {/* Chips */}
             {q.type === 'chips' && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
                 {q.id === 'businessTypes' && BUSINESS_TYPES.map((bt) => (
                   <Chip key={bt} label={bt} selected={answers.businessTypes.includes(bt)} onClick={() => setField('businessTypes', toggle(answers.businessTypes, bt))} />
                 ))}
@@ -517,20 +536,20 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* NAICS searchable chips */}
             {q.type === 'chips-search' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <input
-                  type="text"
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
+                  className="ir-onb-input" type="text"
                   value={answers.naicsSearch}
                   onChange={(e) => setField('naicsSearch', e.target.value)}
                   placeholder="Search NAICS codes or descriptions…"
-                  style={{ width: '100%', padding: '12px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#ffffff', fontSize: 13, fontFamily: 'var(--font-geist-sans, sans-serif)', outline: 'none', borderRadius: 4, boxSizing: 'border-box' }}
+                  style={{ ...inputBase, fontSize: 14 }}
                 />
                 {answers.naicsCodes.length > 0 && (
-                  <div style={{ fontSize: 9, color: '#f87171', letterSpacing: '0.1em' }}>{answers.naicsCodes.length} SELECTED: {answers.naicsCodes.join(', ')}</div>
+                  <div style={{ fontSize: 10, color: '#f87171', letterSpacing: '0.08em', fontFamily: mono }}>{answers.naicsCodes.length} SELECTED: {answers.naicsCodes.join(', ')}</div>
                 )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
                   {filteredNaics.map(({ code, label }) => (
                     <Chip key={code} label={`${code} — ${label}`} selected={answers.naicsCodes.includes(code)} onClick={() => setField('naicsCodes', toggle(answers.naicsCodes, code))} />
                   ))}
@@ -538,9 +557,8 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* Radio */}
             {q.type === 'radio' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 460 }}>
                 {q.id === 'annualRevenue' && REVENUE_RANGES.map((r) => (
                   <Radio key={r} label={r} selected={answers.annualRevenue === r} onClick={() => setField('annualRevenue', r)} />
                 ))}
@@ -553,86 +571,93 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* Nav buttons */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              {step > 0 && (
-                <button onClick={() => setStep((s) => s - 1)} style={{ padding: '10px 18px', fontSize: 10, letterSpacing: '0.1em', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-                  ← BACK
-                </button>
-              )}
-              <button
-                onClick={advance}
-                disabled={!canAdvance() || ueiLoading}
-                style={{ padding: '10px 24px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: canAdvance() && !ueiLoading ? '#C41230' : 'rgba(255,255,255,0.06)', color: canAdvance() && !ueiLoading ? '#ffffff' : 'rgba(255,255,255,0.2)', border: 'none', cursor: canAdvance() && !ueiLoading ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-geist-mono, monospace)', transition: 'all 0.15s' }}
-              >
-                {ueiLoading
-                  ? 'PULLING SAM.GOV REGISTRATION…'
-                  : q.optional && !String(answers[q.id as keyof Answers] ?? '').length ? 'SKIP →' : 'CONTINUE →'}
-              </button>
-            </div>
-            {ueiNote && (
-              <div style={{ marginTop: 12, fontSize: 11, color: '#4ADE80', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.5 }}>
-                {ueiNote}
+            {q.type === 'preferences' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 }}>
+                <DarkToggleRow title="Only show contracts I can prime" desc="Hide set-asides your certifications don't qualify you to bid as prime." on={prefs.feedEligibleOnly} onClick={() => setPrefs((p) => ({ ...p, feedEligibleOnly: !p.feedEligibleOnly }))} />
+                <DarkToggleRow title="Email me a daily match digest" desc="A morning email with the newest contracts scored against your profile." on={prefs.notifyDigest} onClick={() => setPrefs((p) => ({ ...p, notifyDigest: !p.notifyDigest }))} />
+                <DarkToggleRow title="Deadline reminders" desc="A nudge 3 days before a saved contract's response deadline." on={prefs.notifyDeadlines} onClick={() => setPrefs((p) => ({ ...p, notifyDeadlines: !p.notifyDeadlines }))} />
+                <div style={{ padding: '16px 18px', border: '1px solid rgba(255,255,255,0.09)', background: 'rgba(255,255,255,0.02)', borderRadius: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontFamily: sans, marginBottom: 3 }}>Feed density</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: sans, lineHeight: 1.5, marginBottom: 12 }}>Comfortable is roomy and readable; compact fits more on screen.</div>
+                  <div style={{ display: 'inline-flex', gap: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 3 }}>
+                    {(['comfortable', 'compact'] as const).map((d) => (
+                      <button key={d} type="button" onClick={() => setPrefs((p) => ({ ...p, feedDensity: d }))}
+                        style={{ padding: '8px 16px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', fontFamily: mono, border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s', background: prefs.feedDensity === d ? crimson : 'transparent', color: prefs.feedDensity === d ? '#fff' : 'rgba(255,255,255,0.45)' }}>
+                        {d.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {q.type === 'review' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 12, padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+                  {[
+                    { label: 'COMPANY', value: answers.companyName || '—' },
+                    { label: 'CAPABILITIES', value: answers.capabilityStatement ? answers.capabilityStatement.slice(0, 100) + (answers.capabilityStatement.length > 100 ? '…' : '') : '—' },
+                    { label: 'BUSINESS TYPE', value: answers.businessTypes.join(', ') || '—' },
+                    { label: 'NAICS CODES', value: `${answers.naicsCodes.length} selected` },
+                    { label: 'AGENCY HISTORY', value: answers.agencyHistory.length ? `${answers.agencyHistory.length} agencies` : '—' },
+                    { label: 'REVENUE', value: answers.annualRevenue || '—' },
+                    { label: 'EMPLOYEES', value: answers.orgSize || '—' },
+                    { label: 'CONTRACT VEHICLES', value: answers.contractVehicles.length ? `${answers.contractVehicles.length} vehicles` : '—' },
+                    { label: 'GEOGRAPHY', value: answers.geoPrefs.join(', ') || '—' },
+                    { label: 'FEED', value: `${prefs.feedEligibleOnly ? 'Primeable only' : 'All contracts'} · ${prefs.feedDensity}` },
+                    { label: 'EMAILS', value: [prefs.notifyDigest && 'Daily digest', prefs.notifyDeadlines && 'Deadline alerts'].filter(Boolean).join(', ') || 'Off' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', flexShrink: 0, fontFamily: mono, marginTop: 2 }}>{label}</span>
+                      <span style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.75)', textAlign: 'right', fontFamily: sans }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+                {error && <div style={{ padding: '11px 14px', background: 'rgba(196,18,48,0.1)', border: '1px solid rgba(196,18,48,0.3)', color: '#f87171', fontSize: 12, borderRadius: 8, fontFamily: sans }}>{error}</div>}
               </div>
             )}
           </div>
-        )}
 
-        {/* Review step */}
-        {done && q.type === 'review' && (
-          <div style={{ marginLeft: 44, animation: 'fadeSlideUp 0.25s ease', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { label: 'COMPANY', value: answers.companyName },
-                { label: 'CAPABILITIES', value: answers.capabilityStatement ? answers.capabilityStatement.slice(0, 100) + (answers.capabilityStatement.length > 100 ? '…' : '') : '—' },
-                { label: 'BUSINESS TYPE', value: answers.businessTypes.join(', ') || '—' },
-                { label: 'NAICS CODES', value: `${answers.naicsCodes.length} selected` },
-                { label: 'AGENCY HISTORY', value: answers.agencyHistory.length ? `${answers.agencyHistory.length} agencies` : '—' },
-                { label: 'REVENUE', value: answers.annualRevenue || '—' },
-                { label: 'EMPLOYEES', value: answers.orgSize || '—' },
-                { label: 'CONTRACT VEHICLES', value: answers.contractVehicles.length ? `${answers.contractVehicles.length} vehicles` : '—' },
-                { label: 'GEOGRAPHY', value: answers.geoPrefs.join(', ') || '—' },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{value}</span>
-                </div>
-              ))}
-            </div>
-
-            {error && (
-              <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.1)', border: '1px solid rgba(196,18,48,0.3)', color: '#f87171', fontSize: 11 }}>{error}</div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setStep((s) => s - 1)} style={{ padding: '12px 20px', fontSize: 10, letterSpacing: '0.1em', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-                ← EDIT
+          {/* Nav */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 28, alignItems: 'center', flexWrap: 'wrap' }}>
+            {step > 0 && (
+              <button onClick={() => setStep((s) => s - 1)}
+                style={{ padding: '13px 22px', fontSize: 10, letterSpacing: '0.1em', fontWeight: 700, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontFamily: mono, borderRadius: 8 }}>
+                ← {q.type === 'review' ? 'EDIT' : 'BACK'}
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                style={{ flex: 1, padding: '12px 24px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', background: '#C41230', color: '#ffffff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
-              >
+            )}
+            {q.type === 'review' ? (
+              <button onClick={handleSubmit} disabled={loading}
+                style={{ flex: 1, minWidth: 220, padding: '14px 28px', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', background: crimson, color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: mono, borderRadius: 8 }}>
                 {loading ? 'SETTING UP YOUR PROFILE…' : 'FIND MY CONTRACTS →'}
               </button>
-            </div>
+            ) : (
+              <button onClick={advance} disabled={!canAdvance() || ueiLoading}
+                style={{ padding: '13px 28px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: canAdvance() && !ueiLoading ? crimson : 'rgba(255,255,255,0.06)', color: canAdvance() && !ueiLoading ? '#fff' : 'rgba(255,255,255,0.25)', border: 'none', cursor: canAdvance() && !ueiLoading ? 'pointer' : 'not-allowed', fontFamily: mono, transition: 'all 0.15s', borderRadius: 8 }}>
+                {ueiLoading ? 'PULLING SAM.GOV REGISTRATION…' : q.optional && !String(answers[q.id as keyof Answers] ?? '').length ? 'SKIP →' : 'CONTINUE →'}
+              </button>
+            )}
           </div>
-        )}
+
+          {ueiNote && (
+            <div style={{ marginTop: 14, fontSize: 12.5, color: '#4ADE80', fontFamily: sans, lineHeight: 1.5, animation: 'onbFade 0.3s ease' }}>
+              {ueiNote}
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
-        @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
-
-        .matrix-font { font-family: 'Share Tech Mono', 'Courier New', monospace !important; }
-
-        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.2); }
-        ::-webkit-scrollbar { width: 4px; }
+        @keyframes onbFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes onbStepIn { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+        .ir-onb-step { animation: onbStepIn 0.42s cubic-bezier(0.22,1,0.36,1) both; }
+        .ir-onb-input:focus { border-color: rgba(196,18,48,0.55) !important; box-shadow: 0 0 0 3px rgba(196,18,48,0.14) !important; }
+        .ir-onb-chip:hover { border-color: rgba(255,255,255,0.28) !important; }
+        .ir-onb-radio:hover { border-color: rgba(255,255,255,0.2) !important; }
+        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.28); }
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
       `}</style>
     </div>
   )
