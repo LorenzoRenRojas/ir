@@ -60,9 +60,18 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
 - `ContractCache` table = the market. Refreshed by daily cron (`/api/cron/daily-digest` runs
   `syncContractsToDb()`: up to 3 pages × 1000 contracts, 45-day window). Users are served from
   this table — zero SAM calls per page view. 10-min in-memory cache on top (`lib/sam-api.ts`).
-- `lib/sam-quota.ts` = global daily budget (default 8, override `SAM_DAILY_BUDGET`), enforced
+- `lib/sam-quota.ts` = global daily budget (default 20, override `SAM_DAILY_BUDGET`), enforced
   through the `Kv` table across all serverless instances. EVERY code path that touches
-  api.sam.gov must call `tryConsumeSamRequests(n)` first. When spent → fall back to stored data.
+  api.sam.gov must call `tryConsumeSamRequests(n, {critical?})` first. When spent → fall back to
+  stored data. **Auto-clamp:** records SAM's reported rate limit (headers + 429) and caps the
+  effective budget at `min(configured, SAM's real limit)` — so `SAM_DAILY_BUDGET` can be set high
+  ("push to max") without ever overspending. **Sync reserve:** on-demand lookups (UEI, descriptions)
+  leave a floor so the market sync (`critical`) is never starved. Real ceiling shows in `/admin`.
+  To lift the ceiling: register the entity for a higher-tier key — see `docs/SAM_SCALING.md`.
+- **Store stays warm (no cold starts):** `lib/contract-refresh.ts` `maybeSyncContracts()` refreshes
+  the store when stale/empty, coordinated via `Kv` (6h throttle + lock). Triggered three ways —
+  the `/api/cron/sync-contracts` cron, the digest cron, and traffic (the contracts route schedules
+  it via `after()`), all sharing one throttle so budget is never stampeded.
 - Contract descriptions: SAM search returns a URL, not text. `fetchContractDescription()` fetches
   on demand (budget-gated), strips HTML, and writes back into ContractCache — each notice fetched
   at most once ever.
@@ -78,9 +87,11 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
 
 ## Automation (self-running layer)
 
-- **Cron 1** `/api/cron/daily-digest` (12:00 UTC): contract sync → per-user match digest emails
-  (score ≥55, posted <48h, top 5) → recompete prewarm. Self-reports failures to ADMIN_EMAIL.
-- **Cron 2** `/api/cron/deadline-reminders` (13:00 UTC): emails at ~3 days and ~1 day before
+- **Cron 1** `/api/cron/sync-contracts` (00:00 UTC): full-market refresh of `ContractCache` via
+  `maybeSyncContracts({force})`. Keeps the store warm overnight so first logins are never cold.
+- **Cron 2** `/api/cron/daily-digest` (12:00 UTC): contract sync (same coordinator) → per-user match
+  digest emails (score ≥55, posted <48h, top 5) → recompete prewarm. Self-reports failures to ADMIN_EMAIL.
+- **Cron 3** `/api/cron/deadline-reminders` (13:00 UTC): emails at ~3 days and ~1 day before
   saved-contract deadlines (windowed so no "reminded" flag needed).
 - **Health** `/api/cron/health`: DB + env + SAM key probe (throttled 6h + budget-gated — an
   unthrottled probe once burned the whole SAM quota via UptimeRobot). Returns 503 when degraded;
@@ -106,7 +117,7 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
 | `RESEND_API_KEY` | set | all outbound email |
 | `ADMIN_EMAIL` | pending | admin access + alert emails |
 | `CRON_SECRET` | pending | cron endpoint auth |
-| `SAM_DAILY_BUDGET` | optional | override the 8/day default |
+| `SAM_DAILY_BUDGET` | optional | override the 20/day default; safe to set high (auto-clamps to SAM's real limit — see `docs/SAM_SCALING.md`) |
 | `GOOGLE_CLIENT_ID/SECRET` | pending (free!) | Google sign-in |
 | `STRIPE_SECRET_KEY` + price IDs | pending (account issue) | billing — code fully ready in `lib/stripe.ts` |
 | `VOYAGE_API_KEY` | pending (free tier) | semantic matching layer — fully coded in `lib/embeddings.ts`, silently skipped without key |
@@ -160,6 +171,9 @@ app pages; the bypass list includes all public/marketing pages: `/coming-soon`, 
 7. LLC formation in progress (Florida/Sunbiz, ~$125; annual report due May 1 yearly, $400 late
    fee). After formation: domain email (lorenzo@ir-gov.app), SAM.gov UEI registration for the
    company itself, Stripe under the LLC, footer/terms updated with entity name.
+   → **When registering the SAM.gov entity, upgrade the API key** to the higher rate tier and flip
+   `SAM_GOV_API_KEY` / raise `SAM_DAILY_BUDGET`. Zero code changes; auto-clamps to the real limit.
+   Full checklist: `docs/SAM_SCALING.md`.
 
 ## Roadmap (agreed priorities)
 
