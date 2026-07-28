@@ -186,7 +186,13 @@ export default async function AdminPage() {
           <StatCard
             title="SAM.GOV BUDGET TODAY"
             value={`${quota.used}/${quota.budget}`}
-            sub={quota.used >= quota.budget ? 'EXHAUSTED — resets at midnight UTC' : 'requests used'}
+            sub={
+              quota.used >= quota.budget
+                ? 'EXHAUSTED — resets at midnight UTC'
+                : quota.reportedLimit
+                  ? `cap ${quota.configured} · SAM allows ${quota.reportedLimit}/day${quota.reportedLimit < quota.configured ? ' (clamped)' : ''}`
+                  : `cap ${quota.configured} · SAM limit not yet observed`
+            }
           />
           <StatCard
             title="AI PROPOSAL DRAFTS TODAY"

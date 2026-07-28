@@ -417,6 +417,15 @@ async function fetchSamPage(apiKey: string, offset: number, limit: number, daysB
     }
   }
 
+  // Record SAM's reported rate limit so the quota cap can clamp to the real
+  // ceiling, and learn it empirically on a 429. Best-effort — never blocks.
+  const { recordSamRateLimit, recordSamRateLimitHit } = await import('./sam-quota')
+  await recordSamRateLimit(response.headers)
+
+  if (response.status === 429) {
+    await recordSamRateLimitHit()
+    throw new Error('SAM.gov rate limit reached (429) — clamping budget and serving stored data')
+  }
   if (!response.ok) {
     throw new Error(`SAM.gov API error: ${response.status} ${response.statusText}`)
   }
@@ -447,7 +456,9 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
   let quotaBlocked = false
 
   for (let page = 0; page < maxPages; page++) {
-    if (!(await tryConsumeSamRequests(1))) { quotaBlocked = true; break }
+    // Critical: the market sync may use the full budget (on-demand lookups are
+    // the ones that leave a reserve so this call is never starved).
+    if (!(await tryConsumeSamRequests(1, { critical: true }))) { quotaBlocked = true; break }
     const { contracts, total: reported } = await fetchSamPage(apiKey, page * PAGE, PAGE, DAYS_BACK)
     total = reported
     if (contracts.length === 0) break
