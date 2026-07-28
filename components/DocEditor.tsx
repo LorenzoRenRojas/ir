@@ -69,9 +69,9 @@ export default function DocEditor({
   ]
 
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.12)', background: '#f1f0ec', borderRadius: 4, overflow: 'hidden' }}>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 10px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)', position: 'sticky', top: 0, zIndex: 2 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#e9e8e4', overflow: 'hidden' }}>
+      {/* Toolbar — fixed above the scrolling page */}
+      <div style={{ flexShrink: 0, display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 12px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)', zIndex: 2 }}>
         {groups.map((g, gi) => (
           <div key={gi} style={{ display: 'flex', gap: 2, paddingRight: 6, marginRight: 2, borderRight: gi < groups.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none' }}>
             {g.map(c => {
@@ -100,8 +100,8 @@ export default function DocEditor({
         ))}
       </div>
 
-      {/* The page */}
-      <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '24px', display: 'flex', justifyContent: 'center' }}>
+      {/* The page — the single scroll surface; the white sheet grows with content */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '28px 24px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
         <div
           ref={ref}
           contentEditable
@@ -111,9 +111,9 @@ export default function DocEditor({
           onMouseUp={() => force(n => n + 1)}
           className="ir-doc-page"
           style={{
-            width: '100%', maxWidth: 660, minHeight: 400, background: '#fff',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.10)', padding: '56px 64px',
-            outline: 'none', color: '#16181c',
+            width: '100%', maxWidth: 680, minHeight: 500, background: '#fff',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.10)', padding: '64px 72px',
+            outline: 'none', color: '#16181c', flexShrink: 0,
             fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 14, lineHeight: 1.6,
           }}
         />

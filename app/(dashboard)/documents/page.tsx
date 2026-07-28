@@ -336,11 +336,15 @@ function EditorModal({ editing, onClose, onSaved }: { editing: Editing; onClose:
             <button onClick={requestClose} title="Close" style={{ fontSize: 22, color: 'rgba(0,0,0,0.4)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 20, background: '#E9E8E4', minHeight: 0 }}>
-          <DocEditor
-            initialHtml={editing.html}
-            onChange={(html) => { htmlRef.current = html; setDirty(true); if (status) setStatus('') }}
-          />
+        {/* DocEditor fills this region and owns the single scroll surface —
+            no outer scroll here, so the page sheet never looks clipped. */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <DocEditor
+              initialHtml={editing.html}
+              onChange={(html) => { htmlRef.current = html; setDirty(true); if (status) setStatus('') }}
+            />
+          </div>
         </div>
       </div>
     </div>
