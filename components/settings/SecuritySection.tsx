@@ -8,7 +8,7 @@ const sans = 'var(--font-geist-sans, sans-serif)'
 const crimson = '#C41230'
 
 const label: React.CSSProperties = { fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, display: 'block', marginBottom: 6 }
-const input: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: sans, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#0A0A0A', outline: 'none', boxSizing: 'border-box' }
+const input: React.CSSProperties = { width: '100%', padding: '11px 13px', fontSize: 13, fontFamily: sans, border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, background: '#F8F8F7', color: '#0A0A0A', outline: 'none', boxSizing: 'border-box' }
 
 export default function SecuritySection() {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -69,10 +69,11 @@ export default function SecuritySection() {
   }
 
   return (
-    <div style={{ marginTop: 32 }}>
+    <div>
       {/* Change password */}
-      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: 28, marginBottom: 16 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', fontFamily: mono, marginBottom: 20 }}>SECURITY</div>
+      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, padding: 28, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0A0A0A', fontFamily: sans, marginBottom: 4, letterSpacing: '-0.01em' }}>Password</div>
+        <div style={{ fontSize: 12.5, color: 'rgba(0,0,0,0.42)', fontFamily: sans, marginBottom: 20, lineHeight: 1.5 }}>Update your password. Changing it signs out your other sessions.</div>
         <form onSubmit={handlePasswordChange} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'end' }}>
           <div>
             <label style={label}>CURRENT PASSWORD</label>
@@ -90,7 +91,7 @@ export default function SecuritySection() {
       </div>
 
       {/* Danger zone */}
-      <div style={{ background: '#fff', border: '1px solid rgba(196,18,48,0.25)', padding: 28 }}>
+      <div style={{ background: '#fff', border: '1px solid rgba(196,18,48,0.25)', borderRadius: 12, padding: 28, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: crimson, fontFamily: mono, marginBottom: 12 }}>DANGER ZONE</div>
         {!showDelete ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>

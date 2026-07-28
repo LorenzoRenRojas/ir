@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
 import SecuritySection from '@/components/settings/SecuritySection'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface CompanyProfileData {
   companyName: string
   website: string | null
@@ -20,72 +21,43 @@ interface CompanyProfileData {
   capabilityStatement: string | null
   pastPerformance: string | null
 }
-
 interface UserData {
   name: string | null
   email: string
   subscriptionTier: string
+  createdAt?: string
   companyProfile?: CompanyProfileData | null
 }
-
 interface TeamMember {
-  id: string
-  userId: string
-  role: string
-  permissions: {
-    canSaveContracts: boolean
-    canGenerateDocs: boolean
-    canManageWatchlist: boolean
-    canEditCompanyProfile: boolean
-  }
-  joinedAt: string
-  user: { id: string; name: string | null; email: string }
+  id: string; userId: string; role: string
+  permissions: { canSaveContracts: boolean; canGenerateDocs: boolean; canManageWatchlist: boolean; canEditCompanyProfile: boolean }
+  joinedAt: string; user: { id: string; name: string | null; email: string }
+}
+interface TeamInvite { id: string; token: string; email: string; role: string; expiresAt: string; createdAt: string }
+interface TeamData { id: string; name: string; role: string; permissions: Record<string, boolean>; members: TeamMember[]; invites: TeamInvite[] }
+
+interface Prefs {
+  notifyDigest: boolean; notifyDeadlines: boolean; notifyRadar: boolean; notifyInstant: boolean
+  feedEligibleOnly: boolean; feedHideSaved: boolean; feedDensity: 'comfortable' | 'compact'
+  feedDefaultDueWithin: string; feedMinMatch: number
+}
+const DEFAULT_PREFS: Prefs = {
+  notifyDigest: true, notifyDeadlines: true, notifyRadar: true, notifyInstant: false,
+  feedEligibleOnly: true, feedHideSaved: true, feedDensity: 'comfortable', feedDefaultDueWithin: '', feedMinMatch: 0,
 }
 
-interface TeamInvite {
-  id: string
-  token: string
-  email: string
-  role: string
-  expiresAt: string
-  createdAt: string
+// ─── Design tokens ──────────────────────────────────────────────────────────
+const mono = 'var(--font-geist-mono, monospace)'
+const sans = 'var(--font-geist-sans, sans-serif)'
+const crimson = '#C41230'
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '11px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)',
+  color: '#0A0A0A', fontSize: 13, fontFamily: mono, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
-
-interface TeamData {
-  id: string
-  name: string
-  role: string
-  permissions: Record<string, boolean>
-  members: TeamMember[]
-  invites: TeamInvite[]
-}
-
-const TIERS = [
-  { id: 'starter', ...SUBSCRIPTION_TIERS.starter },
-  { id: 'pro', ...SUBSCRIPTION_TIERS.pro, popular: true },
-  { id: 'enterprise', ...SUBSCRIPTION_TIERS.enterprise },
-]
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  background: '#F8F8F7',
-  border: '1px solid rgba(0,0,0,0.1)',
-  color: '#0A0A0A',
-  fontSize: 13,
-  fontFamily: 'var(--font-geist-mono, monospace)',
-  outline: 'none',
-  boxSizing: 'border-box' as const,
-}
-
-const labelStyle = {
-  display: 'block',
-  fontSize: 9,
-  fontWeight: 700,
-  letterSpacing: '0.12em',
-  color: 'rgba(0,0,0,0.35)',
-  marginBottom: 8,
-  fontFamily: 'var(--font-geist-mono, monospace)',
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
+  color: 'rgba(0,0,0,0.4)', marginBottom: 8, fontFamily: mono,
 }
 
 const NAICS_OPTIONS = [
@@ -104,42 +76,136 @@ const CERTIFICATIONS = ['ISO 9001', 'ISO 27001', 'CMMI Level 2', 'CMMI Level 3',
 const CONTRACT_VEHICLES = ['GSA MAS', 'SEWP V', 'Alliant 2', 'CIO-SP3', 'OASIS', '8(a) STARS III', 'VETS 2', 'HCaTS', 'ENCORE III', 'DISA SETI']
 const ORG_SIZES = ['1 – 10', '11 – 50', '51 – 200', '201 – 500', '500+']
 
-function ProfileChip({ label, selected, onClick, disabled }: { label: string; selected: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} style={{ padding: '5px 10px', fontSize: 10, border: selected ? '1px solid rgba(196,18,48,0.4)' : '1px solid rgba(0,0,0,0.1)', background: selected ? 'rgba(196,18,48,0.06)' : 'transparent', color: selected ? '#C41230' : 'rgba(0,0,0,0.45)', cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', letterSpacing: '0.04em', transition: 'all 0.12s', opacity: disabled ? 0.6 : 1 }}>
-      {label}
-    </button>
-  )
+const PERMISSION_LABELS: Record<string, string> = {
+  canSaveContracts: 'Save contracts', canGenerateDocs: 'Generate documents',
+  canManageWatchlist: 'Manage watchlist', canEditCompanyProfile: 'Edit company profile',
 }
 
 function toggle<T>(arr: T[], item: T): T[] {
   return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item]
 }
 
-const PERMISSION_LABELS: Record<string, string> = {
-  canSaveContracts: 'Save contracts',
-  canGenerateDocs: 'Generate documents',
-  canManageWatchlist: 'Manage watchlist',
-  canEditCompanyProfile: 'Edit company profile',
+// ─── Reusable primitives ────────────────────────────────────────────────────
+function ProfileChip({ label, selected, onClick, disabled }: { label: string; selected: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{ padding: '6px 11px', fontSize: 10.5, borderRadius: 6, border: selected ? '1px solid rgba(196,18,48,0.45)' : '1px solid rgba(0,0,0,0.1)', background: selected ? 'rgba(196,18,48,0.07)' : '#fff', color: selected ? crimson : 'rgba(0,0,0,0.5)', cursor: disabled ? 'default' : 'pointer', fontFamily: mono, letterSpacing: '0.04em', transition: 'all 0.14s ease', opacity: disabled ? 0.6 : 1 }}>
+      {label}
+    </button>
+  )
 }
 
+function Switch({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={onClick} disabled={disabled}
+      style={{ width: 42, height: 24, borderRadius: 13, background: on ? crimson : 'rgba(0,0,0,0.14)', position: 'relative', flexShrink: 0, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background 0.22s ease', padding: 0, boxShadow: on ? '0 0 0 3px rgba(196,18,48,0.10)' : 'none' }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.22s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+    </button>
+  )
+}
+
+function ToggleRow({ title, desc, on, onClick, disabled }: { title: string; desc: string; on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <div onClick={() => !disabled && onClick()}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: disabled ? 'default' : 'pointer' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 3 }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.42)', fontFamily: sans, lineHeight: 1.5 }}>{desc}</div>
+      </div>
+      <Switch on={on} onClick={onClick} disabled={disabled} />
+    </div>
+  )
+}
+
+function Segmented<T extends string | number>({ options, value, onChange }: { options: { label: string; value: T }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div style={{ display: 'inline-flex', background: '#F1F0EC', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: 3, gap: 3, flexWrap: 'wrap' }}>
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button key={String(o.value)} type="button" onClick={() => onChange(o.value)}
+            style={{ padding: '7px 14px', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', fontFamily: mono, border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.16s ease', background: active ? '#fff' : 'transparent', color: active ? crimson : 'rgba(0,0,0,0.4)', boxShadow: active ? '0 1px 4px rgba(0,0,0,0.10)' : 'none' }}>
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Section card with a title/description header.
+function Card({ title, desc, right, children }: { title: string; desc?: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, padding: '26px 28px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
+        <div>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0A0A0A', margin: 0, fontFamily: sans, letterSpacing: '-0.01em' }}>{title}</h2>
+          {desc && <p style={{ fontSize: 12.5, color: 'rgba(0,0,0,0.42)', margin: '6px 0 0', fontFamily: sans, lineHeight: 1.5, maxWidth: 520 }}>{desc}</p>}
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function SaveButton({ saving, saved, label = 'SAVE CHANGES', savedLabel = 'SAVED ✓' }: { saving: boolean; saved: boolean; label?: string; savedLabel?: string }) {
+  return (
+    <button type="submit" disabled={saving}
+      style={{ padding: '11px 22px', background: saved ? 'rgba(22,163,74,0.1)' : crimson, color: saved ? '#16a34a' : '#fff', border: saved ? '1px solid rgba(22,163,74,0.3)' : 'none', borderRadius: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: mono, transition: 'all 0.2s ease' }}>
+      {saving ? 'SAVING…' : saved ? savedLabel : `${label} →`}
+    </button>
+  )
+}
+
+// ─── Nav icons ──────────────────────────────────────────────────────────────
+function Icon({ name }: { name: string }) {
+  const common = { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (name) {
+    case 'account': return <svg {...common}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
+    case 'company': return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1" /></svg>
+    case 'notifications': return <svg {...common}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>
+    case 'feed': return <svg {...common}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+    case 'billing': return <svg {...common}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+    case 'team': return <svg {...common}><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5" /><path d="M16 5a3 3 0 0 1 0 6M18 20c0-2-1-3.5-2.5-4.5" /></svg>
+    case 'security': return <svg {...common}><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>
+    default: return null
+  }
+}
+
+const TABS = [
+  { id: 'account', label: 'Account' },
+  { id: 'company', label: 'Company Profile' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'feed', label: 'Feed' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'team', label: 'Team' },
+  { id: 'security', label: 'Security' },
+] as const
+type TabId = typeof TABS[number]['id']
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
+  const [tab, setTab] = useState<TabId>('account')
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Account
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
-  const [upgradeError, setUpgradeError] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [website, setWebsite] = useState('')
   const [uei, setUei] = useState('')
-  const [notifEmail, setNotifEmail] = useState(true)
-  const [notifDeadlines, setNotifDeadlines] = useState(true)
-  const [notifNewMatches, setNotifNewMatches] = useState(false)
 
-  // Company profile state
+  // Preferences (notifications + feed) — auto-saved
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS)
+  const [prefPulse, setPrefPulse] = useState(false)
+  const [needsMigration, setNeedsMigration] = useState(false)
+
+  // Company profile
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [profileError, setProfileError] = useState('')
@@ -154,7 +220,10 @@ export default function SettingsPage() {
   const [cpCapabilityStatement, setCpCapabilityStatement] = useState('')
   const [cpPastPerformance, setCpPastPerformance] = useState('')
 
-  // Team state
+  // Billing
+  const [upgradeError, setUpgradeError] = useState('')
+
+  // Team
   const [team, setTeam] = useState<TeamData | null>(null)
   const [teamLoading, setTeamLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -166,8 +235,7 @@ export default function SettingsPage() {
   const [removingMember, setRemovingMember] = useState<string | null>(null)
   const [updatingMember, setUpdatingMember] = useState<string | null>(null)
 
-  useEffect(() => { loadSettings() }, [])
-  useEffect(() => { loadTeam() }, [])
+  useEffect(() => { loadSettings(); loadTeam(); loadPrefs() }, [])
 
   async function loadSettings() {
     try {
@@ -192,11 +260,15 @@ export default function SettingsPage() {
         setCpCapabilityStatement(cp?.capabilityStatement ?? '')
         setCpPastPerformance(cp?.pastPerformance ?? '')
       }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error(err) } finally { setLoading(false) }
+  }
+
+  async function loadPrefs() {
+    try {
+      const res = await fetch('/api/preferences')
+      const data = await res.json()
+      if (data.preferences) setPrefs({ ...DEFAULT_PREFS, ...data.preferences })
+    } catch (err) { console.error(err) }
   }
 
   async function loadTeam() {
@@ -204,121 +276,81 @@ export default function SettingsPage() {
       const res = await fetch('/api/team')
       const data = await res.json()
       setTeam(data.team ?? null)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setTeamLoading(false)
-    }
+    } catch (err) { console.error(err) } finally { setTeamLoading(false) }
+  }
+
+  // Optimistic single-field auto-save for preferences.
+  async function savePref(patch: Partial<Prefs>) {
+    setPrefs((prev) => ({ ...prev, ...patch }))
+    try {
+      const res = await fetch('/api/preferences', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+      })
+      const data = await res.json()
+      if (data.needsMigration) setNeedsMigration(true)
+      setPrefPulse(true); setTimeout(() => setPrefPulse(false), 1600)
+    } catch { /* keep optimistic value */ }
   }
 
   async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    setError('')
-    setSaved(false)
+    e.preventDefault(); setSaving(true); setError(''); setSaved(false)
     try {
       const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, companyName, website, uei }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Save failed'); return }
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    } catch {
-      setError('Failed to save settings')
-    } finally {
-      setSaving(false)
-    }
+      setSaved(true); setTimeout(() => setSaved(false), 3000)
+    } catch { setError('Failed to save settings') } finally { setSaving(false) }
   }
 
   async function handleUpgrade(tierId: string) {
     setUpgradeError('')
     try {
       const res = await fetch('/api/stripe/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: tierId }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier: tierId }),
       })
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        setUpgradeError(data.error ?? 'Failed to start checkout')
-      }
-    } catch {
-      setUpgradeError('Failed to start checkout session')
-    }
+      if (data.url) window.location.href = data.url
+      else setUpgradeError(data.error ?? 'Failed to start checkout')
+    } catch { setUpgradeError('Failed to start checkout session') }
   }
 
   async function handleProfileSave(e: React.FormEvent) {
-    e.preventDefault()
-    setProfileSaving(true)
-    setProfileError('')
-    setProfileSaved(false)
+    e.preventDefault(); setProfileSaving(true); setProfileError(''); setProfileSaved(false)
     try {
       const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          businessTypes: cpBusinessTypes,
-          naicsCodes: cpNaicsCodes,
-          contractSizePrefs: cpContractSizePrefs,
-          contractTypePrefs: cpContractTypePrefs,
-          geoPrefs: cpGeoPrefs,
-          certifications: cpCertifications,
-          contractVehicles: cpContractVehicles,
-          orgSize: cpOrgSize || null,
-          capabilityStatement: cpCapabilityStatement || null,
-          pastPerformance: cpPastPerformance || null,
+          businessTypes: cpBusinessTypes, naicsCodes: cpNaicsCodes, contractSizePrefs: cpContractSizePrefs,
+          contractTypePrefs: cpContractTypePrefs, geoPrefs: cpGeoPrefs, certifications: cpCertifications,
+          contractVehicles: cpContractVehicles, orgSize: cpOrgSize || null,
+          capabilityStatement: cpCapabilityStatement || null, pastPerformance: cpPastPerformance || null,
         }),
       })
       if (!res.ok) { const d = await res.json(); setProfileError(d.error ?? 'Save failed'); return }
-      setProfileSaved(true)
-      setTimeout(() => setProfileSaved(false), 3000)
-    } catch {
-      setProfileError('Failed to save')
-    } finally {
-      setProfileSaving(false)
-    }
+      setProfileSaved(true); setTimeout(() => setProfileSaved(false), 3000)
+    } catch { setProfileError('Failed to save') } finally { setProfileSaving(false) }
   }
 
   async function handleInvite(e: React.FormEvent) {
-    e.preventDefault()
-    if (!inviteEmail.trim()) return
-    setInviting(true)
-    setInviteError('')
-    setNewInviteToken(null)
+    e.preventDefault(); if (!inviteEmail.trim()) return
+    setInviting(true); setInviteError(''); setNewInviteToken(null)
     try {
       const res = await fetch('/api/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setInviteError(data.error ?? 'Failed to create invite')
-      } else {
-        setNewInviteToken(data.invite.token)
-        setInviteEmail('')
-        await loadTeam()
-      }
-    } catch {
-      setInviteError('Failed to create invite')
-    } finally {
-      setInviting(false)
-    }
+      if (!res.ok) setInviteError(data.error ?? 'Failed to create invite')
+      else { setNewInviteToken(data.invite.token); setInviteEmail(''); await loadTeam() }
+    } catch { setInviteError('Failed to create invite') } finally { setInviting(false) }
   }
 
   async function handleRemoveMember(memberId: string) {
     setRemovingMember(memberId)
-    try {
-      await fetch(`/api/team/members/${memberId}`, { method: 'DELETE' })
-      await loadTeam()
-    } finally {
-      setRemovingMember(null)
-    }
+    try { await fetch(`/api/team/members/${memberId}`, { method: 'DELETE' }); await loadTeam() }
+    finally { setRemovingMember(null) }
   }
 
   async function handleTogglePermission(memberId: string, currentPerms: Record<string, boolean>, key: string) {
@@ -326,470 +358,318 @@ export default function SettingsPage() {
     const newPerms = { ...currentPerms, [key]: !currentPerms[key] }
     try {
       await fetch(`/api/team/members/${memberId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ permissions: newPerms }),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: newPerms }),
       })
       await loadTeam()
-    } finally {
-      setUpdatingMember(null)
-    }
+    } finally { setUpdatingMember(null) }
   }
 
   function copyInviteLink(token: string) {
     const url = `${window.location.origin}/invite/${token}`
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedToken(token)
-      setTimeout(() => setCopiedToken(null), 2000)
-    })
+    navigator.clipboard.writeText(url).then(() => { setCopiedToken(token); setTimeout(() => setCopiedToken(null), 2000) })
   }
 
   if (loading) {
-    return (
-      <div style={{ padding: '32px 40px', fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)' }}>LOADING…</div>
-    )
+    return <div style={{ padding: '32px 40px', fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', fontFamily: mono }}>LOADING…</div>
   }
 
   const currentTier = userData?.subscriptionTier ?? 'free'
   const isAdmin = team?.role === 'admin'
+  const canEditProfile = isAdmin || !team
+  const memberSince = userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : null
 
-  const sectionStyle = {
-    background: '#FFFFFF',
-    border: '1px solid rgba(0,0,0,0.08)',
-    padding: '28px 28px',
-    marginBottom: 12,
-  }
-
-  const sectionHeadStyle = {
-    fontSize: 9,
-    fontWeight: 700,
-    letterSpacing: '0.16em',
-    color: 'rgba(0,0,0,0.25)',
-    marginBottom: 24,
-    fontFamily: 'var(--font-geist-mono, monospace)',
-  }
+  const chipGroup = (title: string, items: string[], selected: string[], onToggle: (v: string) => void, labelFor?: (v: string) => string, valueFor?: (v: string) => string) => (
+    <div>
+      <div style={{ ...labelStyle, marginBottom: 10 }}>{title}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {items.map((it) => {
+          const val = valueFor ? valueFor(it) : it
+          return <ProfileChip key={it} label={labelFor ? labelFor(it) : it} selected={selected.includes(val)} onClick={() => canEditProfile && onToggle(val)} disabled={!canEditProfile} />
+        })}
+      </div>
+    </div>
+  )
 
   return (
-    <div style={{ padding: '32px 40px', minHeight: '100vh', maxWidth: 760 }}>
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10 }}>CONFIGURATION</div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Settings</h1>
+    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
+      <style>{`
+        @keyframes panelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pillIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .ir-set-input:focus { border-color: rgba(196,18,48,0.4) !important; box-shadow: 0 0 0 3px rgba(196,18,48,0.08) !important; }
+        .ir-nav-item:hover { background: rgba(0,0,0,0.03); }
+        .ir-panel { animation: panelIn 0.28s ease both; }
+        @media (max-width: 860px) {
+          .ir-settings-grid { grid-template-columns: 1fr !important; }
+          .ir-settings-nav { position: static !important; flex-direction: row !important; overflow-x: auto; border-right: none !important; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 10px !important; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>CONFIGURATION</div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>Settings</h1>
+        <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.42)', margin: '8px 0 0', fontFamily: sans }}>
+          {userData?.name ? `${userData.name} · ` : ''}{userData?.email}{memberSince ? ` · Member since ${memberSince}` : ''}
+        </p>
       </div>
 
-      {/* Profile */}
-      <div style={sectionStyle}>
-        <div style={sectionHeadStyle}>PROFILE</div>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>FULL NAME</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Jane Smith" />
-            </div>
-            <div>
-              <label style={labelStyle}>EMAIL</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="jane@company.com" />
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle}>COMPANY NAME</label>
-            <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} placeholder="Acme Government Solutions LLC" />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>WEBSITE</label>
-              <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} style={inputStyle} placeholder="https://www.company.com" />
-            </div>
-            <div>
-              <label style={labelStyle}>UEI NUMBER</label>
-              <input type="text" value={uei} onChange={(e) => setUei(e.target.value)} style={inputStyle} placeholder="12-char SAM.gov UEI" maxLength={12} />
-            </div>
-          </div>
-
-          {error && (
-            <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 11 }}>{error}</div>
-          )}
-          {saved && (
-            <div style={{ padding: '10px 12px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', color: '#16a34a', fontSize: 11, letterSpacing: '0.06em' }}>SETTINGS SAVED.</div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{ padding: '10px 20px', background: '#C41230', color: '#ffffff', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
-            >
-              {saving ? 'SAVING…' : 'SAVE CHANGES →'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Company Profile */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div style={sectionHeadStyle}>COMPANY PROFILE</div>
-          {!isAdmin && team && (
-            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>VIEW ONLY — ADMIN REQUIRED</span>
-          )}
-        </div>
-
-        <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Org size */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>ORGANIZATION SIZE</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {ORG_SIZES.map((size) => (
-                <ProfileChip key={size} label={size} selected={cpOrgSize === size} onClick={() => isAdmin || !team ? setCpOrgSize(cpOrgSize === size ? '' : size) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Business types */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>BUSINESS TYPE</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {BUSINESS_TYPES.map((bt) => (
-                <ProfileChip key={bt} label={bt} selected={cpBusinessTypes.includes(bt)} onClick={() => isAdmin || !team ? setCpBusinessTypes(toggle(cpBusinessTypes, bt)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* NAICS codes */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>NAICS CODES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {NAICS_OPTIONS.map((n) => {
-                const code = n.split(' ')[0]
-                return (
-                  <ProfileChip key={code} label={n} selected={cpNaicsCodes.includes(code)} onClick={() => isAdmin || !team ? setCpNaicsCodes(toggle(cpNaicsCodes, code)) : undefined} disabled={!isAdmin && !!team} />
-                )
-              })}
-            </div>
-            {cpNaicsCodes.length > 0 && (
-              <div style={{ marginTop: 8, fontSize: 10, color: '#C41230', fontFamily: 'var(--font-geist-mono, monospace)' }}>{cpNaicsCodes.length} CODE{cpNaicsCodes.length !== 1 ? 'S' : ''} SELECTED</div>
-            )}
-          </div>
-
-          {/* Contract type prefs */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>CONTRACT TYPES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {CONTRACT_TYPES.map((t) => (
-                <ProfileChip key={t} label={t} selected={cpContractTypePrefs.includes(t)} onClick={() => isAdmin || !team ? setCpContractTypePrefs(toggle(cpContractTypePrefs, t)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Contract size prefs */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>CONTRACT SIZE PREFERENCE</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {['Micro (<$10K)', 'Simplified ($10K-$250K)', 'Large ($250K+)', 'Any'].map((s) => (
-                <ProfileChip key={s} label={s} selected={cpContractSizePrefs.includes(s)} onClick={() => isAdmin || !team ? setCpContractSizePrefs(toggle(cpContractSizePrefs, s)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Contract vehicles */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>CONTRACT VEHICLES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {CONTRACT_VEHICLES.map((v) => (
-                <ProfileChip key={v} label={v} selected={cpContractVehicles.includes(v)} onClick={() => isAdmin || !team ? setCpContractVehicles(toggle(cpContractVehicles, v)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Certifications */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>CERTIFICATIONS & CLEARANCES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {CERTIFICATIONS.map((c) => (
-                <ProfileChip key={c} label={c} selected={cpCertifications.includes(c)} onClick={() => isAdmin || !team ? setCpCertifications(toggle(cpCertifications, c)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Geography */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 10 }}>GEOGRAPHIC PREFERENCES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {['CONUS', 'Worldwide'].map((g) => (
-                <ProfileChip key={g} label={g} selected={cpGeoPrefs.includes(g)} onClick={() => isAdmin || !team ? setCpGeoPrefs(toggle(cpGeoPrefs, g)) : undefined} disabled={!isAdmin && !!team} />
-              ))}
-            </div>
-          </div>
-
-          {/* Capability statement */}
-          <div>
-            <label style={labelStyle}>CAPABILITY STATEMENT</label>
-            <textarea
-              value={cpCapabilityStatement}
-              onChange={(e) => setCpCapabilityStatement(e.target.value)}
-              disabled={!isAdmin && !!team}
-              rows={4}
-              placeholder="Describe your core capabilities, differentiators, and focus areas as a government contractor…"
-              style={{ width: '100%', padding: '10px 12px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', color: '#0A0A0A', fontSize: 12, fontFamily: 'var(--font-geist-sans, sans-serif)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6, opacity: !isAdmin && !!team ? 0.6 : 1 }}
-            />
-          </div>
-
-          {/* Past performance */}
-          <div>
-            <label style={labelStyle}>PAST PERFORMANCE</label>
-            <textarea
-              value={cpPastPerformance}
-              onChange={(e) => setCpPastPerformance(e.target.value)}
-              disabled={!isAdmin && !!team}
-              rows={4}
-              placeholder="Key past contracts, agencies served, dollar values, outcomes…"
-              style={{ width: '100%', padding: '10px 12px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', color: '#0A0A0A', fontSize: 12, fontFamily: 'var(--font-geist-sans, sans-serif)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6, opacity: !isAdmin && !!team ? 0.6 : 1 }}
-            />
-          </div>
-
-          {profileError && (
-            <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 11 }}>{profileError}</div>
-          )}
-          {profileSaved && (
-            <div style={{ padding: '10px 12px', background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)', color: '#16a34a', fontSize: 11, letterSpacing: '0.06em' }}>COMPANY PROFILE SAVED.</div>
-          )}
-
-          {(isAdmin || !team) && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="submit"
-                disabled={profileSaving}
-                style={{ padding: '10px 20px', background: '#C41230', color: '#ffffff', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: profileSaving ? 'not-allowed' : 'pointer', opacity: profileSaving ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)' }}
-              >
-                {profileSaving ? 'SAVING…' : 'SAVE PROFILE →'}
-              </button>
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* Subscription */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div style={sectionHeadStyle}>SUBSCRIPTION</div>
-          <span style={{ fontSize: 9, letterSpacing: '0.12em', padding: '3px 10px', background: 'rgba(196,18,48,0.07)', color: '#C41230', border: '1px solid rgba(196,18,48,0.2)', fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase' }}>
-            CURRENT: {currentTier}
-          </span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {TIERS.map((tier) => {
-            const isCurrent = currentTier === tier.id
+      <div className="ir-settings-grid" style={{ display: 'grid', gridTemplateColumns: '218px 1fr', gap: 28, alignItems: 'start' }}>
+        {/* Left nav */}
+        <nav className="ir-settings-nav" style={{ display: 'flex', flexDirection: 'column', gap: 3, position: 'sticky', top: 24, borderRight: '1px solid rgba(0,0,0,0.07)', paddingRight: 16 }}>
+          {TABS.map((t) => {
+            const active = tab === t.id
             return (
-              <div key={tier.id} style={{ background: isCurrent ? 'rgba(196,18,48,0.03)' : '#F8F8F7', border: '1px solid rgba(0,0,0,0.08)', padding: '20px', position: 'relative', borderTop: isCurrent ? '2px solid #C41230' : '2px solid transparent' }}>
-                {(tier as { popular?: boolean }).popular && !isCurrent && (
-                  <div style={{ fontSize: 8, letterSpacing: '0.12em', color: '#C41230', marginBottom: 8, fontFamily: 'var(--font-geist-mono, monospace)' }}>POPULAR</div>
-                )}
-                <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.35)', marginBottom: 8, fontFamily: 'var(--font-geist-mono, monospace)' }}>{tier.name.toUpperCase()}</div>
-                <div style={{ marginBottom: 16 }}>
-                  <span style={{ fontSize: 28, fontWeight: 700, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>${tier.price}</span>
-                  <span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', marginLeft: 4 }}>/mo</span>
-                </div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {tier.features.map((f) => (
-                    <li key={f} style={{ fontSize: 11, color: 'rgba(0,0,0,0.45)', display: 'flex', gap: 8, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
-                      <span style={{ color: '#C41230', flexShrink: 0 }}>—</span>{f}
-                    </li>
-                  ))}
-                </ul>
-                {isCurrent ? (
-                  <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.3)', textAlign: 'center', padding: '8px', border: '1px solid rgba(0,0,0,0.08)', fontFamily: 'var(--font-geist-mono, monospace)' }}>CURRENT PLAN</div>
-                ) : (
-                  <button
-                    onClick={() => handleUpgrade(tier.id)}
-                    style={{ width: '100%', padding: '8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: '#C41230', color: '#ffffff', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
-                  >
-                    {tier.price > (SUBSCRIPTION_TIERS[currentTier as keyof typeof SUBSCRIPTION_TIERS]?.price ?? 0) ? 'UPGRADE →' : 'CHANGE →'}
-                  </button>
-                )}
-              </div>
+              <button key={t.id} className="ir-nav-item" onClick={() => setTab(t.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: active ? 'rgba(196,18,48,0.06)' : 'transparent', color: active ? crimson : 'rgba(0,0,0,0.55)', fontFamily: mono, fontSize: 11.5, fontWeight: active ? 700 : 500, letterSpacing: '0.03em', whiteSpace: 'nowrap', transition: 'all 0.15s ease', position: 'relative', textAlign: 'left' }}>
+                <span style={{ display: 'flex', color: active ? crimson : 'rgba(0,0,0,0.35)' }}><Icon name={t.id} /></span>
+                {t.label}
+                {active && <span style={{ position: 'absolute', left: -16, top: 8, bottom: 8, width: 3, borderRadius: 2, background: crimson }} />}
+              </button>
             )
           })}
-        </div>
+        </nav>
 
-        {upgradeError && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 11 }}>{upgradeError}</div>
-        )}
-      </div>
-
-      {/* Notifications */}
-      <div style={sectionStyle}>
-        <div style={sectionHeadStyle}>NOTIFICATIONS</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {[
-            { label: 'Email digest of new contract matches', value: notifEmail, setter: setNotifEmail },
-            { label: 'Deadline reminders (3 days before due date)', value: notifDeadlines, setter: setNotifDeadlines },
-            { label: 'Instant alerts for high-match contracts (90%+)', value: notifNewMatches, setter: setNotifNewMatches },
-          ].map(({ label, value, setter }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setter(!value)}>
-              <span style={{ fontSize: 13, color: value ? '#0A0A0A' : 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{label}</span>
-              <div style={{ width: 36, height: 20, background: value ? '#C41230' : 'rgba(0,0,0,0.1)', position: 'relative', flexShrink: 0, cursor: 'pointer', transition: 'background 0.2s' }}>
-                <div style={{ position: 'absolute', top: 3, left: value ? 19 : 3, width: 14, height: 14, background: value ? '#ffffff' : 'rgba(0,0,0,0.25)', transition: 'left 0.2s' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop: 16, fontSize: 10, color: 'rgba(0,0,0,0.2)', letterSpacing: '0.06em' }}>NOTIFICATION PREFERENCES ARE LOCAL — DEMO ONLY.</div>
-      </div>
-
-      {/* Team */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div style={sectionHeadStyle}>TEAM</div>
-          {team && (
-            <span style={{ fontSize: 9, letterSpacing: '0.12em', padding: '3px 10px', background: isAdmin ? 'rgba(196,18,48,0.07)' : 'rgba(0,0,0,0.04)', color: isAdmin ? '#C41230' : 'rgba(0,0,0,0.45)', border: `1px solid ${isAdmin ? 'rgba(196,18,48,0.2)' : 'rgba(0,0,0,0.1)'}`, fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase' as const }}>
-              {isAdmin ? 'ADMIN' : 'MEMBER'}
-            </span>
+        {/* Panel */}
+        <div key={tab} className="ir-panel" style={{ minWidth: 0, maxWidth: 720 }}>
+          {tab === 'account' && (
+            <Card title="Account" desc="Your login identity and headline company details. Changing your email requires re-verifying the new address.">
+              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div><label style={labelStyle}>FULL NAME</label><input className="ir-set-input" type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Jane Smith" /></div>
+                  <div><label style={labelStyle}>EMAIL</label><input className="ir-set-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="jane@company.com" /></div>
+                </div>
+                <div><label style={labelStyle}>COMPANY NAME</label><input className="ir-set-input" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} placeholder="Acme Government Solutions LLC" /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div><label style={labelStyle}>WEBSITE</label><input className="ir-set-input" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} style={inputStyle} placeholder="https://www.company.com" /></div>
+                  <div><label style={labelStyle}>UEI NUMBER</label><input className="ir-set-input" type="text" value={uei} onChange={(e) => setUei(e.target.value)} style={inputStyle} placeholder="12-char SAM.gov UEI" maxLength={12} /></div>
+                </div>
+                {error && <div style={{ padding: '10px 13px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', borderRadius: 8, color: crimson, fontSize: 12, fontFamily: sans }}>{error}</div>}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}><SaveButton saving={saving} saved={saved} /></div>
+              </form>
+            </Card>
           )}
-        </div>
 
-        {teamLoading ? (
-          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', fontFamily: 'var(--font-geist-mono, monospace)' }}>LOADING TEAM…</div>
-        ) : !team ? (
-          <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>No team yet. Complete onboarding to create your team workspace.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-            <div>
-              <div style={{ ...labelStyle, marginBottom: 4 }}>WORKSPACE</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{team.name}</div>
-            </div>
+          {tab === 'company' && (
+            <Card title="Company Profile" desc="Everything the matcher and document engine use to score contracts and pre-fill your paperwork. The more complete, the sharper your matches."
+              right={!canEditProfile ? <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, border: '1px solid rgba(0,0,0,0.1)', padding: '4px 8px', borderRadius: 6 }}>VIEW ONLY · ADMIN</span> : undefined}>
+              <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {chipGroup('ORGANIZATION SIZE', ORG_SIZES, cpOrgSize ? [cpOrgSize] : [], (v) => setCpOrgSize(cpOrgSize === v ? '' : v))}
+                {chipGroup('BUSINESS TYPE', BUSINESS_TYPES, cpBusinessTypes, (v) => setCpBusinessTypes(toggle(cpBusinessTypes, v)))}
+                <div>
+                  {chipGroup('NAICS CODES', NAICS_OPTIONS, cpNaicsCodes, (v) => setCpNaicsCodes(toggle(cpNaicsCodes, v)), (n) => n, (n) => n.split(' ')[0])}
+                  {cpNaicsCodes.length > 0 && <div style={{ marginTop: 8, fontSize: 10, color: crimson, fontFamily: mono }}>{cpNaicsCodes.length} CODE{cpNaicsCodes.length !== 1 ? 'S' : ''} SELECTED</div>}
+                </div>
+                {chipGroup('CONTRACT TYPES', CONTRACT_TYPES, cpContractTypePrefs, (v) => setCpContractTypePrefs(toggle(cpContractTypePrefs, v)))}
+                {chipGroup('CONTRACT SIZE PREFERENCE', ['Micro (<$10K)', 'Simplified ($10K-$250K)', 'Large ($250K+)', 'Any'], cpContractSizePrefs, (v) => setCpContractSizePrefs(toggle(cpContractSizePrefs, v)))}
+                {chipGroup('CONTRACT VEHICLES', CONTRACT_VEHICLES, cpContractVehicles, (v) => setCpContractVehicles(toggle(cpContractVehicles, v)))}
+                {chipGroup('CERTIFICATIONS & CLEARANCES', CERTIFICATIONS, cpCertifications, (v) => setCpCertifications(toggle(cpCertifications, v)))}
+                {chipGroup('GEOGRAPHIC PREFERENCES', ['CONUS', 'Worldwide'], cpGeoPrefs, (v) => setCpGeoPrefs(toggle(cpGeoPrefs, v)))}
+                <div>
+                  <label style={labelStyle}>CAPABILITY STATEMENT</label>
+                  <textarea value={cpCapabilityStatement} onChange={(e) => setCpCapabilityStatement(e.target.value)} disabled={!canEditProfile} rows={4}
+                    placeholder="Describe your core capabilities, differentiators, and focus areas as a government contractor…"
+                    style={{ width: '100%', padding: '11px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, color: '#0A0A0A', fontSize: 12.5, fontFamily: sans, outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6, opacity: canEditProfile ? 1 : 0.6 }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>PAST PERFORMANCE</label>
+                  <textarea value={cpPastPerformance} onChange={(e) => setCpPastPerformance(e.target.value)} disabled={!canEditProfile} rows={4}
+                    placeholder="Key past contracts, agencies served, dollar values, outcomes…"
+                    style={{ width: '100%', padding: '11px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, color: '#0A0A0A', fontSize: 12.5, fontFamily: sans, outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6, opacity: canEditProfile ? 1 : 0.6 }} />
+                </div>
+                {profileError && <div style={{ padding: '10px 13px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', borderRadius: 8, color: crimson, fontSize: 12 }}>{profileError}</div>}
+                {canEditProfile && <div style={{ display: 'flex', justifyContent: 'flex-end' }}><SaveButton saving={profileSaving} saved={profileSaved} label="SAVE PROFILE" savedLabel="PROFILE SAVED ✓" /></div>}
+              </form>
+            </Card>
+          )}
 
-            {/* Invite form — admin only */}
-            {isAdmin && (
-              <div>
-                <div style={{ ...labelStyle, marginBottom: 12 }}>INVITE MEMBER</div>
-                <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="colleague@company.com"
-                    style={{ ...inputStyle, flex: 1 }}
-                    required
-                  />
-                  <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
-                    style={{ padding: '10px 12px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', color: '#0A0A0A', fontSize: 11, fontFamily: 'var(--font-geist-mono, monospace)', outline: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="member">MEMBER</option>
-                    <option value="admin">ADMIN</option>
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={inviting}
-                    style={{ padding: '10px 16px', background: '#C41230', color: '#ffffff', border: 'none', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: inviting ? 'not-allowed' : 'pointer', opacity: inviting ? 0.6 : 1, fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}
-                  >
-                    {inviting ? '…' : 'SEND INVITE →'}
+          {tab === 'notifications' && (
+            <>
+              <Card title="Email notifications" desc={`Choose what lands in your inbox. Emails go to ${userData?.email ?? 'your account address'}. Changes save automatically.`}
+                right={<span style={{ fontSize: 9, letterSpacing: '0.1em', color: prefPulse ? '#16a34a' : 'rgba(0,0,0,0.25)', fontFamily: mono, transition: 'color 0.2s', animation: prefPulse ? 'pillIn 0.2s ease' : undefined }}>{prefPulse ? 'SAVED ✓' : 'AUTO-SAVE'}</span>}>
+                <div>
+                  <ToggleRow title="Daily match digest" desc="A morning email with the newest contracts scored against your profile." on={prefs.notifyDigest} onClick={() => savePref({ notifyDigest: !prefs.notifyDigest })} />
+                  <ToggleRow title="Deadline reminders" desc="A nudge 3 days before a saved contract's response deadline — so nothing slips." on={prefs.notifyDeadlines} onClick={() => savePref({ notifyDeadlines: !prefs.notifyDeadlines })} />
+                  <ToggleRow title="Recompete radar" desc="Alerts when contracts in your NAICS space are approaching expiry and re-competition." on={prefs.notifyRadar} onClick={() => savePref({ notifyRadar: !prefs.notifyRadar })} />
+                  <div style={{ borderBottom: 'none' }}>
+                    <ToggleRow title="Instant high-match alerts" desc="Email the moment a 90%+ match to your profile is posted. Best for hot pursuit." on={prefs.notifyInstant} onClick={() => savePref({ notifyInstant: !prefs.notifyInstant })} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 18, padding: '12px 14px', background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, fontSize: 11.5, color: 'rgba(0,0,0,0.45)', fontFamily: sans, lineHeight: 1.6 }}>
+                  Every email includes a one-click unsubscribe. Turning everything off here silences all IR emails except security and billing notices.
+                </div>
+              </Card>
+              <Card title="Quiet everything" desc="A single switch to pause all opportunity emails without losing your profile.">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                  <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.55)', fontFamily: sans }}>
+                    {prefs.notifyDigest || prefs.notifyDeadlines || prefs.notifyRadar || prefs.notifyInstant ? 'You are receiving opportunity emails.' : 'All opportunity emails are paused.'}
+                  </span>
+                  <button onClick={() => savePref({ notifyDigest: false, notifyDeadlines: false, notifyRadar: false, notifyInstant: false })}
+                    disabled={!(prefs.notifyDigest || prefs.notifyDeadlines || prefs.notifyRadar || prefs.notifyInstant)}
+                    style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)', background: 'transparent', color: 'rgba(0,0,0,0.55)', cursor: 'pointer', opacity: (prefs.notifyDigest || prefs.notifyDeadlines || prefs.notifyRadar || prefs.notifyInstant) ? 1 : 0.4 }}>
+                    PAUSE ALL
                   </button>
-                </form>
-                {inviteError && (
-                  <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: '#C41230', fontSize: 11 }}>{inviteError}</div>
-                )}
-                {newInviteToken && (
-                  <div style={{ marginTop: 10, padding: '12px 14px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.08)' }}>
-                    <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.35)', marginBottom: 8, fontFamily: 'var(--font-geist-mono, monospace)' }}>INVITE LINK — COPY AND SHARE:</div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{ flex: 1, fontSize: 11, color: 'rgba(0,0,0,0.5)', fontFamily: 'var(--font-geist-mono, monospace)', wordBreak: 'break-all' }}>
-                        {typeof window !== 'undefined' ? `${window.location.origin}/invite/${newInviteToken}` : `/invite/${newInviteToken}`}
-                      </div>
-                      <button
-                        onClick={() => copyInviteLink(newInviteToken)}
-                        style={{ padding: '6px 12px', background: copiedToken === newInviteToken ? 'rgba(74,222,128,0.1)' : '#0A0A0A', color: copiedToken === newInviteToken ? '#16a34a' : '#ffffff', border: 'none', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap', flexShrink: 0 }}
-                      >
-                        {copiedToken === newInviteToken ? 'COPIED ✓' : 'COPY'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                </div>
+              </Card>
+            </>
+          )}
+
+          {tab === 'feed' && (
+            <Card title="Feed preferences" desc="How your opportunity feed looks and filters the moment it loads. These become your defaults — you can still adjust per session on the dashboard. Saves automatically."
+              right={<span style={{ fontSize: 9, letterSpacing: '0.1em', color: prefPulse ? '#16a34a' : 'rgba(0,0,0,0.25)', fontFamily: mono, transition: 'color 0.2s' }}>{prefPulse ? 'SAVED ✓' : 'AUTO-SAVE'}</span>}>
+              <ToggleRow title="Only show contracts I can prime" desc="Hide set-asides your certifications don't qualify you to bid as prime contractor." on={prefs.feedEligibleOnly} onClick={() => savePref({ feedEligibleOnly: !prefs.feedEligibleOnly })} />
+              <ToggleRow title="Hide contracts already in my pipeline" desc="Keep the feed a clean triage queue by hiding contracts you've already saved." on={prefs.feedHideSaved} onClick={() => savePref({ feedHideSaved: !prefs.feedHideSaved })} />
+              <div style={{ padding: '18px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 3 }}>Card density</div>
+                <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.42)', fontFamily: sans, lineHeight: 1.5, marginBottom: 12 }}>Comfortable is roomy and readable; compact fits more opportunities on screen.</div>
+                <Segmented value={prefs.feedDensity} onChange={(v) => savePref({ feedDensity: v })} options={[{ label: 'COMFORTABLE', value: 'comfortable' }, { label: 'COMPACT', value: 'compact' }]} />
               </div>
-            )}
-
-            {/* Members list */}
-            <div>
-              <div style={{ ...labelStyle, marginBottom: 12 }}>MEMBERS ({team.members.length})</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {team.members.map((member) => (
-                  <div key={member.id} style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isAdmin ? 12 : 0 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{member.user.name ?? member.user.email}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{member.user.email}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 8, letterSpacing: '0.12em', padding: '2px 8px', background: member.role === 'admin' ? 'rgba(196,18,48,0.07)' : 'rgba(0,0,0,0.04)', color: member.role === 'admin' ? '#C41230' : 'rgba(0,0,0,0.45)', border: `1px solid ${member.role === 'admin' ? 'rgba(196,18,48,0.2)' : 'rgba(0,0,0,0.1)'}`, fontFamily: 'var(--font-geist-mono, monospace)', textTransform: 'uppercase' as const }}>
-                          {member.role}
-                        </span>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleRemoveMember(member.id)}
-                            disabled={removingMember === member.id}
-                            style={{ padding: '4px 10px', background: 'transparent', color: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,0,0,0.1)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', cursor: removingMember === member.id ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
-                          >
-                            {removingMember === member.id ? '…' : 'REMOVE'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {isAdmin && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                        {Object.entries(PERMISSION_LABELS).map(([key, permLabel]) => {
-                          const value = (member.permissions as Record<string, boolean>)[key] ?? false
-                          const isUpdating = updatingMember === member.id
-                          return (
-                            <div
-                              key={key}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: isUpdating ? 'not-allowed' : 'pointer', opacity: isUpdating ? 0.5 : 1 }}
-                              onClick={() => !isUpdating && handleTogglePermission(member.id, member.permissions as Record<string, boolean>, key)}
-                            >
-                              <div style={{ width: 32, height: 18, background: value ? '#C41230' : 'rgba(0,0,0,0.1)', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
-                                <div style={{ position: 'absolute', top: 2, left: value ? 16 : 2, width: 14, height: 14, background: value ? '#ffffff' : 'rgba(0,0,0,0.25)', transition: 'left 0.2s' }} />
-                              </div>
-                              <span style={{ fontSize: 11, color: value ? '#0A0A0A' : 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)', userSelect: 'none' }}>{permLabel}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div style={{ padding: '18px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 3 }}>Default deadline window</div>
+                <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.42)', fontFamily: sans, lineHeight: 1.5, marginBottom: 12 }}>Pre-filter the feed to contracts closing within a set window when it loads.</div>
+                <Segmented value={prefs.feedDefaultDueWithin} onChange={(v) => savePref({ feedDefaultDueWithin: v })}
+                  options={[{ label: 'ANY', value: '' }, { label: '7 DAYS', value: '7' }, { label: '14 DAYS', value: '14' }, { label: '30 DAYS', value: '30' }, { label: '60 DAYS', value: '60' }]} />
               </div>
-            </div>
-
-            {/* Pending invites — admin only */}
-            {isAdmin && team.invites.length > 0 && (
-              <div>
-                <div style={{ ...labelStyle, marginBottom: 12 }}>PENDING INVITES ({team.invites.length})</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {team.invites.map((invite) => (
-                    <div key={invite.id} style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ fontSize: 13, color: '#0A0A0A', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{invite.email}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-mono, monospace)', marginTop: 2 }}>
-                          EXPIRES {new Date(invite.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {invite.role.toUpperCase()}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => copyInviteLink(invite.token)}
-                        style={{ padding: '6px 12px', background: copiedToken === invite.token ? 'rgba(74,222,128,0.1)' : 'transparent', color: copiedToken === invite.token ? '#16a34a' : 'rgba(0,0,0,0.5)', border: `1px solid ${copiedToken === invite.token ? 'rgba(74,222,128,0.3)' : 'rgba(0,0,0,0.1)'}`, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}
-                      >
-                        {copiedToken === invite.token ? 'COPIED ✓' : 'COPY LINK'}
-                      </button>
-                    </div>
-                  ))}
+              <div style={{ padding: '18px 0 4px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans }}>Minimum match score</div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: crimson, fontFamily: mono }}>{prefs.feedMinMatch === 0 ? 'OFF' : `${prefs.feedMinMatch}%+`}</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.42)', fontFamily: sans, lineHeight: 1.5, margin: '3px 0 14px' }}>Hide low-scoring matches. Contracts scored below this never appear in your feed.</div>
+                <input type="range" min={0} max={90} step={10} value={prefs.feedMinMatch}
+                  onChange={(e) => setPrefs((p) => ({ ...p, feedMinMatch: Number(e.target.value) }))}
+                  onMouseUp={(e) => savePref({ feedMinMatch: Number((e.target as HTMLInputElement).value) })}
+                  onTouchEnd={(e) => savePref({ feedMinMatch: Number((e.target as HTMLInputElement).value) })}
+                  style={{ width: '100%', accentColor: crimson, cursor: 'pointer' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginTop: 4 }}>
+                  <span>OFF</span><span>50%</span><span>90%</span>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+              {needsMigration && (
+                <div style={{ marginTop: 14, padding: '11px 14px', background: 'rgba(180,83,9,0.06)', border: '1px solid rgba(180,83,9,0.25)', borderRadius: 8, fontSize: 11.5, color: '#b45309', fontFamily: sans, lineHeight: 1.6 }}>
+                  Notification preferences saved. Feed appearance settings need a one-time database migration to persist — run <strong>RUN DB MIGRATION</strong> in the admin dashboard.
+                </div>
+              )}
+            </Card>
+          )}
 
-      <SecuritySection />
+          {tab === 'billing' && (
+            <Card title="Subscription" desc="Your plan controls proposal generation, seats, and advanced intelligence. Upgrade or change anytime — billing is prorated by Stripe."
+              right={<span style={{ fontSize: 9, letterSpacing: '0.12em', padding: '5px 11px', borderRadius: 20, background: 'rgba(196,18,48,0.07)', color: crimson, border: '1px solid rgba(196,18,48,0.2)', fontFamily: mono, textTransform: 'uppercase' }}>CURRENT · {currentTier}</span>}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                {[{ id: 'starter', ...SUBSCRIPTION_TIERS.starter }, { id: 'pro', ...SUBSCRIPTION_TIERS.pro, popular: true }, { id: 'enterprise', ...SUBSCRIPTION_TIERS.enterprise }].map((tier) => {
+                  const isCurrent = currentTier === tier.id
+                  const popular = (tier as { popular?: boolean }).popular
+                  return (
+                    <div key={tier.id} style={{ background: isCurrent ? 'rgba(196,18,48,0.03)' : '#F8F8F7', border: `1px solid ${isCurrent ? 'rgba(196,18,48,0.25)' : 'rgba(0,0,0,0.08)'}`, borderRadius: 10, padding: '20px', position: 'relative', borderTop: `3px solid ${isCurrent ? crimson : 'transparent'}` }}>
+                      {popular && !isCurrent && <div style={{ fontSize: 8, letterSpacing: '0.12em', color: crimson, marginBottom: 8, fontFamily: mono }}>★ POPULAR</div>}
+                      <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.4)', marginBottom: 8, fontFamily: mono }}>{tier.name.toUpperCase()}</div>
+                      <div style={{ marginBottom: 16 }}><span style={{ fontSize: 30, fontWeight: 700, color: '#0A0A0A', fontFamily: sans }}>${tier.price}</span><span style={{ fontSize: 11, color: 'rgba(0,0,0,0.3)', marginLeft: 4 }}>/mo</span></div>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {tier.features.map((f) => <li key={f} style={{ fontSize: 11.5, color: 'rgba(0,0,0,0.5)', display: 'flex', gap: 8, fontFamily: sans, lineHeight: 1.4 }}><span style={{ color: crimson, flexShrink: 0 }}>—</span>{f}</li>)}
+                      </ul>
+                      {isCurrent
+                        ? <div style={{ fontSize: 10, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.35)', textAlign: 'center', padding: '9px', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 7, fontFamily: mono }}>CURRENT PLAN</div>
+                        : <button onClick={() => handleUpgrade(tier.id)} style={{ width: '100%', padding: '9px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', background: crimson, color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: mono }}>{tier.price > (SUBSCRIPTION_TIERS[currentTier as keyof typeof SUBSCRIPTION_TIERS]?.price ?? 0) ? 'UPGRADE →' : 'CHANGE →'}</button>}
+                    </div>
+                  )
+                })}
+              </div>
+              {upgradeError && <div style={{ marginTop: 12, padding: '10px 13px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', borderRadius: 8, color: crimson, fontSize: 12 }}>{upgradeError}</div>}
+            </Card>
+          )}
+
+          {tab === 'team' && (
+            <Card title="Team" desc="Invite colleagues, assign roles, and control what each member can do in your workspace."
+              right={team ? <span style={{ fontSize: 9, letterSpacing: '0.12em', padding: '5px 11px', borderRadius: 20, background: isAdmin ? 'rgba(196,18,48,0.07)' : 'rgba(0,0,0,0.04)', color: isAdmin ? crimson : 'rgba(0,0,0,0.45)', border: `1px solid ${isAdmin ? 'rgba(196,18,48,0.2)' : 'rgba(0,0,0,0.1)'}`, fontFamily: mono, textTransform: 'uppercase' }}>{isAdmin ? 'ADMIN' : 'MEMBER'}</span> : undefined}>
+              {teamLoading ? (
+                <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.25)', letterSpacing: '0.12em', fontFamily: mono }}>LOADING TEAM…</div>
+              ) : !team ? (
+                <div style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', fontFamily: sans }}>No team yet. Complete onboarding to create your team workspace.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+                  <div>
+                    <div style={{ ...labelStyle, marginBottom: 4 }}>WORKSPACE</div>
+                    <div style={{ fontSize: 17, fontWeight: 600, color: '#0A0A0A', fontFamily: sans }}>{team.name}</div>
+                  </div>
+                  {isAdmin && (
+                    <div>
+                      <div style={{ ...labelStyle, marginBottom: 12 }}>INVITE MEMBER</div>
+                      <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@company.com" style={{ ...inputStyle, flex: 1, minWidth: 200 }} required />
+                        <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')} style={{ padding: '11px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, color: '#0A0A0A', fontSize: 11, fontFamily: mono, outline: 'none', cursor: 'pointer' }}>
+                          <option value="member">MEMBER</option><option value="admin">ADMIN</option>
+                        </select>
+                        <button type="submit" disabled={inviting} style={{ padding: '11px 18px', background: crimson, color: '#fff', border: 'none', borderRadius: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: inviting ? 'not-allowed' : 'pointer', opacity: inviting ? 0.6 : 1, fontFamily: mono, whiteSpace: 'nowrap' }}>{inviting ? '…' : 'SEND INVITE →'}</button>
+                      </form>
+                      {inviteError && <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', borderRadius: 8, color: crimson, fontSize: 11 }}>{inviteError}</div>}
+                      {newInviteToken && (
+                        <div style={{ marginTop: 10, padding: '13px 15px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8 }}>
+                          <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.4)', marginBottom: 8, fontFamily: mono }}>INVITE LINK — COPY AND SHARE:</div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ flex: 1, fontSize: 11, color: 'rgba(0,0,0,0.5)', fontFamily: mono, wordBreak: 'break-all' }}>{typeof window !== 'undefined' ? `${window.location.origin}/invite/${newInviteToken}` : `/invite/${newInviteToken}`}</div>
+                            <button onClick={() => copyInviteLink(newInviteToken)} style={{ padding: '7px 13px', background: copiedToken === newInviteToken ? 'rgba(22,163,74,0.1)' : '#0A0A0A', color: copiedToken === newInviteToken ? '#16a34a' : '#fff', border: 'none', borderRadius: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: mono, whiteSpace: 'nowrap', flexShrink: 0 }}>{copiedToken === newInviteToken ? 'COPIED ✓' : 'COPY'}</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ ...labelStyle, marginBottom: 12 }}>MEMBERS ({team.members.length})</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {team.members.map((member) => (
+                        <div key={member.id} style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, padding: '15px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isAdmin ? 12 : 0, gap: 12 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A', fontFamily: sans }}>{member.user.name ?? member.user.email}</div>
+                              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: sans }}>{member.user.email}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 8, letterSpacing: '0.12em', padding: '3px 9px', borderRadius: 20, background: member.role === 'admin' ? 'rgba(196,18,48,0.07)' : 'rgba(0,0,0,0.04)', color: member.role === 'admin' ? crimson : 'rgba(0,0,0,0.45)', border: `1px solid ${member.role === 'admin' ? 'rgba(196,18,48,0.2)' : 'rgba(0,0,0,0.1)'}`, fontFamily: mono, textTransform: 'uppercase' }}>{member.role}</span>
+                              {isAdmin && <button onClick={() => handleRemoveMember(member.id)} disabled={removingMember === member.id} style={{ padding: '5px 11px', background: 'transparent', color: 'rgba(0,0,0,0.35)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', cursor: removingMember === member.id ? 'not-allowed' : 'pointer', fontFamily: mono }}>{removingMember === member.id ? '…' : 'REMOVE'}</button>}
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                              {Object.entries(PERMISSION_LABELS).map(([key, permLabel]) => {
+                                const value = (member.permissions as Record<string, boolean>)[key] ?? false
+                                const isUpdating = updatingMember === member.id
+                                return (
+                                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: isUpdating ? 'not-allowed' : 'pointer', opacity: isUpdating ? 0.5 : 1 }} onClick={() => !isUpdating && handleTogglePermission(member.id, member.permissions as Record<string, boolean>, key)}>
+                                    <Switch on={value} onClick={() => !isUpdating && handleTogglePermission(member.id, member.permissions as Record<string, boolean>, key)} disabled={isUpdating} />
+                                    <span style={{ fontSize: 11.5, color: value ? '#0A0A0A' : 'rgba(0,0,0,0.4)', fontFamily: sans, userSelect: 'none' }}>{permLabel}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {isAdmin && team.invites.length > 0 && (
+                    <div>
+                      <div style={{ ...labelStyle, marginBottom: 12 }}>PENDING INVITES ({team.invites.length})</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {team.invites.map((invite) => (
+                          <div key={invite.id} style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, color: '#0A0A0A', fontFamily: sans }}>{invite.email}</div>
+                              <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginTop: 2 }}>EXPIRES {new Date(invite.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {invite.role.toUpperCase()}</div>
+                            </div>
+                            <button onClick={() => copyInviteLink(invite.token)} style={{ padding: '7px 13px', background: copiedToken === invite.token ? 'rgba(22,163,74,0.1)' : 'transparent', color: copiedToken === invite.token ? '#16a34a' : 'rgba(0,0,0,0.5)', border: `1px solid ${copiedToken === invite.token ? 'rgba(22,163,74,0.3)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer', fontFamily: mono, whiteSpace: 'nowrap' }}>{copiedToken === invite.token ? 'COPIED ✓' : 'COPY LINK'}</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {tab === 'security' && <SecuritySection />}
+        </div>
+      </div>
     </div>
   )
 }

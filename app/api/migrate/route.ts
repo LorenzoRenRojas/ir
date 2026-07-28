@@ -52,6 +52,13 @@ export async function GET() {
     `ALTER TABLE "User" ADD COLUMN "notifyDigest" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "User" ADD COLUMN "notifyDeadlines" BOOLEAN NOT NULL DEFAULT true`,
     `ALTER TABLE "User" ADD COLUMN "notifyRadar" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "User" ADD COLUMN "notifyInstant" BOOLEAN NOT NULL DEFAULT false`,
+    // Feed appearance defaults (settings → Feed tab)
+    `ALTER TABLE "User" ADD COLUMN "feedEligibleOnly" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "User" ADD COLUMN "feedHideSaved" BOOLEAN NOT NULL DEFAULT true`,
+    `ALTER TABLE "User" ADD COLUMN "feedDensity" TEXT NOT NULL DEFAULT 'comfortable'`,
+    `ALTER TABLE "User" ADD COLUMN "feedDefaultDueWithin" TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE "User" ADD COLUMN "feedMinMatch" INTEGER NOT NULL DEFAULT 0`,
     // Pipeline workspace notes
     `ALTER TABLE "SavedContract" ADD COLUMN "notes" TEXT`,
     // Bid/No-Bid scorecard (JSON factor ratings)

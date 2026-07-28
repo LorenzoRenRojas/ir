@@ -100,7 +100,7 @@ function MatchBar({ score }: { score: number }) {
   )
 }
 
-function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number }) {
+function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number; compact?: boolean }) {
   const [hovered, setHovered] = useState(false)
   const reason = topMatchReason(contract)
   const hasScore = contract.matchScore !== undefined
@@ -130,10 +130,10 @@ function ContractCard({ contract, onSave, isSaved, saving, index }: { contract: 
         background: '#FFFFFF',
         border: '1px solid rgba(0,0,0,0.08)',
         borderLeft: `3px solid ${accentColor}`,
-        padding: '18px 20px',
+        padding: compact ? '12px 14px' : '18px 20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 10,
+        gap: compact ? 7 : 10,
         transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
         boxShadow: hovered ? '0 8px 32px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.04)',
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
@@ -298,8 +298,35 @@ export default function DashboardPage() {
   // work" feed by default so it stays a clean triage queue. Client-side filter
   // using the saved IDs we already fetch, so no extra request and no lag.
   const [hideSaved, setHideSaved] = useState(true)
+  // Feed-appearance preferences (saved in Settings → Feed). Applied as the
+  // initial defaults; the user can still override per-session with the
+  // controls above. prefsLoaded gates the first fetch so defaults land before
+  // contracts load (no flash / double request).
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
+  const [minMatch, setMinMatch] = useState(0)
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
 
   const refreshAge = useRefreshAge(fetchedAt)
+
+  useEffect(() => {
+    fetch('/api/preferences')
+      .then((r) => r.json())
+      .then((data) => {
+        const p = data.preferences
+        if (p) {
+          if (typeof p.feedEligibleOnly === 'boolean') setEligibleOnly(p.feedEligibleOnly)
+          if (typeof p.feedHideSaved === 'boolean') setHideSaved(p.feedHideSaved)
+          if (p.feedDensity === 'compact' || p.feedDensity === 'comfortable') setDensity(p.feedDensity)
+          if (typeof p.feedMinMatch === 'number') setMinMatch(p.feedMinMatch)
+          // Only seed the deadline window if the URL didn't already deep-link filters.
+          if (p.feedDefaultDueWithin && !new URLSearchParams(window.location.search).get('q')) {
+            setDueWithin(String(p.feedDefaultDueWithin))
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setPrefsLoaded(true))
+  }, [])
 
   // Deep-linked search (e.g. Recompete Radar's "SCAN LIVE RFPs") — read ?q=
   // straight off the URL to avoid the useSearchParams Suspense requirement
@@ -358,7 +385,7 @@ export default function DashboardPage() {
     }
   }, [q, agency, type, setAside, dueWithin, naics, eligibleOnly])
 
-  useEffect(() => { fetchContracts() }, [fetchContracts])
+  useEffect(() => { if (prefsLoaded) fetchContracts() }, [fetchContracts, prefsLoaded])
 
   useEffect(() => {
     fetch('/api/contracts/saved')
@@ -593,8 +620,12 @@ export default function DashboardPage() {
             </div>
           )}
           {(() => {
-            const savedInFeed = contracts.filter(c => savedIds.has(c.id)).length
-            const visible = hideSaved ? contracts.filter(c => !savedIds.has(c.id)) : contracts
+            // Min-match preference hides low-scoring matches, but never hides
+            // unscored contracts (score undefined → treated as passing).
+            const scored = minMatch > 0 ? contracts.filter(c => (c.matchScore ?? 100) >= minMatch) : contracts
+            const savedInFeed = scored.filter(c => savedIds.has(c.id)).length
+            const visible = hideSaved ? scored.filter(c => !savedIds.has(c.id)) : scored
+            const compact = density === 'compact'
             return (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -622,7 +653,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${compact ? 260 : 320}px, 1fr))`, gap: compact ? 8 : 12 }}>
                     {visible.map((contract, i) => (
                       <ContractCard
                         key={contract.id}
@@ -631,6 +662,7 @@ export default function DashboardPage() {
                         isSaved={savedIds.has(contract.id)}
                         saving={saving === contract.id}
                         index={i}
+                        compact={compact}
                       />
                     ))}
                   </div>

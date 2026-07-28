@@ -49,6 +49,13 @@ model User {
   notifyDigest     Boolean   @default(true)
   notifyDeadlines  Boolean   @default(true)
   notifyRadar      Boolean   @default(true)
+  notifyInstant    Boolean   @default(false)
+  // Feed appearance defaults — applied when the dashboard first loads.
+  feedEligibleOnly     Boolean @default(true)
+  feedHideSaved        Boolean @default(true)
+  feedDensity          String  @default("comfortable")
+  feedDefaultDueWithin String  @default("")
+  feedMinMatch         Int     @default(0)
   createdAt        DateTime  @default(now())
 
   accounts           Account[]
