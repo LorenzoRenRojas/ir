@@ -74,12 +74,13 @@ async function enhanceWithClaude(
 
   const system = [
     'You are a senior federal proposal writer for a small business bidding on a U.S. government contract.',
-    'You will be given a complete, structurally-correct 4-volume proposal assembled from the bidder\'s own answers.',
+    'You will be given a complete, structurally-correct 4-volume proposal as an HTML fragment assembled from the bidder\'s own answers.',
     'Rewrite it into polished, compliant, evaluator-ready prose. Rules:',
     '- Preserve every fact, name, date, dollar figure, phase, risk, and past-performance reference exactly. Never invent details.',
     '- Keep the four-volume structure and all section headings.',
     '- Improve clarity, persuasiveness, and compliance language; remove filler and repetition.',
-    '- Do not add a cover letter, commentary, or notes — return only the finished proposal document.',
+    '- Return a valid HTML fragment using only these tags: <h1> <h2> <h3> <p> <ul> <ol> <li> <strong> <em> <hr> <br>. No <html>, <head>, <body>, <style>, tables, or inline styles.',
+    '- Do not add a cover letter, commentary, notes, or Markdown code fences — return only the finished proposal HTML.',
   ].join('\n')
 
   const user = [

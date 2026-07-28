@@ -178,12 +178,12 @@ export default function NewProposalPage() {
 
   async function handleDownload() {
     if (!generated) return
-    const { downloadTextAsPdf } = await import('@/lib/pdf')
-    await downloadTextAsPdf(
-      `Proposal — ${q.contractTitle}`,
-      generated.content,
-      `proposal-${q.contractTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`
-    )
+    const filename = `proposal-${q.contractTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`
+    const title = `Proposal — ${q.contractTitle}`
+    const { downloadHtmlAsPdf, downloadTextAsPdf } = await import('@/lib/pdf')
+    // New proposals are HTML; fall back to text for any legacy plain-text draft.
+    if (/^\s*</.test(generated.content)) await downloadHtmlAsPdf(title, generated.content, filename)
+    else await downloadTextAsPdf(title, generated.content, filename)
   }
 
   // ── Generated result view ─────────────────────────────────────────────────
@@ -256,12 +256,37 @@ export default function NewProposalPage() {
 
         {/* Preview */}
         <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            PROPOSAL DOCUMENT — REVIEW ALL CONTENT BEFORE SUBMISSION
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              PROPOSAL DOCUMENT — REVIEW ALL CONTENT BEFORE SUBMISSION
+            </span>
+            <button
+              onClick={() => router.push('/documents')}
+              style={{ padding: '6px 12px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', color: '#0A0A0A', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}
+            >
+              EDIT IN DOC SUITE →
+            </button>
           </div>
-          <pre style={{ padding: '24px', fontSize: 11, color: 'rgba(0,0,0,0.7)', whiteSpace: 'pre-wrap', lineHeight: 1.75, fontFamily: 'var(--font-geist-mono, monospace)', margin: 0, overflowX: 'auto' }}>
-            {generated.content}
-          </pre>
+          {/^\s*</.test(generated.content) ? (
+            <div
+              className="ir-doc-page"
+              style={{ padding: '32px 40px', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 14, lineHeight: 1.65, color: '#16181c' }}
+              dangerouslySetInnerHTML={{ __html: generated.content }}
+            />
+          ) : (
+            <pre style={{ padding: '24px', fontSize: 11, color: 'rgba(0,0,0,0.7)', whiteSpace: 'pre-wrap', lineHeight: 1.75, fontFamily: 'var(--font-geist-mono, monospace)', margin: 0, overflowX: 'auto' }}>
+              {generated.content}
+            </pre>
+          )}
+          <style>{`
+            .ir-doc-page h1 { font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+            .ir-doc-page h2 { font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin: 22px 0 8px; color: #0A0A0A; }
+            .ir-doc-page h3 { font-family: Arial, sans-serif; font-size: 12.5px; font-weight: 700; margin: 16px 0 6px; }
+            .ir-doc-page p { margin: 0 0 11px; }
+            .ir-doc-page ul, .ir-doc-page ol { margin: 0 0 12px; padding-left: 22px; }
+            .ir-doc-page li { margin-bottom: 4px; }
+            .ir-doc-page hr { border: none; border-top: 1px solid rgba(0,0,0,0.25); margin: 16px 0; }
+          `}</style>
         </div>
       </div>
     )

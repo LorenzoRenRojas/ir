@@ -1,13 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { downloadTextAsPdf } from '@/lib/pdf'
+import DocEditor from '@/components/DocEditor'
+import { downloadHtmlAsPdf, downloadTextAsPdf } from '@/lib/pdf'
 
 const slug = (s: string) => s.replace(/[^a-z0-9]/gi, '-').toLowerCase()
 const mono = 'var(--font-geist-mono, monospace)'
 const sans = 'var(--font-geist-sans, sans-serif)'
 const crimson = '#C41230'
+
+// New documents are generated as HTML; a few legacy docs may be plain text.
+const looksLikeHtml = (s: string) => /^\s*</.test(s)
+async function exportPdf(title: string, content: string, filename: string) {
+  if (looksLikeHtml(content)) await downloadHtmlAsPdf(title, content, filename)
+  else await downloadTextAsPdf(title, content, filename)
+}
 
 interface Doc {
   id: string
@@ -18,6 +26,8 @@ interface Doc {
   noticeId: string | null
   createdAt: string
 }
+
+type Editing = { id: string; title: string; html: string }
 
 // The document types the suite can generate. Each is pre-filled from the
 // company profile; guided types ask only the notice-specific fields.
@@ -68,6 +78,7 @@ export default function DocumentSuitePage() {
   const [error, setError] = useState('')
   const [modalType, setModalType] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
+  const [editing, setEditing] = useState<Editing | null>(null)
 
   useEffect(() => { loadDocs() }, [])
 
@@ -87,7 +98,7 @@ export default function DocumentSuitePage() {
       const res = await fetch('/api/documents/capability-statement', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Generation failed.'); return }
-      await downloadTextAsPdf('Capability Statement', data.content, 'capability-statement.pdf')
+      setEditing({ id: data.id, title: data.title, html: data.content })
       loadDocs()
     } catch {
       setError('Failed to generate. Try again.')
@@ -115,13 +126,25 @@ export default function DocumentSuitePage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Generation failed.'); return }
-      await downloadTextAsPdf(data.title, data.content, `${slug(data.title)}.pdf`)
       setModalType(null)
+      setEditing({ id: data.id, title: data.title, html: data.content })
       loadDocs()
     } catch {
       setError('Failed to generate. Try again.')
     } finally {
       setBusy('')
+    }
+  }
+
+  async function openEditor(doc: Doc) {
+    setError('')
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`)
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? 'Could not open document.'); return }
+      setEditing({ id: doc.id, title: doc.title, html: data.content ?? '' })
+    } catch {
+      setError('Could not open document. Try again.')
     }
   }
 
@@ -151,7 +174,7 @@ export default function DocumentSuitePage() {
           <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>DOCUMENT SUITE</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>Documents</h1>
           <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: '8px 0 0', maxWidth: 560, fontFamily: sans, lineHeight: 1.5 }}>
-            Every document a bid needs — pre-filled from your company profile, formatted to federal norms, exported as PDF. Review with counsel before submission.
+            Every document a bid needs — pre-filled from your company profile, edited right here in the suite, exported as PDF. Review with counsel before submission.
           </p>
         </div>
         {docs.length > 0 && (
@@ -207,11 +230,11 @@ export default function DocumentSuitePage() {
       ) : docs.length === 0 ? (
         <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.2)', marginBottom: 10, fontFamily: mono }}>NO DOCUMENTS YET</div>
-          <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: 0, fontFamily: sans }}>Generate one above — it appears here and downloads as a PDF.</p>
+          <p style={{ fontSize: 13, color: 'rgba(0,0,0,0.4)', margin: 0, fontFamily: sans }}>Generate one above — it opens in the editor and saves here.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {docs.map((d) => <DocRow key={d.id} doc={d} onDelete={() => deleteDoc(d.id)} />)}
+          {docs.map((d) => <DocRow key={d.id} doc={d} onEdit={() => openEditor(d)} onDelete={() => deleteDoc(d.id)} />)}
         </div>
       )}
 
@@ -235,48 +258,110 @@ export default function DocumentSuitePage() {
                 </div>
               ))}
               <div style={{ padding: '11px 13px', background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.06)', fontSize: 11, color: 'rgba(0,0,0,0.45)', lineHeight: 1.6, fontFamily: sans }}>
-                Pre-filled from your company profile. Fill any <strong>[BRACKETED]</strong> fields in the draft, and review with counsel before submission.
+                Pre-filled from your company profile. The draft opens in the editor — fill any <strong>[bracketed]</strong> fields, then export a PDF. Review with counsel before submission.
               </div>
               {error && <div style={{ padding: '10px 12px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', color: crimson, fontSize: 11, fontFamily: mono }}>{error}</div>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
               <button onClick={() => setModalType(null)} style={{ padding: '9px 16px', fontSize: 10, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.45)', cursor: 'pointer', fontFamily: mono }}>CANCEL</button>
               <button onClick={submitGuided} disabled={!!busy} style={{ padding: '9px 20px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: crimson, color: '#fff', border: 'none', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, fontFamily: mono }}>
-                {busy === modalType ? 'GENERATING…' : 'GENERATE PDF →'}
+                {busy === modalType ? 'GENERATING…' : 'OPEN IN EDITOR →'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Interactive editor */}
+      {editing && (
+        <EditorModal
+          key={editing.id}
+          editing={editing}
+          onClose={() => setEditing(null)}
+          onSaved={loadDocs}
+        />
+      )}
     </div>
   )
 }
 
-function DocRow({ doc, onDelete }: { doc: Doc; onDelete: () => void }) {
-  const [expanded, setExpanded] = useState(false)
-  const [content, setContent] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+// Full-screen editor: DocEditor + save (PATCH) + export PDF.
+function EditorModal({ editing, onClose, onSaved }: { editing: Editing; onClose: () => void; onSaved: () => void }) {
+  const htmlRef = useRef(editing.html)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
+  const [dirty, setDirty] = useState(false)
+
+  async function save(): Promise<boolean> {
+    setSaving(true); setStatus('')
+    try {
+      const res = await fetch(`/api/documents/${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: htmlRef.current }),
+      })
+      if (!res.ok) { setStatus('Save failed.'); return false }
+      setStatus('SAVED ✓'); setDirty(false); onSaved()
+      return true
+    } catch {
+      setStatus('Network error.'); return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function exportOut() {
+    // Persist the latest edits first so the PDF and the saved copy match.
+    await save()
+    await downloadHtmlAsPdf(editing.title, htmlRef.current, `${slug(editing.title)}.pdf`)
+  }
+
+  function requestClose() {
+    if (dirty && !window.confirm('Close without saving your latest edits?')) return
+    onClose()
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.55)', padding: 16 }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.1)', width: '100%', maxWidth: 900, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 22px', borderBottom: '1px solid rgba(0,0,0,0.08)', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 4 }}>EDITING</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A0A0A', fontFamily: sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 460 }}>{editing.title}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {status && <span style={{ fontSize: 9, letterSpacing: '0.06em', color: status.endsWith('✓') ? '#16A34A' : crimson, fontFamily: mono }}>{status}</span>}
+            <button onClick={save} disabled={saving} style={{ padding: '8px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', color: '#0A0A0A', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: mono }}>{saving ? 'SAVING…' : 'SAVE'}</button>
+            <button onClick={exportOut} disabled={saving} style={{ padding: '8px 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', background: crimson, color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', fontFamily: mono }}>↓ EXPORT PDF</button>
+            <button onClick={requestClose} title="Close" style={{ fontSize: 22, color: 'rgba(0,0,0,0.4)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, background: '#E9E8E4', minHeight: 0 }}>
+          <DocEditor
+            initialHtml={editing.html}
+            onChange={(html) => { htmlRef.current = html; setDirty(true); if (status) setStatus('') }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DocRow({ doc, onEdit, onDelete }: { doc: Doc; onEdit: () => void; onDelete: () => void }) {
+  const [downloading, setDownloading] = useState(false)
   const [sendingPO, setSendingPO] = useState(false)
   const [poStatus, setPoStatus] = useState('')
 
-  async function loadContent(): Promise<string | null> {
-    if (content) return content
-    const res = await fetch(`/api/documents/${doc.id}`)
-    const data = await res.json()
-    setContent(data.content ?? null)
-    return data.content ?? null
-  }
-
-  async function handleView() {
-    if (expanded) { setExpanded(false); return }
-    setLoading(true)
-    try { await loadContent(); setExpanded(true) } finally { setLoading(false) }
-  }
-
   async function handleDownload() {
-    const c = await loadContent()
-    if (!c) return
-    await downloadTextAsPdf(doc.title, c, `${slug(doc.title)}.pdf`)
+    setDownloading(true)
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`)
+      const data = await res.json()
+      if (!res.ok || !data.content) return
+      await exportPdf(doc.title, data.content, `${slug(doc.title)}.pdf`)
+    } finally {
+      setDownloading(false)
+    }
   }
 
   async function handleSendToOfficer() {
@@ -320,18 +405,11 @@ function DocRow({ doc, onDelete }: { doc: Doc; onDelete: () => void }) {
               {sendingPO ? 'SENDING…' : 'SEND TO PO →'}
             </button>
           )}
-          <button onClick={handleDownload} style={btn}>↓ PDF</button>
-          <button onClick={handleView} style={btn}>{loading ? '…' : expanded ? 'HIDE' : 'VIEW'}</button>
+          <button onClick={handleDownload} disabled={downloading} style={btn}>{downloading ? '…' : '↓ PDF'}</button>
+          <button onClick={onEdit} style={{ ...btn, borderColor: 'rgba(0,0,0,0.25)', color: '#0A0A0A' }}>EDIT</button>
           <button onClick={onDelete} title="Delete" style={{ ...btn, color: crimson, borderColor: 'rgba(196,18,48,0.25)' }}>✕</button>
         </div>
       </div>
-      {expanded && content && (
-        <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: '0 16px 16px' }}>
-          <pre style={{ background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.06)', padding: 14, fontSize: 10, color: 'rgba(0,0,0,0.65)', whiteSpace: 'pre-wrap', overflow: 'auto', maxHeight: 400, fontFamily: mono, lineHeight: 1.7, margin: '12px 0 0' }}>
-            {content}
-          </pre>
-        </div>
-      )}
     </div>
   )
 }

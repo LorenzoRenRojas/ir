@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { downloadTextAsPdf } from '@/lib/pdf'
 import MetatronIcon from '@/components/MetatronIcon'
 import MetatronLoader from '@/components/MetatronLoader'
 
@@ -274,7 +273,11 @@ export default function PipelinePage() {
     const res = await fetch(`/api/documents/${p.id}`)
     const data = await res.json()
     if (!data.content) return
-    await downloadTextAsPdf(p.title, data.content, `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`)
+    const filename = `${p.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`
+    const { downloadHtmlAsPdf, downloadTextAsPdf } = await import('@/lib/pdf')
+    // New documents are HTML; older ones may be plain text.
+    if (/^\s*</.test(data.content)) await downloadHtmlAsPdf(p.title, data.content, filename)
+    else await downloadTextAsPdf(p.title, data.content, filename)
   }
 
   async function handleSendToOfficer(c: SavedContract, p: Proposal) {

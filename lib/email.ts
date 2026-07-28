@@ -203,7 +203,10 @@ export async function sendProposalEmail(
   content: string,
   viewUrl: string
 ): Promise<void> {
-  const previewLines = esc(content.split('\n').slice(0, 8).join('\n'))
+  // Content is an HTML fragment — strip tags for a clean text preview snippet.
+  const previewLines = esc(
+    content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 360)
+  )
 
   const html = `
 <!DOCTYPE html>
@@ -522,6 +525,11 @@ export async function sendProposalToOfficerEmail(
   solicitationNumber: string,
   content: string
 ): Promise<void> {
+  // New documents are HTML fragments (render directly); legacy docs are plain
+  // text (escape into a monospace block).
+  const body = /^\s*</.test(content)
+    ? `<div style="font-size:14px;line-height:1.7;color:#1a1a1a;">${content}</div>`
+    : `<pre style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;margin:0 0 24px;">${esc(content)}</pre>`
   const html = `
 <!DOCTYPE html>
 <html>
@@ -542,7 +550,7 @@ export async function sendProposalToOfficerEmail(
               <a href="mailto:${encodeURIComponent(senderEmail)}" style="color:#1a1a1a;">${esc(senderEmail)}</a> or simply reply to this email.
             </p>
             <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 24px;">
-            <pre style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;margin:0 0 24px;">${esc(content)}</pre>
+            ${body}
             <hr style="border:none;border-top:1px solid #dddddd;margin:0 0 16px;">
             <p style="font-size:12px;color:#888888;line-height:1.6;margin:0;">
               Sent on behalf of ${esc(companyName)} via IR (ir-gov.app). Reply-to is set to the sender.
