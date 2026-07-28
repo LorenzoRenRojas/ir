@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { Contract } from '@/lib/sam-api'
 import MetatronIcon from '@/components/MetatronIcon'
 import MetatronLoader from '@/components/MetatronLoader'
+import { PinIcon, TrendUpIcon, SubAgencyIcon, RefreshIcon } from '@/components/icons'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -51,7 +52,8 @@ function topMatchReason(contract: Contract): string | null {
   return top?.text ?? null
 }
 
-// Compact NAICS ✓ · SET-ASIDE ✓ · SIZE ~ · GEO ✗ row so users see WHY a
+// Compact NAICS / SET-ASIDE / SIZE / GEO row with a status dot per factor
+// (solid = full credit, ring = partial, faint = none) so users see WHY a
 // contract scored without clicking into the breakdown.
 function BreakdownBadges({ contract }: { contract: Contract }) {
   const bd = contract.matchBreakdown
@@ -69,15 +71,17 @@ function BreakdownBadges({ contract }: { contract: Contract }) {
       {factors.map(f => {
         const full = f.score >= f.max
         const none = f.score === 0
-        const mark = full ? '✓' : none ? '✗' : '~'
-        const color = full ? '#16a34a' : none ? 'rgba(0,0,0,0.2)' : '#b45309'
+        // Status is carried by a small dot, not a glyph: solid = full credit,
+        // ring = partial, faint hollow = none. Reads as a data indicator, not text.
+        const color = full ? '#16a34a' : none ? 'rgba(0,0,0,0.22)' : '#b45309'
         return (
           <span
             key={f.label}
             title={`${f.score}/${f.max} points`}
-            style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 6px', color, background: full ? 'rgba(22,163,74,0.06)' : 'rgba(0,0,0,0.02)', border: `1px solid ${full ? 'rgba(22,163,74,0.2)' : 'rgba(0,0,0,0.07)'}`, fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', color, background: full ? 'rgba(22,163,74,0.06)' : 'rgba(0,0,0,0.02)', border: `1px solid ${full ? 'rgba(22,163,74,0.2)' : 'rgba(0,0,0,0.07)'}`, fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}
           >
-            {f.label} {mark}
+            <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: full || !none ? color : 'transparent', border: full || !none ? 'none' : `1.5px solid ${color}`, boxSizing: 'border-box' }} />
+            {f.label}
           </span>
         )
       })}
@@ -176,7 +180,7 @@ function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { c
       {/* Match reason */}
       {reason && (
         <div style={{ fontSize: 10, color: '#16a34a', letterSpacing: '0.04em', fontFamily: 'var(--font-geist-mono, monospace)', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ opacity: 0.7 }}>↑</span> {reason}
+          <TrendUpIcon size={11} style={{ flexShrink: 0, opacity: 0.85 }} /> {reason}
         </div>
       )}
 
@@ -184,14 +188,18 @@ function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { c
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.55)', fontWeight: 500, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>{contract.agency}</div>
         {contract.subAgency && contract.subAgency !== contract.agency && (
-          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>↳ {contract.subAgency}</div>
+          <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <SubAgencyIcon size={11} style={{ flexShrink: 0, opacity: 0.6 }} />{contract.subAgency}
+          </div>
         )}
         <div style={{ display: 'flex', gap: 12, marginTop: 2, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span style={{ fontSize: 11, color: '#0A0A0A', fontWeight: 700, fontFamily: 'var(--font-geist-mono, monospace)' }}>
             {contract.value ? formatValue(contract.value) : 'Value not posted'}
           </span>
           {contract.placeOfPerformance && contract.placeOfPerformance !== 'TBD' && (
-            <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>📍 {contract.placeOfPerformance}</span>
+            <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <PinIcon size={11} style={{ flexShrink: 0, opacity: 0.7 }} />{contract.placeOfPerformance}
+            </span>
           )}
         </div>
         {contract.naicsDescription && (
@@ -449,9 +457,11 @@ export default function DashboardPage() {
             </span>
             <button
               onClick={fetchContracts}
-              style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', fontFamily: 'var(--font-geist-mono, monospace)' }}
+              title="Refresh"
+              aria-label="Refresh feed"
+              style={{ display: 'inline-flex', alignItems: 'center', color: 'rgba(0,0,0,0.3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
             >
-              ↺
+              <RefreshIcon size={13} />
             </button>
           </div>
         )}

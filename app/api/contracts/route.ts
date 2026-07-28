@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { fetchContracts } from '@/lib/sam-api'
+import { maybeSyncContracts } from '@/lib/contract-refresh'
 import { rateLimit, ipKey } from '@/lib/rate-limit'
 import { calculateMatchScore, isSetAsideEligible, type CompanyProfile } from '@/lib/matching'
 import { prisma } from '@/lib/prisma'
@@ -83,6 +85,12 @@ export async function GET(req: NextRequest) {
         }
       }
     }
+
+    // Keep the store warm off the back of real traffic: after this response is
+    // sent, refresh the ContractCache if it's stale or empty. Throttled + locked
+    // globally so it never blocks the user and never stampedes SAM.gov's budget.
+    // This is what makes logins cold-start-free between scheduled cron syncs.
+    after(() => maybeSyncContracts())
 
     let contracts = await fetchContracts(profile ?? undefined)
 

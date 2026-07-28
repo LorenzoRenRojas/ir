@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { fetchContracts, syncContractsToDb } from '@/lib/sam-api'
+import { fetchContracts } from '@/lib/sam-api'
+import { maybeSyncContracts } from '@/lib/contract-refresh'
 import { calculateMatchScore, type CompanyProfile } from '@/lib/matching'
 import { sendDailyDigestEmail, sendAdminAlertEmail, type DigestMatch } from '@/lib/email'
 import { isAuthorizedCron, ADMIN_EMAIL } from '@/lib/cron'
@@ -40,9 +41,12 @@ export async function GET(req: NextRequest) {
   // Full-market sync first: a few 1000-row pulls refresh the ContractCache
   // store, so the digest (and every dashboard view today) scores the whole
   // recent market instead of a 100-contract window.
+  // Goes through maybeSyncContracts so the shared throttle/lock timestamp stays
+  // coherent with the dedicated sync cron and traffic-driven background refresh.
   let syncStats: { synced: number; total: number; pruned: number } | null = null
   try {
-    syncStats = await syncContractsToDb()
+    const r = await maybeSyncContracts({ force: true })
+    syncStats = r.stats ?? null
   } catch (err) {
     problems.push(`Contract sync failed (digest will use existing data): ${err instanceof Error ? err.message : String(err)}`)
   }
