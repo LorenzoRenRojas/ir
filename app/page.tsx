@@ -25,16 +25,16 @@ const METATRON_LINES = ALL_PTS.flatMap((p, i) =>
 // ─── Content ───────────────────────────────────────────────────────────────
 const STATS = [
   { value: '$755B',  label: 'ANNUAL MARKET',      sub: 'U.S. federal procurement, FY2025' },
-  { value: '261K+',  label: 'ACTIVE NOTICES',     sub: 'live solicitations on SAM.gov' },
+  { value: '30K+',   label: 'OPEN SOLICITATIONS', sub: 'active on SAM.gov, scored daily' },
   { value: '400+',   label: 'FEDERAL AGENCIES',   sub: 'posting opportunities across all branches' },
   { value: '5',      label: 'WIN FACTORS SCORED', sub: 'per opportunity, per company profile' },
 ]
 
 const HOW = [
-  { n: '01', title: 'PROFILE INGESTION',   body: 'Input your NAICS codes, certifications, clearance levels, and past performance once. We map your full capability matrix against every open solicitation in the federal database.' },
-  { n: '02', title: 'SIGNAL PROCESSING',   body: 'Every contract scored against your profile in real time. NAICS depth, set-aside eligibility, contract size, and geography — weighted algorithmically to surface only what you can win.' },
-  { n: '03', title: 'MATCH DELIVERY',      body: 'Ranked opportunities in your dashboard, plus a daily email the morning new matches post. Win probability, incumbent detection, and automatic deadline alerts at 3 days and 24 hours.' },
-  { n: '04', title: 'PROPOSAL ENGINE',     body: 'A guided questionnaire turns your answers into a formatted 4-volume federal proposal — technical, management, past performance, and price. Generate capability statements in one click. Send straight to the contracting officer.' },
+  { n: '01', title: 'BUILD YOUR PROFILE',  body: 'Tell us your NAICS codes, certifications, clearances, and past performance once — or just paste your SAM.gov UEI and we pull it for you. That becomes the yardstick every contract is measured against.' },
+  { n: '02', title: 'WE SCORE THE MARKET', body: 'Every open contract is scored against your profile — NAICS fit, set-aside eligibility, contract size, and geography — so you see only the work you can realistically win, ranked best-first.' },
+  { n: '03', title: 'GET YOUR MATCHES',    body: 'Your best matches land in your dashboard and in a morning email the day they post — with a win-probability read, who the incumbent is, and deadline reminders at 3 days and 24 hours out.' },
+  { n: '04', title: 'DRAFT & SEND',        body: 'Answer a short guided questionnaire and IR turns it into a formatted, four-volume federal proposal — plus one-click capability statements. Review it, then send it straight to the contracting officer.' },
 ]
 
 // Head-to-head vs the incumbents
@@ -121,7 +121,7 @@ export default function LandingPage() {
       <section id="how" style={{ padding: '100px 32px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ marginBottom: 64 }}>
-            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>SYSTEM ARCHITECTURE</div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>FROM PROFILE TO PROPOSAL</div>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>How IR works</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
@@ -255,7 +255,7 @@ export default function LandingPage() {
                   className={plan.popular ? 'btn-primary' : 'btn-ghost'}
                   style={{ display: 'block', textAlign: 'center', padding: '14px', fontSize: 11 }}
                 >
-                  {plan.tier === 'enterprise' ? 'CONTACT →' : 'DEPLOY →'}
+                  {plan.tier === 'enterprise' ? 'CONTACT →' : 'START FREE →'}
                 </Link>
               </div>
             ))}

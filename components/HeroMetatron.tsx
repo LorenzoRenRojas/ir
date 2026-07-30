@@ -101,7 +101,7 @@ export default function HeroMetatron() {
           inset: 0,
           width: '100%',
           height: '100%',
-          opacity: 0.38,
+          opacity: 0.3,
           zIndex: 0,
           pointerEvents: 'none',
         }}
@@ -188,7 +188,7 @@ export default function HeroMetatron() {
           fontFamily: mono,
           letterSpacing: '0.03em',
         }}>
-          MATCH SCORING · WIN PROBABILITY · DAILY ALERTS · PROPOSAL DRAFTS — ONE TERMINAL
+          MATCH SCORING · WIN PROBABILITY · DAILY ALERTS · PROPOSAL DRAFTS — IN ONE PLACE
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 // Set to true to show coming soon page to the public
-const COMING_SOON = true
+const COMING_SOON = false
 
 // Pages that bypass the coming soon gate (auth flows still work)
 const COMING_SOON_BYPASS = [
