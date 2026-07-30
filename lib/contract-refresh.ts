@@ -23,6 +23,11 @@ const LOCK_KEY = 'contracts:sync-lock'
 // the budget is spent.
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000
 const LOCK_TTL_MS = 5 * 60 * 1000
+// Below this many live contracts the store is "starved" and must refresh on the
+// next request regardless of the interval throttle — otherwise a store that has
+// drained (e.g. crons not running because CRON_SECRET is unset) can get stuck
+// thin, since a non-empty store would otherwise read as "fresh".
+const MIN_HEALTHY_STORE = 400
 
 async function kvGetNumber(key: string): Promise<number | null> {
   try {
@@ -45,12 +50,12 @@ async function kvSetNumber(key: string, value: number): Promise<void> {
   } catch { /* pre-migration or DB hiccup — throttling simply won't persist */ }
 }
 
-async function storeIsEmpty(): Promise<boolean> {
+async function storeIsThin(): Promise<boolean> {
   try {
     const count = await prisma.contractCache.count({
       where: { OR: [{ deadline: { gte: new Date() } }, { deadline: null }] },
     })
-    return count === 0
+    return count < MIN_HEALTHY_STORE
   } catch {
     return false // can't tell — assume warm rather than force a sync
   }
@@ -70,11 +75,11 @@ export async function maybeSyncContracts(opts?: { force?: boolean }): Promise<Re
 
   const now = Date.now()
 
-  // Interval throttle — but an EMPTY store always warrants an immediate sync,
-  // even inside the interval (that's the true cold start we exist to prevent).
+  // Interval throttle — but a STARVED store always warrants an immediate sync,
+  // even inside the interval (that's the cold/thin start we exist to prevent).
   if (!opts?.force) {
     const last = await kvGetNumber(LAST_SYNC_KEY)
-    if (last && now - last < MIN_INTERVAL_MS && !(await storeIsEmpty())) {
+    if (last && now - last < MIN_INTERVAL_MS && !(await storeIsThin())) {
       return { ran: false, reason: 'fresh' }
     }
   }
