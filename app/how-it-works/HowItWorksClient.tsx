@@ -131,9 +131,9 @@ export default function HowItWorksClient() {
 
         {/* Hero */}
         <section ref={hero.ref} style={{ padding: '96px 0 72px' }}>
-          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 20px' }}>SYSTEM ARCHITECTURE</p>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 20px' }}>HOW IR WORKS</p>
           <h1 style={{ fontSize: 'clamp(34px, 5.5vw, 64px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.08, margin: '0 0 20px', fontFamily: sans }}>
-            <CountUp to={261} suffix=",000 notices in." started={hero.inView} duration={1200} /><br />
+            <CountUp to={30} suffix=",000+ open notices in." started={hero.inView} duration={1200} /><br />
             <span style={{ color: crimson }}>5 worth your time out.</span>
           </h1>
           <p style={{ fontSize: 17, lineHeight: 1.8, color: 'rgba(255,255,255,0.45)', maxWidth: 640, margin: 0, fontFamily: sans }}>

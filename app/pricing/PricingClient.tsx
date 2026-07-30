@@ -268,8 +268,9 @@ export default function PricingClient() {
             Priced like software.<br /><span style={{ color: crimson }}>Not like a consultancy.</span>
           </h1>
           <p style={{ fontSize: 17, lineHeight: 1.8, color: 'rgba(255,255,255,0.45)', maxWidth: 620, margin: 0, fontFamily: sans }}>
-            Legacy GovCon intelligence starts at four figures a year and a sales call. IR starts free,
-            and every tier costs less than the tools that do less.
+            Legacy GovCon intelligence starts at four figures a year and a sales call. IR starts free —
+            and every tier does more than the tools priced above it, because the intelligence is
+            automated, not staffed.
           </p>
         </section>
 
