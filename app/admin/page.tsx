@@ -20,12 +20,12 @@ const label: React.CSSProperties = {
   fontFamily: mono,
 }
 
-function StatCard({ title, value, sub }: { title: string; value: string | number; sub?: string }) {
+function StatCard({ title, value, sub, warn }: { title: string; value: string | number; sub?: string; warn?: boolean }) {
   return (
-    <div style={{ border: '1px solid rgba(255,255,255,0.08)', padding: '20px 24px', minWidth: 150, flex: 1 }}>
+    <div style={{ border: `1px solid ${warn ? 'rgba(196,18,48,0.4)' : 'rgba(255,255,255,0.08)'}`, padding: '20px 24px', minWidth: 150, flex: 1 }}>
       <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.3)', fontFamily: mono }}>{title}</div>
-      <div style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 2px', fontFamily: sans }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: mono }}>{sub}</div>}
+      <div style={{ fontSize: 32, fontWeight: 800, color: warn ? '#C41230' : '#fff', margin: '8px 0 2px', fontFamily: sans }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: warn ? '#C41230' : 'rgba(255,255,255,0.25)', fontFamily: mono }}>{sub}</div>}
     </div>
   )
 }
@@ -73,14 +73,18 @@ export default async function AdminPage() {
     emailLogsAvailable = false
   }
 
-  // Contract store status
+  // Contract store status — count the LIVE (non-expired) contracts the feed
+  // actually serves, and flag a starved store so it's never silently empty.
   let storeCount: number | string = '—'
+  let liveCount = 0
   let lastSync: Date | null = null
   try {
-    storeCount = await prisma.contractCache.count()
+    liveCount = await prisma.contractCache.count({ where: { OR: [{ deadline: { gte: new Date() } }, { deadline: null }] } })
+    storeCount = liveCount
     const latest = await prisma.contractCache.findFirst({ orderBy: { updatedAt: 'desc' }, select: { updatedAt: true } })
     lastSync = latest?.updatedAt ?? null
   } catch { /* table missing pre-migration */ }
+  const storeStarved = typeof storeCount === 'number' && liveCount < 400
 
   // SAM.gov daily budget
   const quota = await samQuotaStatus()
@@ -179,9 +183,12 @@ export default async function AdminPage() {
         <div style={label}>LIVE SYSTEMS</div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
           <StatCard
-            title="CONTRACT STORE"
+            title="CONTRACT STORE (LIVE)"
             value={storeCount}
-            sub={lastSync ? `last sync ${new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'never synced — run SYNC CONTRACTS NOW'}
+            warn={storeStarved}
+            sub={storeStarved
+              ? '⚠ STARVED — run SYNC CONTRACTS NOW / set CRON_SECRET'
+              : lastSync ? `healthy · last sync ${new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'never synced — run SYNC CONTRACTS NOW'}
           />
           <StatCard
             title="SAM.GOV BUDGET TODAY"

@@ -383,10 +383,9 @@ const fmtSamDate = (d: Date) =>
 
 // One page from SAM.gov. limit can go up to 1000 per request, so a handful of
 // requests covers the full recent market instead of the old single-100 window.
-async function fetchSamPage(apiKey: string, offset: number, limit: number, daysBack: number): Promise<{ contracts: Contract[]; total: number }> {
-  const toDate = new Date()
-  const fromDate = new Date()
-  fromDate.setDate(fromDate.getDate() - daysBack)
+async function fetchSamPage(apiKey: string, offset: number, limit: number, daysBack: number, window?: { from: Date; to: Date }): Promise<{ contracts: Contract[]; total: number }> {
+  const toDate = window?.to ?? new Date()
+  const fromDate = window?.from ?? (() => { const d = new Date(); d.setDate(d.getDate() - daysBack); return d })()
 
   const params = new URLSearchParams({
     api_key: apiKey,
@@ -442,7 +441,7 @@ async function fetchSamPage(apiKey: string, offset: number, limit: number, daysB
 // in ContractCache. Called by the daily cron; a few requests per day keeps us
 // far inside SAM.gov rate limits while scoring thousands of contracts instead
 // of 100.
-export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number; total: number; pruned: number; quotaBlocked: boolean }> {
+export async function syncContractsToDb(opts?: { maxRequests?: number }): Promise<{ synced: number; total: number; pruned: number; quotaBlocked: boolean }> {
   const apiKey = process.env.SAM_GOV_API_KEY
   if (!apiKey) throw new Error('SAM_GOV_API_KEY is not set')
 
@@ -450,24 +449,22 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
   const { tryConsumeSamRequests } = await import('./sam-quota')
   const PAGE = 1000
   const DAYS_BACK = 45
+  // SAM.gov serves ~1000 records per query and offset paging past the first page
+  // returns nothing — so we can't get the full 45-day window in one query. We
+  // pull a broad query for the newest slice + the market total, then DEEPEN
+  // coverage by querying older single-day windows (each under the ~1000 cap),
+  // newest-first, bounded by a per-sync request budget.
+  const maxRequests = opts?.maxRequests ?? 5
 
   let synced = 0
   let total = 0
   let quotaBlocked = false
+  let requests = 0
 
-  for (let page = 0; page < maxPages; page++) {
-    // Critical: the market sync may use the full budget (on-demand lookups are
-    // the ones that leave a reserve so this call is never starved).
-    if (!(await tryConsumeSamRequests(1, { critical: true }))) { quotaBlocked = true; break }
-    const { contracts, total: reported } = await fetchSamPage(apiKey, page * PAGE, PAGE, DAYS_BACK)
-    total = reported
-    if (contracts.length === 0) break
-
-    // Batch the upserts: one-at-a-time awaits mean one Turso round trip per
-    // contract (~3,000/run) and were eating half the cron's 300s wall clock.
-    // Row data is kept separate from the Prisma calls so the fallback below
-    // can rebuild fresh upserts — a PrismaPromise handed to $transaction is
-    // consumed and must never be awaited again.
+  // Shared upsert: chunked $transaction with per-row fallback. Rows are built
+  // separately from the Prisma calls so the fallback rebuilds fresh upserts —
+  // a PrismaPromise handed to $transaction is consumed and must not be re-awaited.
+  const upsertContracts = async (contracts: Contract[]): Promise<number> => {
     const rows = contracts.filter(c => c.noticeId).map(c => {
       const postedDate = new Date(c.postedDate)
       // Date-only deadlines ("2026-07-15") parse as UTC midnight, which would
@@ -493,28 +490,51 @@ export async function syncContractsToDb(maxPages = 3): Promise<{ synced: number;
         update: row.data,
         create: { noticeId: row.noticeId, ...row.data },
       })
+    let written = 0
     const CHUNK = 100
     for (let i = 0; i < rows.length; i += CHUNK) {
       const chunk = rows.slice(i, i + CHUNK)
       try {
         await prisma.$transaction(chunk.map(upsertRow))
-        synced += chunk.length
+        written += chunk.length
       } catch (err) {
-        // Turso can reject batch transactions — fall back to per-row upserts
-        // so one bad batch doesn't fail the whole sync and page the admin
         console.error(`Contract sync: batch upsert failed (rows ${i}–${i + chunk.length - 1}), retrying individually:`, err)
         for (const row of chunk) {
-          try {
-            await upsertRow(row)
-            synced++
-          } catch (rowErr) {
+          try { await upsertRow(row); written++ } catch (rowErr) {
             console.error(`Contract sync: skipping notice ${row.noticeId}:`, rowErr)
           }
         }
       }
     }
+    return written
+  }
 
-    if (contracts.length < PAGE) break // last page
+  // Phase 1 — broad 45-day query: the newest ~1000 notices + the market total
+  // for the admin readout. (Kept as-is; this is the proven working pull.)
+  if (await tryConsumeSamRequests(1, { critical: true })) {
+    requests++
+    const { contracts, total: reported } = await fetchSamPage(apiKey, 0, PAGE, DAYS_BACK)
+    total = reported
+    synced += await upsertContracts(contracts)
+  } else {
+    quotaBlocked = true
+  }
+
+  // Phase 2 — deepen with older single-day windows (each under SAM's ~1000 cap).
+  // Start at day 2 (Phase 1's newest slice already covers roughly the last two
+  // days), go newest-first, and stop on budget. Per-chunk try/catch so one bad
+  // day never fails the whole sync.
+  for (let d = 2; d < DAYS_BACK && requests < maxRequests && !quotaBlocked; d++) {
+    if (!(await tryConsumeSamRequests(1, { critical: true }))) { quotaBlocked = true; break }
+    requests++
+    const to = new Date(); to.setHours(23, 59, 59, 999); to.setDate(to.getDate() - d)
+    const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - d)
+    try {
+      const { contracts } = await fetchSamPage(apiKey, 0, PAGE, 0, { from, to })
+      synced += await upsertContracts(contracts)
+    } catch (err) {
+      console.error(`Contract sync: day-chunk d=${d} failed (continuing):`, err)
+    }
   }
 
   // Prune: response window passed, or posting has aged out entirely
