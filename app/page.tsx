@@ -96,11 +96,41 @@ export default function LandingPage() {
             &ldquo;The tools that find winnable government contracts cost $10,000 a year and a sales call to even see pricing. So the same big firms keep winning. <span style={{ color: crimson }}>IR exists to end that.</span>&rdquo;
           </blockquote>
           <div style={{ width: 48, height: 3, background: crimson, margin: '0 auto 40px' }} />
-          <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.48)', maxWidth: 600, margin: '0 auto' }}>
+          <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.48)', maxWidth: 620, margin: '0 auto' }}>
             Federal contracting has been gated behind relationships, insider tools, and armies of proposal
-            writers for decades. IR gives a five-person company the same intelligence a Fortune 500
-            capture team has — for the price of a phone bill.
+            writers for decades. IR hands a five-person shop the same intelligence a Fortune 500 capture
+            team runs on — and the tools to act on it the same day. We got here first.
+            <span style={{ color: '#0A0A0A', fontWeight: 600 }}> Use us before we cost more.</span>
           </p>
+        </div>
+      </section>
+
+      {/* ── CAPITAL · INFORMATION · EXECUTION ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', padding: '100px 32px', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 56 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>WHAT WE PUT IN YOUR HANDS</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 16px' }}>
+              Capital. Information. <span style={{ color: crimson }}>Execution.</span>
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.8, color: 'rgba(0,0,0,0.48)', maxWidth: 620, margin: 0 }}>
+              The three things that win federal contracts. Most tools hand you one of them. IR is all three —
+              the reason a small shop can move like a capture team.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+            {[
+              { n: 'I', title: 'CAPITAL', body: 'Every hour spent hunting is capital burned, and every legacy invoice is money out the door. IR surfaces winnable work on day one and keeps that time — and the five-figure fees the incumbents charge — inside your business.' },
+              { n: 'II', title: 'INFORMATION', body: 'We read the entire federal market so you don’t have to — every open solicitation, every contract about to expire, every incumbent and what they were paid — scored against your company and refreshed daily.' },
+              { n: 'III', title: 'EXECUTION', body: 'Knowing isn’t winning. IR turns a match into a submitted proposal in the same sitting: capability statements, four-volume drafts, sent straight to the contracting officer. Act immediately, not next quarter.' },
+            ].map((c) => (
+              <div key={c.title} style={{ background: '#fff', padding: '48px 40px' }}>
+                <div style={{ fontFamily: mono, fontSize: 11, color: 'rgba(0,0,0,0.18)', letterSpacing: '0.14em', marginBottom: 22 }}>{c.n}</div>
+                <h3 style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: crimson, margin: '0 0 18px' }}>{c.title}</h3>
+                <p style={{ fontSize: 15, lineHeight: 1.8, color: 'rgba(0,0,0,0.55)', margin: 0 }}>{c.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

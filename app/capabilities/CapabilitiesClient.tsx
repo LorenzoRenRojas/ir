@@ -223,6 +223,95 @@ function ProposalStudio() {
   )
 }
 
+// ─── The honest win-odds math ─────────────────────────────────────────────────
+// Federal contracting is a numbers game: P(win ≥1 in a year) = 1 - (1-p)^n,
+// where p = per-bid win rate and n = well-fit bids submitted. A tool moves n
+// (and, secondarily, p). We show our work — inputs, formula, and caveats —
+// because a defensible model beats an inflated claim (marketing-claims policy).
+const WIN_P = 0.10        // conservative per-bid win rate on a well-fit opportunity
+const WIN_N_WITHOUT = 4   // well-fit bids/yr without a discovery + drafting tool
+const WIN_N_WITH = 12     // well-fit bids/yr with IR
+const oddsPct = (n: number) => Math.round((1 - Math.pow(1 - WIN_P, n)) * 100)
+
+function WinOdds() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.2)
+  const without = oddsPct(WIN_N_WITHOUT)   // 34
+  const withIr = oddsPct(WIN_N_WITH)       // 72
+  const mult = (withIr / without).toFixed(1)
+
+  const assumptions = [
+    { k: 'p — win rate per well-fit bid', v: '~10%', why: 'Conservative mid-range for a small business on a well-matched federal opportunity. Tight set-asides run higher; wide-open competitions run lower.' },
+    { k: 'n — well-fit bids / year WITHOUT a tool', v: '≈ 4', why: 'Manual SAM.gov searching is slow, good opportunities get missed, and writing each proposal from scratch is the real bottleneck — so most small shops submit only a handful of real bids a year.' },
+    { k: 'n — well-fit bids / year WITH IR', v: '≈ 12', why: 'Scored matching surfaces ~3× more genuinely winnable work, the eligibility filter kills wasted effort, Recompete Radar adds a pre-RFP pipeline, and proposal drafting removes the writing bottleneck.' },
+  ]
+
+  return (
+    <section ref={ref} style={{ padding: '72px 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: crimson, margin: '0 0 14px', fontFamily: mono }}>THE HONEST MATH</p>
+      <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+        How much does IR actually move your odds?
+      </h2>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 40px', maxWidth: 680, fontFamily: sans, lineHeight: 1.7 }}>
+        We&apos;ll show our work. Winning federal contracts comes down to two levers: how many
+        genuinely winnable bids you get in front of, and how many you can actually submit. IR moves
+        both — so here&apos;s the honest arithmetic, inputs and caveats included.
+      </p>
+
+      {/* The two outcomes */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 28 }}>
+        <div style={{ background: surface, padding: '36px 32px' }}>
+          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', marginBottom: 14 }}>WITHOUT A TOOL — ODDS OF A WIN THIS YEAR</div>
+          <div style={{ fontSize: 52, fontWeight: 800, color: 'rgba(255,255,255,0.4)', fontFamily: sans, letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <CountUp to={without} suffix="%" started={inView} duration={900} />
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 12 }}>≈ 4 well-fit bids · 10% each</div>
+        </div>
+        <div style={{ background: surface, padding: '36px 32px', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: 0, left: 0, width: 40, height: 3, background: crimson }} />
+          <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.16em', color: crimson, marginBottom: 14 }}>WITH IR — ODDS OF A WIN THIS YEAR</div>
+          <div style={{ fontSize: 52, fontWeight: 800, color: '#fff', fontFamily: sans, letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <CountUp to={withIr} suffix="%" started={inView} duration={900} />
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 12 }}>≈ 12 well-fit bids · 10% each</div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 'clamp(18px, 2.4vw, 26px)', fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 40px', fontFamily: sans, color: '#fff' }}>
+        Roughly <span style={{ color: crimson }}>{mult}× more likely</span> to win at least one contract this year — driven mainly by submitting ~3× more winnable bids.
+      </p>
+
+      {/* Show the work */}
+      <div style={{ border: '1px solid rgba(255,255,255,0.09)', background: '#111', padding: '28px 28px', marginBottom: 20 }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.4)', marginBottom: 18 }}>HOW WE GOT THERE</div>
+        <div style={{ fontFamily: mono, fontSize: 15, color: '#fff', marginBottom: 24, letterSpacing: '0.02em' }}>
+          P(win ≥ 1 this year) = 1 − (1 − <span style={{ color: crimson }}>p</span>)<sup style={{ color: crimson }}>n</sup>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {assumptions.map((a) => (
+            <div key={a.k} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'baseline', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 16 }}>
+              <div>
+                <div style={{ fontFamily: mono, fontSize: 12, color: '#fff', marginBottom: 6, letterSpacing: '0.02em' }}>{a.k}</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.4)', fontFamily: sans, lineHeight: 1.6 }}>{a.why}</div>
+              </div>
+              <div style={{ fontFamily: sans, fontSize: 20, fontWeight: 800, color: crimson, whiteSpace: 'nowrap' }}>{a.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Brutal honesty */}
+      <div style={{ border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.05)', padding: '22px 26px' }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.14em', color: crimson, marginBottom: 12 }}>WHERE THIS BREAKS — READ IT</div>
+        <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <li style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: sans, lineHeight: 1.65 }}>This is a model, not a guarantee. IR does not write your past performance, set your price, or promise an award.</li>
+          <li style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: sans, lineHeight: 1.65 }}>It lives or dies on one thing: you actually bidding. We remove the friction — you still pull the trigger.</li>
+          <li style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: sans, lineHeight: 1.65 }}>We used conservative inputs. Your real numbers move with your NAICS competition, set-aside status, and capacity to deliver. Better targeting and earlier positioning push the odds higher than the flat 10% we assumed.</li>
+        </ul>
+      </div>
+    </section>
+  )
+}
+
 function PriceChart() {
   const { ref, inView } = useInView<HTMLDivElement>(0.3)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -373,14 +462,19 @@ export default function CapabilitiesClient() {
         {/* AI Proposal Studio — the draft → review → send flow */}
         <ProposalStudio />
 
+        {/* The honest win-odds math */}
+        <WinOdds />
+
         {/* Price chart */}
         <section style={{ padding: '72px 0' }}>
-          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>ANNUAL COST</p>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>WHY WE COST LESS</p>
           <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
-            The same intelligence. <span style={{ color: crimson }}>A fraction of the invoice.</span>
+            Built better, so it costs less. <span style={{ color: crimson }}>Not the other way around.</span>
           </h2>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 560, fontFamily: sans, lineHeight: 1.7 }}>
-            What a year of GovCon intelligence costs, tool by tool.
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 600, fontFamily: sans, lineHeight: 1.7 }}>
+            Legacy platforms price in analyst desks, sales teams, and annual lock-in. We automated the
+            intelligence and skipped the sales call — so the same market coverage costs a fraction, and
+            every dollar you don&apos;t hand a vendor is capital back in your business.
           </p>
           <PriceChart />
         </section>
