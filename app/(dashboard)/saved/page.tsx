@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import MetatronIcon from '@/components/MetatronIcon'
 import MetatronLoader from '@/components/MetatronLoader'
+import { PageHeader, StatStrip } from '@/components/layout/PageHeader'
 
 interface SavedContract {
   id: string
@@ -308,61 +309,55 @@ export default function PipelinePage() {
   }
 
   const visible = filter === 'all' ? contracts : contracts.filter(c => c.status === filter)
-  const activeValue = contracts.filter(c => ['saved', 'pursuing', 'submitted'].includes(c.status)).reduce((s, c) => s + (c.value ?? 0), 0)
+  const activeContracts = contracts.filter(c => ['saved', 'pursuing', 'submitted'].includes(c.status))
+  const activeValue = activeContracts.reduce((s, c) => s + (c.value ?? 0), 0)
   const wonValue = contracts.filter(c => c.status === 'won').reduce((s, c) => s + (c.value ?? 0), 0)
 
   return (
-    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 10, fontFamily: mono }}>BID PIPELINE — YOUR PURSUIT WORKSPACE</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: sans }}>Pipeline</h1>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link href="/documents" style={btn}>☰ DOC SUITE →</Link>
-        </div>
-      </div>
+    <div style={{ padding: '30px 40px 48px', minHeight: '100vh' }}>
+      <PageHeader
+        kicker="BID PIPELINE — YOUR PURSUIT WORKSPACE"
+        title="Pipeline"
+        subtitle="Track every pursuit from first look to award, with live value and deadlines."
+        right={<Link href="/documents" style={btn}>DOC SUITE →</Link>}
+      />
 
-      {/* Pipeline value strip */}
+      {/* Pipeline readout */}
       {!loading && contracts.length > 0 && (
-        <div style={{ display: 'flex', gap: 1, background: 'rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)', marginBottom: 20, flexWrap: 'wrap' }}>
-          <div style={{ background: '#fff', padding: '16px 24px', flex: '1 1 140px' }}>
-            <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>ACTIVE PIPELINE</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#0A0A0A', fontFamily: sans }}>{activeValue ? formatValue(activeValue) : '$0'}</div>
-          </div>
-          <div style={{ background: '#fff', padding: '16px 24px', flex: '1 1 140px' }}>
-            <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>WON</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a', fontFamily: sans }}>{wonValue ? formatValue(wonValue) : '$0'}</div>
-          </div>
-          {STAGES.map(s => {
-            const n = contracts.filter(c => c.status === s.key).length
-            return (
-              <div key={s.key} style={{ background: '#fff', padding: '16px 24px', flex: '1 1 100px' }}>
-                <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>{s.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: n > 0 ? s.color : 'rgba(0,0,0,0.15)', fontFamily: sans }}>{n}</div>
-              </div>
-            )
-          })}
+        <div style={{ marginBottom: 22 }}>
+          <StatStrip items={[
+            { label: 'ACTIVE PIPELINE', value: activeValue ? formatValue(activeValue) : '$0' },
+            { label: 'WON', value: wonValue ? formatValue(wonValue) : '$0', accent: 'green' },
+            { label: 'ACTIVE BIDS', value: String(activeContracts.length), accent: 'muted' },
+            { label: 'TOTAL TRACKED', value: String(contracts.length), accent: 'muted' },
+          ]} />
         </div>
       )}
 
-      {/* Stage filter tabs */}
+      {/* Stage filter tabs — each carries its own count */}
       {!loading && contracts.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[{ key: 'all', label: 'ALL', color: '#0A0A0A' }, ...STAGES].map(s => (
-            <button
-              key={s.key}
-              onClick={() => setFilter(s.key)}
-              style={{
-                padding: '6px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', fontFamily: mono, cursor: 'pointer',
-                background: filter === s.key ? '#0A0A0A' : 'transparent',
-                color: filter === s.key ? '#fff' : 'rgba(0,0,0,0.4)',
-                border: `1px solid ${filter === s.key ? '#0A0A0A' : 'rgba(0,0,0,0.12)'}`,
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
+          {[{ key: 'all', label: 'ALL', color: '#0A0A0A' }, ...STAGES].map(s => {
+            const n = s.key === 'all' ? contracts.length : contracts.filter(c => c.status === s.key).length
+            const on = filter === s.key
+            return (
+              <button
+                key={s.key}
+                onClick={() => setFilter(s.key)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', fontFamily: mono, cursor: 'pointer', borderRadius: 8,
+                  background: on ? '#0A0A0A' : '#FFFFFF',
+                  color: on ? '#fff' : 'rgba(0,0,0,0.45)',
+                  border: `1px solid ${on ? '#0A0A0A' : 'rgba(0,0,0,0.12)'}`,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {s.label}
+                <span style={{ fontSize: 9, fontWeight: 700, color: on ? 'rgba(255,255,255,0.55)' : (n > 0 ? s.color : 'rgba(0,0,0,0.25)') }}>{n}</span>
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -392,7 +387,7 @@ export default function PipelinePage() {
             const cProposals = proposalsFor(c)
             const msg = panelMsg[c.contractId]
             return (
-              <div key={c.id} style={{ background: '#FFFFFF', border: `1px solid ${isOpen ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${stage.color}`, transition: 'border-color 0.2s ease' }}>
+              <div key={c.id} style={{ background: '#FFFFFF', border: `1px solid ${isOpen ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${stage.color}`, borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', transition: 'border-color 0.2s ease' }}>
                 {/* Row header — click to open the workspace */}
                 <div
                   onClick={() => toggleExpand(c.contractId)}

@@ -7,6 +7,7 @@ import type { Contract } from '@/lib/sam-api'
 import MetatronIcon from '@/components/MetatronIcon'
 import MetatronLoader from '@/components/MetatronLoader'
 import { PinIcon, TrendUpIcon, SubAgencyIcon, RefreshIcon } from '@/components/icons'
+import { PageHeader, StatStrip } from '@/components/layout/PageHeader'
 
 function formatValue(v?: number): string {
   if (!v) return 'Not posted'
@@ -134,7 +135,8 @@ function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { c
         background: '#FFFFFF',
         border: '1px solid rgba(0,0,0,0.08)',
         borderLeft: `3px solid ${accentColor}`,
-        padding: compact ? '12px 14px' : '18px 20px',
+        borderRadius: 12,
+        padding: compact ? '13px 15px' : '18px 20px',
         display: 'flex',
         flexDirection: 'column',
         gap: compact ? 7 : 10,
@@ -265,8 +267,9 @@ function useRefreshAge(fetchedAt: Date | null) {
 
 const selectStyle = {
   padding: '8px 12px',
-  background: '#FFFFFF',
+  background: '#FBFBFA',
   border: '1px solid rgba(0,0,0,0.1)',
+  borderRadius: 8,
   color: 'rgba(0,0,0,0.6)',
   fontSize: 11,
   fontFamily: 'var(--font-geist-mono, monospace)',
@@ -275,8 +278,9 @@ const selectStyle = {
 
 const inputFilterStyle = {
   padding: '8px 12px',
-  background: '#FFFFFF',
+  background: '#FBFBFA',
   border: '1px solid rgba(0,0,0,0.1)',
+  borderRadius: 8,
   color: '#0A0A0A',
   fontSize: 11,
   fontFamily: 'var(--font-geist-mono, monospace)',
@@ -442,29 +446,39 @@ export default function DashboardPage() {
     try { localStorage.removeItem('ir-welcome') } catch { /* ignore */ }
   }
 
+  // Feed readout — a calm focal summary of what's on screen right now.
+  const scoredForStat = contracts.filter((c) => c.matchScore !== undefined)
+  const avgMatch = scoredForStat.length ? Math.round(scoredForStat.reduce((s, c) => s + (c.matchScore ?? 0), 0) / scoredForStat.length) : null
+  const newToday = contracts.filter((c) => c.postedDate && Date.now() - new Date(c.postedDate).getTime() < 86_400_000).length
+  const savedInFeedCount = contracts.filter((c) => savedIds.has(c.id)).length
+  const dash = (n: number | null) => (loading || n === null ? '—' : String(n))
+
   return (
-    <div style={{ padding: '32px 40px', minHeight: '100vh' }}>
-      <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 8 }}>IR — CONTRACT INTELLIGENCE</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0A0A0A', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)' }}>Matched Opportunities</h1>
-        </div>
-        {fetchedAt && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 2 }}>
+    <div style={{ padding: '30px 40px 48px', minHeight: '100vh' }}>
+      <PageHeader
+        kicker="CONTRACT INTELLIGENCE"
+        title="Matched Opportunities"
+        subtitle="Every open federal solicitation, scored against your company profile."
+        right={fetchedAt ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
-            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-              SAM.GOV · REFRESHED {refreshAge.toUpperCase()}
+            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              SAM.GOV · {refreshAge.toUpperCase()}
             </span>
-            <button
-              onClick={fetchContracts}
-              title="Refresh"
-              aria-label="Refresh feed"
-              style={{ display: 'inline-flex', alignItems: 'center', color: 'rgba(0,0,0,0.3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
-            >
+            <button onClick={fetchContracts} title="Refresh" aria-label="Refresh feed" style={{ display: 'inline-flex', alignItems: 'center', color: 'rgba(0,0,0,0.35)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
               <RefreshIcon size={13} />
             </button>
           </div>
-        )}
+        ) : undefined}
+      />
+
+      <div style={{ marginBottom: 22 }}>
+        <StatStrip items={[
+          { label: 'OPPORTUNITIES', value: loading ? '—' : String(contracts.length) },
+          { label: 'NEW TODAY', value: dash(newToday), accent: newToday > 0 ? 'crimson' : 'muted' },
+          { label: 'AVG MATCH', value: avgMatch === null ? '—' : `${avgMatch}%`, accent: 'green' },
+          { label: 'IN PIPELINE', value: dash(savedInFeedCount), accent: 'muted' },
+        ]} />
       </div>
 
       {showWelcome && (
@@ -492,7 +506,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '18px 20px', marginBottom: 24 }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', padding: '18px 20px', marginBottom: 22 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr)', gap: 10 }}>
           <input type="text" placeholder="Search title, agency, keywords…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={{ ...inputFilterStyle, padding: '12px 14px', fontSize: 13 }} />
           <input type="text" placeholder="Agency" value={agency} onChange={(e) => setAgency(e.target.value)} style={{ ...inputFilterStyle, padding: '12px 14px', fontSize: 13 }} />
@@ -656,7 +670,7 @@ export default function DashboardPage() {
                   }
                 `}</style>
                 {visible.length === 0 ? (
-                  <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '40px 24px', textAlign: 'center' }}>
+                  <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
                     <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#16a34a', marginBottom: 10, fontFamily: 'var(--font-geist-mono, monospace)' }}>ALL CAUGHT UP ✓</div>
                     <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
                       You&apos;ve saved every match here. New opportunities land daily — check back, or turn off &ldquo;hide saved&rdquo; to review your pipeline.

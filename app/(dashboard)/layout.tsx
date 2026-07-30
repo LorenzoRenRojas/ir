@@ -58,7 +58,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } catch { /* malformed cache — show a dash */ }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F8F7', display: 'flex', fontFamily: 'var(--font-geist-mono, monospace)', color: '#0A0A0A' }}>
+    <div style={{ minHeight: '100vh', background: '#F4F3EF', display: 'flex', fontFamily: 'var(--font-geist-mono, monospace)', color: '#0A0A0A' }}>
       <SideNav
         email={session.user.email ?? ''}
         tier={session.user.subscriptionTier ?? 'free'}

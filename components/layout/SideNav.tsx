@@ -92,7 +92,7 @@ export default function SideNav({
       </nav>
 
       {/* Live snapshot — the dead space earns its keep */}
-      <div style={{ margin: '10px 14px', border: '1px solid rgba(0,0,0,0.07)', background: '#FAFAF9' }}>
+      <div style={{ margin: '10px 14px', border: '1px solid rgba(0,0,0,0.07)', background: '#FAFAF9', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ padding: '12px 14px 8px', fontSize: 8, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)' }}>SNAPSHOT</div>
         <Link href="/saved" style={{ display: 'block', padding: '8px 14px', textDecoration: 'none', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
           <div style={{ fontSize: 8, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.3)' }}>ACTIVE PIPELINE</div>
