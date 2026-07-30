@@ -9,6 +9,16 @@
 body {
   background: #ffffff;
   color: #0A0A0A;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Branded text selection — a small, deliberate detail */
+::selection {
+  background: rgba(196, 18, 48, 0.85);
+  color: #ffffff;
 }
 
 /* ── Geometry animations ── */

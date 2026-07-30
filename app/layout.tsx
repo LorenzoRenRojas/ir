@@ -1,16 +1,25 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Archivo, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { SessionProvider } from '@/components/ui/session-provider'
 
-const geistSans = Geist({
+// Type system: one industrial grotesk (Archivo) does the confident, editorial
+// heavy lifting for headings and body; a restrained engineering mono (IBM Plex
+// Mono) carries the small technical labels. This reads defense-tech / precise —
+// Anduril/Palantir territory — instead of "hacker terminal" (Geist Mono) or
+// "generic AI SaaS" (Inter/Geist Sans). Variable names are unchanged so the
+// whole site re-skins from here without touching every component.
+const displaySans = Archivo({
   variable: '--font-geist-sans',
   subsets: ['latin'],
+  display: 'swap',
 })
 
-const geistMono = Geist_Mono({
+const techMono = IBM_Plex_Mono({
   variable: '--font-geist-mono',
+  weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -76,10 +85,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${displaySans.variable} ${techMono.variable}`}
       style={{ height: '100%' }}
     >
-      <body style={{ minHeight: '100%', background: '#0A0A0B', color: '#E2E8F0', margin: 0 }}>
+      <body style={{ minHeight: '100%', background: '#0A0A0B', color: '#E2E8F0', margin: 0, fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
