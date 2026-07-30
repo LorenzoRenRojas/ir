@@ -98,9 +98,9 @@ export default function LandingPage() {
           <div style={{ width: 48, height: 3, background: crimson, margin: '0 auto 40px' }} />
           <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.48)', maxWidth: 620, margin: '0 auto' }}>
             Federal contracting has been gated behind relationships, insider tools, and armies of proposal
-            writers for decades. IR hands a five-person shop the same intelligence a Fortune 500 capture
-            team runs on — and the tools to act on it the same day. We got here first.
-            <span style={{ color: '#0A0A0A', fontWeight: 600 }}> Use us before we cost more.</span>
+            writers for decades. IR gives a five-person shop the same intelligence a Fortune 500 capture
+            team runs on — and the tools to act on it the same day.
+            <span style={{ color: '#0A0A0A', fontWeight: 600 }}> We built it first, for the operators the incumbents priced out.</span>
           </p>
         </div>
       </section>
@@ -120,7 +120,7 @@ export default function LandingPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
             {[
-              { n: 'I', title: 'CAPITAL', body: 'Every hour spent hunting is capital burned, and every legacy invoice is money out the door. IR surfaces winnable work on day one and keeps that time — and the five-figure fees the incumbents charge — inside your business.' },
+              { n: 'I', title: 'CAPITAL', body: 'Every hour spent hunting is capital burned; every legacy license is capital surrendered. IR surfaces winnable work on day one and keeps both — your team’s time and the five-figure fees the incumbents charge — inside your business.' },
               { n: 'II', title: 'INFORMATION', body: 'We read the entire federal market so you don’t have to — every open solicitation, every contract about to expire, every incumbent and what they were paid — scored against your company and refreshed daily.' },
               { n: 'III', title: 'EXECUTION', body: 'Knowing isn’t winning. IR turns a match into a submitted proposal in the same sitting: capability statements, four-volume drafts, sent straight to the contracting officer. Act immediately, not next quarter.' },
             ].map((c) => (

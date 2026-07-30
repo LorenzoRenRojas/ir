@@ -301,7 +301,7 @@ function WinOdds() {
 
       {/* Brutal honesty */}
       <div style={{ border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.05)', padding: '22px 26px' }}>
-        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.14em', color: crimson, marginBottom: 12 }}>WHERE THIS BREAKS — READ IT</div>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.14em', color: crimson, marginBottom: 12 }}>WHERE THE MODEL BREAKS DOWN</div>
         <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <li style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: sans, lineHeight: 1.65 }}>This is a model, not a guarantee. IR does not write your past performance, set your price, or promise an award.</li>
           <li style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: sans, lineHeight: 1.65 }}>It lives or dies on one thing: you actually bidding. We remove the friction — you still pull the trigger.</li>
@@ -467,14 +467,14 @@ export default function CapabilitiesClient() {
 
         {/* Price chart */}
         <section style={{ padding: '72px 0' }}>
-          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>WHY WE COST LESS</p>
+          <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px' }}>THE ECONOMICS</p>
           <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
-            Built better, so it costs less. <span style={{ color: crimson }}>Not the other way around.</span>
+            Enterprise intelligence. <span style={{ color: crimson }}>Without the enterprise overhead.</span>
           </h2>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 600, fontFamily: sans, lineHeight: 1.7 }}>
-            Legacy platforms price in analyst desks, sales teams, and annual lock-in. We automated the
-            intelligence and skipped the sales call — so the same market coverage costs a fraction, and
-            every dollar you don&apos;t hand a vendor is capital back in your business.
+            Legacy platforms price in analyst desks, sales teams, and annual lock-in. IR automates the
+            intelligence and forgoes the sales motion entirely — the same market coverage, delivered at a
+            structurally lower cost. What you keep is capital returned to your business.
           </p>
           <PriceChart />
         </section>
