@@ -123,6 +123,21 @@ export default function AdminActions() {
           style={btnStyle}
           disabled={!!busy}
           onClick={() =>
+            run('seed-demo', async () => {
+              const res = await fetch('/api/admin/seed-demo', { method: 'POST' })
+              const data = await res.json()
+              if (!data.success) return `Seed failed: ${data.error ?? 'unknown'}${data.detail ? `\n${data.detail}` : ''}`
+              return `Demo account ready — ${data.seeded.pipeline} pipeline items, ${data.seeded.documents} document.\nLog in: ${data.login.email} / ${data.login.password}`
+            })
+          }
+        >
+          {busy === 'seed-demo' ? 'SEEDING…' : 'SEED DEMO ACCOUNT'}
+        </button>
+
+        <button
+          style={btnStyle}
+          disabled={!!busy}
+          onClick={() =>
             run('health', async () => {
               const res = await fetch('/api/cron/health')
               const data = await res.json()
