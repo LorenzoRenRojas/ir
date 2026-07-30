@@ -349,6 +349,105 @@ export async function sendDailyDigestEmail(
   await send(email, `[IR] ${matches.length} new contract ${matches.length === 1 ? 'match' : 'matches'} for your profile`, html, undefined, { bulk: true })
 }
 
+export interface WeeklyReportStats {
+  activeCount: number
+  activeValue: number
+  wonValue: number
+  deadlines: { title: string; agency: string; days: number }[]
+  newThisWeek: number
+}
+
+// Monday pipeline summary — a "here's where your bids stand" nudge that keeps
+// engaged users coming back. Gated on the digest preference; only sent to users
+// with an active pipeline (nothing to summarize otherwise).
+export async function sendWeeklyReportEmail(
+  email: string,
+  name: string | null,
+  stats: WeeklyReportStats,
+  baseUrl: string,
+  userId?: string
+): Promise<void> {
+  const usd = (n: number) => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}K` : `$${n.toLocaleString()}`
+
+  const tile = (label: string, value: string) => `
+    <td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:20px 22px;">
+      <div style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.14em;font-family:monospace;margin-bottom:8px;">${label}</div>
+      <div style="color:#ffffff;font-size:24px;font-weight:800;font-family:sans-serif;letter-spacing:-0.02em;">${value}</div>
+    </td>`
+
+  const deadlineRows = stats.deadlines.length
+    ? stats.deadlines.map(d => `
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="color:#ffffff;font-size:13px;font-weight:600;font-family:sans-serif;">${esc(d.title)}</div>
+            <div style="color:rgba(255,255,255,0.4);font-size:11px;font-family:sans-serif;margin-top:3px;">${esc(d.agency)}</div>
+          </td>
+          <td align="right" valign="top" style="white-space:nowrap;padding-left:16px;">
+            <span style="color:${d.days <= 3 ? '#C41230' : '#b45309'};font-size:12px;font-weight:700;font-family:monospace;">${d.days <= 0 ? 'DUE' : `${d.days}D LEFT`}</span>
+          </td>
+        </tr>`).join('')
+    : `<tr><td style="color:rgba(255,255,255,0.35);font-size:12px;font-family:sans-serif;padding:12px 0;">No deadlines in the next two weeks — a good week to add new pursuits.</td></tr>`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 48px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">WEEKLY PIPELINE REPORT</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 48px 8px;">
+            <h1 style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${name ? `${esc(name)}, your` : 'Your'} week in review.</h1>
+            <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">Where your bids stand, and what's closing soon.</p>
+            <table width="100%" cellpadding="0" cellspacing="6" style="margin:0 0 8px;"><tr>
+              ${tile('ACTIVE BIDS', String(stats.activeCount))}
+              ${tile('ACTIVE VALUE', usd(stats.activeValue))}
+              ${tile('WON TO DATE', usd(stats.wonValue))}
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 48px 8px;">
+            <p style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:0.14em;font-family:monospace;margin:0 0 4px;">CLOSING SOON</p>
+            <table width="100%" cellpadding="0" cellspacing="0">${deadlineRows}</table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 48px 32px;">
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;font-family:sans-serif;margin:0 0 20px;line-height:1.6;">
+              ${stats.newThisWeek} new ${stats.newThisWeek === 1 ? 'opportunity was' : 'opportunities were'} posted to the federal market this week — matched against your profile and waiting on your dashboard.
+            </p>
+            <a href="${baseUrl}/saved" style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
+              OPEN YOUR PIPELINE →
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 48px;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="color:rgba(255,255,255,0.2);font-size:10px;margin:0;line-height:1.6;">
+              You receive this because you have an active IR company profile.<br>
+              Manage notifications in <a href="${baseUrl}/settings" style="color:#C41230;">settings</a>.
+            </p>
+            ${userId ? unsubFooterHtml(baseUrl, userId, 'digest') : ''}
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(email, `[IR] Your weekly pipeline report`, html, undefined, { bulk: true })
+}
+
 export async function sendDeadlineReminderEmail(
   email: string,
   name: string | null,

@@ -60,12 +60,14 @@ export async function downloadHtmlAsPdf(title: string, html: string, filename: s
   // optional hanging prefix (for list bullets/numbers).
   const paragraph = (
     segs: Seg[],
-    o: { family: string; baseBold: boolean; size: number; lineH: number; before: number; after: number; indent?: number; prefix?: string }
+    o: { family: string; baseBold: boolean; size: number; lineH: number; before: number; after: number; indent?: number; prefix?: string; keep?: number }
   ) => {
     const indent = o.indent ?? 0
     const textX = margin + indent
     doc.setFontSize(o.size); doc.setTextColor(28, 28, 28)
-    ensure(o.before + o.lineH)
+    // `keep` reserves extra space so a heading is never orphaned at the bottom
+    // of a page with its following content pushed to the next one.
+    ensure(o.before + o.lineH + (o.keep ?? 0))
     y += o.before
 
     // hanging prefix (bullet / number)
@@ -114,9 +116,9 @@ export async function downloadHtmlAsPdf(title: string, html: string, filename: s
       y += 12
       return
     }
-    if (tag === 'h1') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 17, lineH: 20, before: 4, after: 4 })
-    if (tag === 'h2') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 12, lineH: 15, before: 16, after: 5 })
-    if (tag === 'h3') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 11, lineH: 14, before: 11, after: 4 })
+    if (tag === 'h1') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 17, lineH: 20, before: 4, after: 4, keep: 34 })
+    if (tag === 'h2') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 12, lineH: 15, before: 16, after: 5, keep: 32 })
+    if (tag === 'h3') return paragraph(collectSegments(el), { family: 'helvetica', baseBold: true, size: 11, lineH: 14, before: 11, after: 4, keep: 30 })
     if (tag === 'ul' || tag === 'ol') {
       let n = 1
       el.querySelectorAll(':scope > li').forEach((li) => {
