@@ -488,9 +488,14 @@ export default function DashboardPage() {
             <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-geist-sans, sans-serif)', marginBottom: 4 }}>Every contract below is scored against YOUR profile.</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.6 }}>Save one that looks winnable — that starts your pipeline, unlocks deadline alerts, and teaches the matcher what you like. Check RECOMPETES for contracts expiring in your space.</div>
           </div>
-          <button onClick={dismissWelcome} style={{ flexShrink: 0, padding: '9px 16px', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            GOT IT ✓
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            <Link href="/playbook" style={{ padding: '9px 16px', background: '#C41230', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', border: 'none', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap' }}>
+              SEE YOUR PLAYBOOK →
+            </Link>
+            <button onClick={dismissWelcome} style={{ padding: '9px 16px', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              GOT IT ✓
+            </button>
+          </div>
         </div>
       )}
 

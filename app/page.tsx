@@ -71,7 +71,7 @@ export default function LandingPage() {
             <span style={{ color: 'rgba(0,0,0,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>GOVCON INTELLIGENCE</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-            <Link href="#how"     className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW IT WORKS</Link>
+            <Link href="/how-to-win" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW TO WIN</Link>
             <Link href="/capabilities" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>CAPABILITIES</Link>
             <Link href="#pricing" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
             <Link href="/login"   className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>SIGN IN</Link>

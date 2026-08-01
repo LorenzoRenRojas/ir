@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     { url: `${BASE}/capabilities`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/how-it-works`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/how-to-win`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
     ...COMPARISONS.map((c) => ({
       url: `${BASE}/compare/${c.slug}`,
