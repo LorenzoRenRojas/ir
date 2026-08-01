@@ -30,7 +30,7 @@ const LOOP_STEPS = [
   { n: '02', title: 'FORESEE', body: 'Recompete Radar surfaces contracts in your space expiring within 18 months — before the RFP exists.' },
   { n: '03', title: 'DECIDE',  body: 'A Capture Playbook on every contract — eligibility verdict, market concentration, who wins here, and a Bid/No-Bid scorecard so you spend hours only on winnable work.' },
   { n: '04', title: 'TRACK',   body: 'A bid pipeline from first look to award, with dollar totals and automatic deadline alerts. Every win and loss teaches your matching algorithm.' },
-  { n: '05', title: 'DRAFT',   body: 'A guided questionnaire becomes a formatted 4-volume federal proposal. Capability statements in one click.' },
+  { n: '05', title: 'DRAFT',   body: 'A full document suite — a live editor for 4-volume proposals, capability statements, sources-sought responses, and cover letters, exported to clean PDF.' },
   { n: '06', title: 'SEND',    body: 'Proposal delivered to the contracting officer from inside IR — replies go to your inbox.' },
 ]
 
@@ -42,6 +42,10 @@ const MATRIX: { feature: string; ir: string; legacy: string; irHas: boolean; leg
   { feature: 'Capability statement generator',        ir: 'One click',                   legacy: 'Not offered',                 irHas: true,  legacyHas: false },
   { feature: 'Send to contracting officer',           ir: 'Built in, with confirmation', legacy: 'Look it up yourself',         irHas: true,  legacyHas: false },
   { feature: 'Bid pipeline with $ totals',            ir: 'Included',                    legacy: 'CRM add-on pricing',          irHas: true,  legacyHas: true },
+  { feature: 'Weekly intelligence report',            ir: 'Emailed Monday, with PDF',    legacy: 'Manual, or not offered',      irHas: true,  legacyHas: false },
+  { feature: 'Guided win playbook',                   ir: 'Step-by-step, auto-tracked',  legacy: 'Consultants, hourly',         irHas: true,  legacyHas: false },
+  { feature: 'Feed personalization controls',         ir: 'Eligibility, density, threshold', legacy: 'Static saved searches',   irHas: true,  legacyHas: false },
+  { feature: 'Team seats & shared pipeline',          ir: 'Enterprise tier',             legacy: 'Per-seat enterprise pricing', irHas: true,  legacyHas: true },
   { feature: 'Self-serve signup',                     ir: '5 minutes, no sales call',    legacy: 'Demo → quote → contract',     irHas: true,  legacyHas: false },
 ]
 
@@ -219,6 +223,74 @@ function ProposalStudio() {
         NOTE: IR DRAFTS AND FORMATS — IT DOES NOT PROVIDE LEGAL REVIEW OR GUARANTEE AWARD. THE REVIEW STEP
         ROUTES YOUR DRAFT TO A PERSON YOU CHOOSE; NOTHING IS SENT WITHOUT YOUR SIGN-OFF.
       </p>
+    </section>
+  )
+}
+
+// ─── Everything else in the platform ─────────────────────────────────────────
+const PLATFORM = [
+  {
+    tag: 'DOCUMENT SUITE',
+    title: 'A real editor, not a template button',
+    body: 'Draft and format 4-volume proposals, capability statements, sources-sought responses, and cover letters in a live document editor — rich text, headings, lists — then export to clean PDF. Your saved documents live in one workspace.',
+  },
+  {
+    tag: 'WEEKLY REPORT',
+    title: 'Your market, delivered every Monday',
+    body: 'A weekly intelligence email — new matches, deadlines closing this week, and pipeline movement — with a formatted PDF you can forward to a partner or file for the record. It arrives whether or not you log in.',
+  },
+  {
+    tag: 'WIN PLAYBOOK',
+    title: 'The path from cold profile to first submission',
+    body: 'A guided, step-by-step playbook that tracks your own progress automatically — profile completeness, saved opportunities, drafted documents — and tells you the next concrete move. Built for a first-time bidder and an established capture team alike.',
+  },
+  {
+    tag: 'FEED CONTROLS',
+    title: 'You tune the signal',
+    body: 'Filter to only contracts you can prime, set a minimum match threshold, hide what you have already saved, and choose the feed density. The matching runs automatically — the controls put you in charge of what surfaces.',
+  },
+  {
+    tag: 'TEAM SEATS',
+    title: 'Run capture as a company',
+    body: 'On Enterprise, your whole team shares one pipeline, one set of documents, and one view of the market — so bid decisions and deadlines never live in one person’s inbox.',
+  },
+  {
+    tag: 'NOTIFICATIONS',
+    title: 'Alerts on your terms',
+    body: 'Instant or digested email for new matches, Recompete Radar hits, and deadline warnings — all controlled from a settings center built for how contractors actually work.',
+  },
+]
+
+function PlatformGrid() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.15)
+  return (
+    <section ref={ref} style={{ padding: '72px 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', fontFamily: mono }}>THE REST OF THE PLATFORM</p>
+      <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+        The loop is the spine. <span style={{ color: crimson }}>This is the rest of the body.</span>
+      </h2>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 640, fontFamily: sans, lineHeight: 1.7 }}>
+        Finding and drafting is the core. Around it is everything that keeps a real contracting
+        operation moving — documents, reporting, a plan to follow, and controls for how the whole
+        thing behaves.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+        {PLATFORM.map((f, i) => (
+          <div
+            key={f.tag}
+            style={{
+              border: '1px solid rgba(255,255,255,0.09)', background: '#111', padding: '26px 24px',
+              opacity: inView ? 1 : 0,
+              transform: inView ? 'translateY(0)' : 'translateY(20px)',
+              transition: `all 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 110}ms`,
+            }}
+          >
+            <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: crimson, marginBottom: 14 }}>{f.tag}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 10, fontFamily: sans, letterSpacing: '-0.01em' }}>{f.title}</div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', margin: 0, fontFamily: sans }}>{f.body}</p>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
@@ -461,6 +533,9 @@ export default function CapabilitiesClient() {
 
         {/* AI Proposal Studio — the draft → review → send flow */}
         <ProposalStudio />
+
+        {/* Everything else in the platform */}
+        <PlatformGrid />
 
         {/* The honest win-odds math */}
         <WinOdds />
