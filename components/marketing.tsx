@@ -61,6 +61,7 @@ export function MarketingNav({ section }: { section: string }) {
           <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>{section}</span>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <Link href="/how-it-works" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW IT WORKS</Link>
           <Link href="/how-to-win" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW TO WIN</Link>
           <Link href="/capabilities" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>CAPABILITIES</Link>
           <Link href="/pricing" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
