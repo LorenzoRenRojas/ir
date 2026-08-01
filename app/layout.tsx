@@ -25,8 +25,8 @@ const techMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://ir-gov.app'),
   title: {
-    default: 'IR — Government Contract Intelligence',
-    template: '%s — IR',
+    default: 'IR GovCon Intelligence — Win Federal Contracts',
+    template: '%s — IR GovCon Intelligence',
   },
   description: 'AI-matched federal contract opportunities from SAM.gov, scored against your company profile. Built for small businesses and set-aside firms.',
   keywords: 'government contracts, SAM.gov, federal contracts, small business, NAICS, set-aside, 8a, SDVOSB, WOSB, HUBZone, GovCon, contract intelligence',

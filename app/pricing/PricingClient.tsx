@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import MetatronBackdrop from '@/components/MetatronBackdrop'
 import { useInView, CountUp, MarketingNav, MarketingCta, mono, sans, crimson, surface } from '@/components/marketing'
+import { FAQS } from './faqs'
 
 const PLANS = [
   {
@@ -232,12 +233,6 @@ function TcoChart() {
   )
 }
 
-const FAQS = [
-  { q: 'Is there a free tier?', a: 'Yes — sign up free, build your profile, and preview your matches before paying anything.' },
-  { q: 'Do I need a sales call?', a: 'No. Self-serve signup, and your SAM.gov UEI auto-fills your profile in about 40 seconds.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. Month to month, no contracts, no cancellation calls.' },
-  { q: 'Where does the data come from?', a: 'Live from official U.S. government sources: SAM.gov for solicitations and USAspending.gov for award and expiration intelligence.' },
-]
 
 function Faq() {
   const { ref, inView } = useInView<HTMLDivElement>(0.2)

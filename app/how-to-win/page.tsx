@@ -14,6 +14,26 @@ export const metadata: Metadata = {
   },
 }
 
+// HowTo structured data — the five-phase play, eligible for a step rich result.
+const HOWTO_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How to win federal contracts as a small business',
+  description: 'The repeatable five-phase play for winning federal contracts as a small business.',
+  step: [
+    { '@type': 'HowToStep', name: 'Set the yardstick', text: 'Register in SAM.gov, pursue any set-aside certification you qualify for, and complete your company profile so every contract is scored against it.' },
+    { '@type': 'HowToStep', name: 'Find winnable work', text: 'Review open federal solicitations scored against your profile and filter to the ones you can prime.' },
+    { '@type': 'HowToStep', name: 'See it before it exists', text: 'Track contracts in your NAICS expiring in 6–18 months and begin positioning before the RFP is posted.' },
+    { '@type': 'HowToStep', name: 'Decide with discipline', text: 'Weigh win probability, incumbent, and market concentration, then run a bid/no-bid decision so you only pursue winnable work.' },
+    { '@type': 'HowToStep', name: 'Respond on time', text: 'Generate a capability statement and a compliant proposal, track it in a pipeline, and submit before the deadline.' },
+  ],
+}
+
 export default function HowToWinPage() {
-  return <HowToWinClient />
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(HOWTO_LD) }} />
+      <HowToWinClient />
+    </>
+  )
 }

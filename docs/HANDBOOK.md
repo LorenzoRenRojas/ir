@@ -189,6 +189,38 @@ app pages; the bypass list includes all public/marketing pages: `/coming-soon`, 
    full plan + build gate in `docs/COMPLIANCE_MODULE.md`. Gate: ≥200 paying,
    churn <4%, proposal engine earning. Do not start early.
 
+## Gap-closing features (agreed backlog, ranked by leverage/effort)
+
+The honest weak spots in "does IR help you *win*", and how to close them:
+
+1. **AI proposal narrative — already built, just needs credits.** `draftProposal()`
+   flips template → Claude the moment `ANTHROPIC_API_KEY` + credits exist. Launch =
+   add credits + set env var. No code work. Do first.
+2. **Price Intelligence (price-to-win)** — buildable now with USAspending (already
+   integrated): show the winning-price range for comparable awards on the contract
+   page ("comparable contracts awarded $X–$Y; median winner ~$Z"). Closes the biggest
+   gap; Pro-tier. Medium effort, no new data source.
+3. **Certification Advisor** — rules-based: from the profile, name the set-aside cert
+   they qualify for + its ROI ("veteran-owned → SDVOSB unlocks $X you can't prime now").
+   Cheap, high-impact for beginners. Set-asides are the biggest win lever.
+4. **Teaming / subcontracting** — help a new shop start as a sub to build past
+   performance; match small biz to primes on big awards. Network feature → post-PMF.
+
+## SEO / discoverability
+
+- **"IR" alone is unrankable** — it's the IRS's forever. Do NOT chase it. Win on
+  (a) intent keywords (the NAICS pages, /compare/*, /how-to-win, /how-it-works already
+  target these — they just need indexing) and (b) the full brand phrase "IR GovCon"
+  / ir-gov.app (consistent usage + backlinks + time).
+- **#1 immediate action (founder, ~10 min):** submit the sitemap to Google Search
+  Console + Bing Webmaster. The site was behind the coming-soon gate, so Google
+  hasn't crawled it — nothing ranks until it's submitted and crawled.
+- **Naming reality (founder call):** if brand discoverability matters, "IR" is a weak
+  search name; a distinctive brand would be far more findable. Flagged, not decided.
+- Technical SEO in place: robots + sitemap, per-page metadata + canonicals, Organization
+  + SoftwareApplication JSON-LD, OG image, FAQ rich-result markup on /pricing, HowTo
+  markup on /how-to-win, brand-carrying title template.
+
 ## Working with the founder
 
 Lorenzo is non-technical, works a day job, often on phone-only. Give him: plain-English
