@@ -134,7 +134,10 @@ score — the sleeper feature), enterprise team system (works, gated to enterpri
 
 Coming-soon gate (`COMING_SOON = true` in `middleware.ts`) redirects logged-out users from
 app pages; the bypass list includes all public/marketing pages: `/coming-soon`, auth pages,
-`/naics` (+30 per-code SEO pages), `/capabilities`, `/how-it-works`, `/pricing`, `/security`,
+`/naics` (+32 per-code SEO pages), `/set-asides` (+7 per-program SEO pages: 8(a), WOSB,
+EDWOSB, SDVOSB, VOSB, HUBZone, small-business — `lib/set-asides.ts`, each with live
+SAM.gov opportunities + who-qualifies/how-to-certify explainer + FAQ JSON-LD),
+`/capabilities`, `/how-it-works`, `/pricing`, `/security`,
 `/terms`, `/privacy`, sitemap, robots. Marketing pages share `components/marketing.tsx`
 (nav/CountUp/useInView) and `components/MetatronBackdrop.tsx` (the folding-cube animation;
 `pulse` prop = breathing glow, used on /capabilities). JSON-LD org+product schema in root layout.

@@ -56,7 +56,14 @@ export default function NaicsIndexPage() {
           </div>
         ))}
 
-        <div style={{ marginTop: 32, padding: 32, border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)' }}>
+        <div style={{ marginTop: 8, padding: '20px 24px', border: '1px solid rgba(255,255,255,0.08)', background: '#0f0f0f' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.7, margin: 0, fontFamily: sans }}>
+            Qualify for a set-aside?{' '}
+            <Link href="/set-asides" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>Browse 8(a), WOSB, SDVOSB &amp; HUBZone contracts →</Link>
+          </p>
+        </div>
+
+        <div style={{ marginTop: 24, padding: 32, border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)' }}>
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px', fontFamily: sans }}>Get matched instead of searching.</h2>
           <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 20px', fontFamily: sans }}>
             Set your NAICS codes once. IR scores every new federal posting against your profile and
