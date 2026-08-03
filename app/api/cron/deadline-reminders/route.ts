@@ -20,8 +20,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // problems → pages the admin; degraded → logged only (see daily-digest for
+  // the rationale: paging on single bounces trains you to ignore the alert).
   const problems: string[] = []
+  const degraded: string[] = []
   let emailsSent = 0
+  let sendFailures = 0
   const now = Date.now()
 
   try {
@@ -62,20 +66,33 @@ export async function GET(req: NextRequest) {
         )
         emailsSent++
       } catch (err) {
-        problems.push(`Reminder to ${saved.user.email} for "${saved.title}" failed: ${err instanceof Error ? err.message : String(err)}`)
+        sendFailures++
+        degraded.push(`Reminder to ${saved.user.email} for "${saved.title}" failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   } catch (err) {
     problems.push(`Deadline reminder cron crashed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
+  // Every reminder failing with none succeeding is systemic — page for that.
+  if (sendFailures > 0 && emailsSent === 0) {
+    problems.push(`All ${sendFailures} deadline reminder(s) failed to send with none succeeding — likely a systemic email problem (Resend key or quota).`)
+  }
+
+  if (degraded.length > 0) {
+    console.warn('[deadline-reminders] degraded (non-paging):', degraded)
+  }
+
   if (problems.length > 0 && ADMIN_EMAIL) {
+    const body = degraded.length > 0
+      ? [...problems, '—', 'Also degraded this run (informational, not the alert cause):', ...degraded]
+      : problems
     try {
-      await sendAdminAlertEmail(ADMIN_EMAIL, 'Deadline reminder cron had failures', problems)
+      await sendAdminAlertEmail(ADMIN_EMAIL, 'Deadline reminder cron had failures', body)
     } catch (alertErr) {
       console.error('Admin alert failed:', alertErr)
     }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, emailsSent, problems })
+  return NextResponse.json({ ok: problems.length === 0, emailsSent, problems, degraded })
 }

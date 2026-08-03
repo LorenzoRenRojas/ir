@@ -13,9 +13,12 @@ export async function GET(req: NextRequest) {
   }
 
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://ir-gov.app'
+  // problems → pages the admin; degraded → logged only (see daily-digest).
   const problems: string[] = []
+  const degraded: string[] = []
   let sent = 0
   let processed = 0
+  let sendFailures = 0
   const startedAt = Date.now()
   const timeLeft = () => 240_000 - (Date.now() - startedAt)
 
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
     const twoWeeks = now + 14 * 86_400_000
 
     for (const user of users) {
-      if (timeLeft() < 15_000) { problems.push('Stopped early: time budget'); break }
+      if (timeLeft() < 15_000) { degraded.push(`Stopped early at time budget — ${users.length - processed} users deferred`); break }
       processed++
 
       const active = user.savedContracts.filter((c) => ACTIVE.includes(c.status))
@@ -72,16 +75,29 @@ export async function GET(req: NextRequest) {
         await sendWeeklyReportEmail(user.email, user.name, stats, baseUrl, user.id)
         sent++
       } catch (err) {
-        problems.push(`Weekly report to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
+        sendFailures++
+        degraded.push(`Weekly report to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   } catch (err) {
     problems.push(`Weekly report query failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  if (problems.length > 0 && ADMIN_EMAIL) {
-    try { await sendAdminAlertEmail(ADMIN_EMAIL, 'Weekly report cron', problems) } catch { /* best-effort */ }
+  // Every send failing with none succeeding is systemic — page for that.
+  if (sendFailures > 0 && sent === 0) {
+    problems.push(`All ${sendFailures} weekly report(s) failed to send with none succeeding — likely a systemic email problem (Resend key or quota).`)
   }
 
-  return NextResponse.json({ ok: true, processed, sent, newThisWeek, problems })
+  if (degraded.length > 0) {
+    console.warn('[weekly-report] degraded (non-paging):', degraded)
+  }
+
+  if (problems.length > 0 && ADMIN_EMAIL) {
+    const body = degraded.length > 0
+      ? [...problems, '—', 'Also degraded this run (informational, not the alert cause):', ...degraded]
+      : problems
+    try { await sendAdminAlertEmail(ADMIN_EMAIL, 'Weekly report cron', body) } catch { /* best-effort */ }
+  }
+
+  return NextResponse.json({ ok: problems.length === 0, processed, sent, newThisWeek, problems, degraded })
 }

@@ -30,9 +30,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Two buckets, deliberately separate:
+  //   problems  → genuinely broken. These PAGE the admin by email.
+  //   degraded  → load-shedding, a single bad recipient, an external API blip.
+  //               Logged for the record, but never emailed — so an [IR ALERT]
+  //               in the inbox always means something actually needs attention.
   const problems: string[] = []
+  const degraded: string[] = []
   let emailsSent = 0
   let usersProcessed = 0
+  let digestFailures = 0 // per-recipient send failures; systemic only if ALL fail
   // Hobby-plan wall clock is 300s; leave headroom so the admin self-report at
   // the end always runs instead of the function being hard-killed mid-loop
   const startedAt = Date.now()
@@ -48,7 +55,8 @@ export async function GET(req: NextRequest) {
     const r = await maybeSyncContracts({ force: true })
     syncStats = r.stats ?? null
   } catch (err) {
-    problems.push(`Contract sync failed (digest will use existing data): ${err instanceof Error ? err.message : String(err)}`)
+    // Non-fatal: the digest just runs on the existing store instead.
+    degraded.push(`Contract sync failed (digest used existing data): ${err instanceof Error ? err.message : String(err)}`)
   }
 
   try {
@@ -70,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     for (const user of users) {
       if (timeBudgetLeft() <= 0) {
-        problems.push(`Digest stopped at time budget — ${users.length - usersProcessed} users deferred (their contracts stay undigested and send tomorrow)`)
+        degraded.push(`Digest stopped at time budget — ${users.length - usersProcessed} users deferred (their contracts stay undigested and send tomorrow)`)
         break
       }
       usersProcessed++
@@ -131,11 +139,20 @@ export async function GET(req: NextRequest) {
           })
         } catch { /* best-effort */ }
       } catch (err) {
-        problems.push(`Digest to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
+        // One bad recipient must not page the admin — everyone else still got
+        // their digest. Only a total wipe-out (below) is worth an alert.
+        digestFailures++
+        degraded.push(`Digest to ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   } catch (err) {
     problems.push(`Digest cron crashed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  // Escalation: a single bounce is noise, but every send failing with none
+  // succeeding is systemic (revoked Resend key, spent quota) — page for that.
+  if (digestFailures > 0 && emailsSent === 0) {
+    problems.push(`All ${digestFailures} digest email(s) failed to send with none succeeding — likely a systemic email problem (Resend key or quota), not a single bad recipient.`)
   }
 
   // Pre-embed fresh contracts so the dashboard's semantic layer is always a
@@ -191,7 +208,7 @@ export async function GET(req: NextRequest) {
 
     for (const user of rotatedUsers) {
       if (timeBudgetLeft() <= 0) {
-        problems.push(`Radar scan stopped at time budget — ${radarUsers.length - radarAlertsSent} users deferred to tomorrow's run`)
+        degraded.push(`Radar scan stopped at time budget — ${radarUsers.length - radarAlertsSent} users deferred to tomorrow's run`)
         break
       }
       try {
@@ -238,10 +255,13 @@ export async function GET(req: NextRequest) {
           })
         } catch { /* best-effort */ }
       } catch (err) {
-        problems.push(`Radar alert for ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
+        degraded.push(`Radar alert for ${user.email} failed: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   } catch (err) {
+    // USAspending is an external, keyless API — a blip here is degraded, not
+    // broken. Record it, but don't page for someone else's downtime.
+    degraded.push(`Recompete radar scan skipped: ${err instanceof Error ? err.message : String(err)}`)
     console.error('Recompete scan-and-notify skipped:', err)
   }
 
@@ -250,14 +270,25 @@ export async function GET(req: NextRequest) {
     await prisma.emailLog.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } })
   } catch { /* table missing pre-migration */ }
 
-  // Self-report: if anything failed, alert the admin so it never fails silently
+  // Degraded issues are kept in the run record and server logs, but never
+  // emailed — paging on load-shedding or a single bounce trains you to ignore
+  // the alert, which defeats its purpose.
+  if (degraded.length > 0) {
+    console.warn('[daily-digest] degraded (non-paging):', degraded)
+  }
+
+  // Only genuinely broken things page the admin. When we do send, attach the
+  // degraded list as context so the alert carries the full picture of the run.
   if (problems.length > 0 && ADMIN_EMAIL) {
+    const body = degraded.length > 0
+      ? [...problems, '—', 'Also degraded this run (informational, not the alert cause):', ...degraded]
+      : problems
     try {
-      await sendAdminAlertEmail(ADMIN_EMAIL, 'Daily digest cron had failures', problems)
+      await sendAdminAlertEmail(ADMIN_EMAIL, 'Daily digest cron had failures', body)
     } catch (alertErr) {
       console.error('Admin alert failed:', alertErr)
     }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, radarAlertsSent, sync: syncStats, problems })
+  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, radarAlertsSent, sync: syncStats, problems, degraded })
 }
