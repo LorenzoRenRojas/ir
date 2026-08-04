@@ -145,6 +145,75 @@ export async function sendVerificationEmail(
   await send(email, 'Verify your IR account', html)
 }
 
+// Sent once, right after a new user verifies their email — the moment their
+// account goes live. Orients them to the three first moves that lead to value
+// (profile → matches → proposal) so a new signup never lands in silence.
+export async function sendWelcomeEmail(
+  email: string,
+  name: string | null,
+  baseUrl: string
+): Promise<void> {
+  const greeting = name ? `Welcome, ${esc(name.split(' ')[0])}.` : 'Welcome to IR.'
+  const steps = [
+    ['01', 'Finish your profile', 'Add your UEI, NAICS codes, and set-aside status. This is what IR scores every contract against — the more complete it is, the sharper your matches.'],
+    ['02', 'See your matches', 'Open your dashboard to the opportunities already scored against your business, newest first, with the reasoning shown for each one.'],
+    ['03', 'Draft your first proposal', 'Found one worth bidding? Answer a short questionnaire and IR turns it into a formatted federal proposal you can refine and send.'],
+  ]
+
+  const stepRows = steps.map(([n, title, body]) => `
+    <tr><td style="padding:0 0 20px;">
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td width="40" valign="top" style="color:#C41230;font-size:12px;font-weight:700;font-family:monospace;letter-spacing:0.08em;">${n}</td>
+        <td valign="top">
+          <p style="color:#ffffff;font-size:15px;font-weight:700;margin:0 0 4px;font-family:sans-serif;">${title}</p>
+          <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.65;margin:0;font-family:sans-serif;">${body}</p>
+        </td>
+      </tr></table>
+    </td></tr>`).join('')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:36px 48px 28px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">GOVCON INTELLIGENCE</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px 48px 12px;">
+            <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 20px;">YOUR ACCOUNT IS LIVE</p>
+            <h1 style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0 0 16px;font-family:sans-serif;">${greeting}</h1>
+            <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 32px;font-family:sans-serif;">
+              You're in. IR watches the entire federal market — every SAM.gov solicitation — and scores
+              it against your business, so you spend your time bidding, not searching. Here are the three
+              moves that get you to your first match.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">${stepRows}</table>
+            <a href="${baseUrl}/dashboard"
+               style="display:inline-block;padding:14px 32px;background:#C41230;color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.1em;text-decoration:none;margin-top:12px;">
+              GO TO YOUR DASHBOARD →
+            </a>
+            <p style="color:rgba(255,255,255,0.2);font-size:11px;line-height:1.6;margin:32px 0 0;font-family:sans-serif;">
+              Questions? Just reply to this email — it reaches a real person.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(email, 'Welcome to IR — your account is live', html)
+}
+
 export async function sendPasswordResetEmail(
   email: string,
   token: string,

@@ -47,6 +47,21 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // Search-engine ownership verification. To turn on Google Search Console:
+  // 1. In Search Console, add ir-gov.app and choose the "HTML tag" method.
+  // 2. Copy just the content value (the long token, not the whole tag).
+  // 3. In Vercel → Project → Settings → Environment Variables, add
+  //    GOOGLE_SITE_VERIFICATION = <that token>, then redeploy.
+  // Same idea for Bing via BING_SITE_VERIFICATION. No code change needed —
+  // the tags below appear automatically once the env vars are set.
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+      : {}),
+    ...(process.env.BING_SITE_VERIFICATION
+      ? { other: { 'msvalidate.01': process.env.BING_SITE_VERIFICATION } }
+      : {}),
+  },
 }
 
 // Structured data: tells Google exactly what IR is, powers rich results

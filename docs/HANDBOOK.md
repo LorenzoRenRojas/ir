@@ -141,7 +141,20 @@ SAM.gov opportunities + who-qualifies/how-to-certify explainer + FAQ JSON-LD),
 `/terms`, `/privacy`, sitemap, robots. Marketing pages share `components/marketing.tsx`
 (nav/CountUp/useInView) and `components/MetatronBackdrop.tsx` (the folding-cube animation;
 `pulse` prop = breathing glow, used on /capabilities). JSON-LD org+product schema in root layout.
-**Pending human action: Google Search Console verification + sitemap submission.**
+Also `/agencies` (+10 per-agency SEO pages: DoD, VA, DHS, GSA, HHS, NASA, USDA,
+DOE, DOJ, DOT — `lib/agencies.ts`, live opportunities matched on `Contract.agency`
++ what-they-buy/how-to-win explainer + FAQ JSON-LD). All three directories
+(NAICS / set-asides / agencies) cross-link each other and the homepage footer.
+
+**Search Console verification is now zero-code.** In Search Console pick the
+"HTML tag" method, copy the token, and set `GOOGLE_SITE_VERIFICATION` in Vercel
+env (Bing: `BING_SITE_VERIFICATION`) — the meta tags render automatically from
+`app/layout.tsx` `metadata.verification`. Then submit `sitemap.xml`.
+**Pending human action: set that env var + submit the sitemap.**
+
+New-user welcome email (`sendWelcomeEmail` in `lib/email.ts`) fires
+fire-and-forget from `app/api/auth/verify-email` the first time an account
+verifies — profile → matches → proposal, so signups never land in silence.
 
 ## Brand
 
