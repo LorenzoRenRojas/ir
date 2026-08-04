@@ -57,9 +57,11 @@ export default function NaicsIndexPage() {
         ))}
 
         <div style={{ marginTop: 8, padding: '20px 24px', border: '1px solid rgba(255,255,255,0.08)', background: '#0f0f0f' }}>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.7, margin: 0, fontFamily: sans }}>
-            Qualify for a set-aside?{' '}
-            <Link href="/set-asides" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>Browse 8(a), WOSB, SDVOSB &amp; HUBZone contracts →</Link>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.9, margin: 0, fontFamily: sans }}>
+            Browsing another way?{' '}
+            <Link href="/set-asides" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>By set-aside (8(a), WOSB, SDVOSB…) →</Link>
+            {'  ·  '}
+            <Link href="/agencies" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>By agency (VA, DoD, DHS…) →</Link>
           </p>
         </div>
 

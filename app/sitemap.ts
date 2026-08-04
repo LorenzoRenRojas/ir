@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { TOP_NAICS_CODES } from '@/lib/naics'
 import { COMPARISONS } from '@/lib/comparisons'
 import { SET_ASIDES } from '@/lib/set-asides'
+import { AGENCIES } from '@/lib/agencies'
 
 const BASE = 'https://ir-gov.app'
 
@@ -17,6 +18,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/set-asides`, changeFrequency: 'daily', priority: 0.9 },
     ...SET_ASIDES.map(s => ({
       url: `${BASE}/set-asides/${s.slug}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    })),
+    { url: `${BASE}/agencies`, changeFrequency: 'daily', priority: 0.9 },
+    ...AGENCIES.map(a => ({
+      url: `${BASE}/agencies/${a.slug}`,
       changeFrequency: 'daily' as const,
       priority: 0.8,
     })),
