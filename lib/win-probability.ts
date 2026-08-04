@@ -14,6 +14,32 @@ export interface WinProbabilityResult {
   score: number        // 0-100
   label: 'HIGH' | 'MEDIUM' | 'LOW' | 'INELIGIBLE'
   topFactor: string    // single most important reason
+  // The capture manager's bid/no-bid gate, in their own language. Grounded in
+  // the standard PWin thresholds (<40% walk away, >70% full pursuit). Our score
+  // is a heuristic, not a literal probability, so the verdict is framed as a
+  // pursuit recommendation, never as a promised win percentage.
+  verdict: 'PURSUE' | 'CONDITIONAL' | 'LONG SHOT' | 'INELIGIBLE'
+  verdictDetail: string
+}
+
+// Map the heuristic score onto the capture manager's decision gate.
+function verdictFor(score: number): { verdict: WinProbabilityResult['verdict']; verdictDetail: string } {
+  if (score >= 70) {
+    return {
+      verdict: 'PURSUE',
+      verdictDetail: 'Strong position on the factors we can measure — this is where capture teams commit full effort. Your relationships and pricing decide the rest.',
+    }
+  }
+  if (score >= 40) {
+    return {
+      verdict: 'CONDITIONAL',
+      verdictDetail: 'Winnable, but not a lock — worth investing to strengthen your position (team up, engage the agency early) before you commit real proposal hours.',
+    }
+  }
+  return {
+    verdict: 'LONG SHOT',
+    verdictDetail: 'Steep odds against the field on the measurable factors — bid only if it’s strategic or you have an edge we can’t see from the data.',
+  }
 }
 
 const REVENUE_CEILINGS: Record<string, number> = {
@@ -55,7 +81,13 @@ export function calculateWinProbability(
   if (required) {
     const eligible = profile.businessTypes.some((bt) => required.includes(bt))
     if (!eligible) {
-      return { score: 0, label: 'INELIGIBLE', topFactor: `Not eligible: ${contract.setAsideDescription}` }
+      return {
+        score: 0,
+        label: 'INELIGIBLE',
+        topFactor: `Not eligible: ${contract.setAsideDescription}`,
+        verdict: 'INELIGIBLE',
+        verdictDetail: `This is set aside for ${contract.setAsideDescription} — you can’t prime it. Team as a subcontractor, or skip.`,
+      }
     }
     score += 40
   } else {
@@ -132,5 +164,6 @@ export function calculateWinProbability(
     score: clamped,
     label: clamped >= 65 ? 'HIGH' : clamped >= 35 ? 'MEDIUM' : 'LOW',
     topFactor,
+    ...verdictFor(clamped),
   }
 }
