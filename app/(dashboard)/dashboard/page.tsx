@@ -334,6 +334,48 @@ const inputFilterStyle = {
   outline: 'none',
 }
 
+// Regulatory Radar — the "real-world events" layer. Recent Federal Register
+// rules relevant to the company's sectors: the demand-forming signal a capture
+// analyst reads before the contracts appear. Renders nothing when empty, so it
+// never clutters the feed or implies false precision.
+type RegEvent = { title: string; type: string; agency: string; date: string; url: string }
+function RegulatoryRadar({ events }: { events: RegEvent[] }) {
+  if (!events || events.length === 0) return null
+  return (
+    <div style={{ marginBottom: 24, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, background: '#FFFFFF', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C41230' }} />
+        <span style={{ fontSize: 9, letterSpacing: '0.16em', fontWeight: 700, color: 'rgba(0,0,0,0.55)', fontFamily: 'var(--font-geist-mono, monospace)' }}>REGULATORY RADAR</span>
+        <span
+          title="New and proposed federal rules drive procurement — a mandate today is a contract tomorrow. These are recent rules in your sectors, straight from the Federal Register."
+          style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: 'var(--font-geist-sans, sans-serif)', fontStyle: 'italic', cursor: 'help' }}
+        >
+          real-world signals that move the market
+        </span>
+      </div>
+      <div>
+        {events.map((e, i) => (
+          <a
+            key={i}
+            href={e.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '11px 18px', textDecoration: 'none', borderBottom: i < events.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}
+          >
+            <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', color: e.type === 'Rule' ? '#C41230' : '#b45309', fontFamily: 'var(--font-geist-mono, monospace)', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase' }}>
+              {e.type === 'Proposed Rule' ? 'PROPOSED' : e.type.toUpperCase()}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'rgba(0,0,0,0.75)', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.45, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+              {e.title}
+              <span style={{ color: 'rgba(0,0,0,0.35)', fontSize: 10 }}> — {e.agency}</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -366,6 +408,7 @@ export default function DashboardPage() {
   const [prefsLoaded, setPrefsLoaded] = useState(false)
 
   const refreshAge = useRefreshAge(fetchedAt)
+  const [regEvents, setRegEvents] = useState<RegEvent[]>([])
 
   useEffect(() => {
     fetch('/api/preferences')
@@ -453,6 +496,14 @@ export default function DashboardPage() {
         const ids = new Set<string>((data.saved ?? []).map((s: { contractId: string }) => s.contractId))
         setSavedIds(ids)
       })
+      .catch(() => {})
+  }, [])
+
+  // Regulatory Radar — best-effort, never blocks the feed.
+  useEffect(() => {
+    fetch('/api/regulatory')
+      .then(r => r.ok ? r.json() : { events: [] })
+      .then(data => setRegEvents(Array.isArray(data.events) ? data.events : []))
       .catch(() => {})
   }, [])
 
@@ -545,6 +596,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <RegulatoryRadar events={regEvents} />
 
       {!onboardingDone && (
         <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(196,18,48,0.04)', border: '1px solid rgba(196,18,48,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>

@@ -227,13 +227,19 @@ RAMP), deadline urgency (DUE IN Nd). Attached in `app/api/contracts/route.ts`
 on the visible page; rendered as `SignalBadges` on the dashboard card (tone →
 color, full detail on hover).
 
-Still to build (phases 2–3, agreed):
-- **Winnability synthesis** — fold market concentration + incumbent strength
-  (already pulled from USAspending) into the score/verdict, mapped to the
-  analyst's <40 / >70 language. No new data source.
-- **Federal Register event feed** — free, keyless official API of new rules /
-  mandates that drive procurement (e.g. a cyber mandate → cyber demand). The
-  "monitor real-world events" layer, done explainably.
+Phase 2 (shipped): bid/no-bid verdict on `calculateWinProbability`
+(`lib/win-probability.ts`) — PURSUE / CONDITIONAL / LONG SHOT / INELIGIBLE,
+mapped to the standard PWin gate (<40 walk / >70 pursue), framed as a pursuit
+recommendation (not a promised %), shown as a verdict pill on the dashboard card.
+
+Phase 3 (shipped): Federal Register event feed — `lib/federal-register.ts`
+(free, keyless official API; 12h cache; degrades to empty, never throws) +
+`/api/regulatory` (derives search terms from the company's NAICS sectors) +
+`RegulatoryRadar` dashboard widget. New/proposed rules are the demand-forming
+"real-world events" a capture analyst reads before the contracts appear.
+
+Future (not agreed/started): map user agencies → Federal Register agency slugs
+for tighter relevance; a weekly "regulatory + recompete" digest email.
 
 ## Gap-closing features (agreed backlog, ranked by leverage/effort)
 
