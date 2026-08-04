@@ -25,6 +25,7 @@ export interface Contract {
   pointsOfContact?: { name: string; email: string; phone?: string; type?: string }[]
   matchScore?: number
   winProbability?: { score: number; label: string; topFactor: string } | null
+  signals?: import('./signals').OpportunitySignal[]
   incumbent?: { awardee: string; amount: number } | null
   matchBreakdown?: {
     naicsScore: number

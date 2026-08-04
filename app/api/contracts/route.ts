@@ -8,6 +8,7 @@ import { calculateMatchScore, isSetAsideEligible, type CompanyProfile } from '@/
 import { prisma } from '@/lib/prisma'
 import { fetchIncumbents, fetchSmallBizShares } from '@/lib/usaspending'
 import { calculateWinProbability } from '@/lib/win-probability'
+import { opportunitySignals } from '@/lib/signals'
 import {
   isEmbeddingEnabled,
   embedTexts,
@@ -193,6 +194,11 @@ export async function GET(req: NextRequest) {
     const ENRICH_LIMIT = 40
     const NET_ENRICH_LIMIT = 12
     contracts = contracts.slice(0, PAGE_LIMIT)
+
+    // Opportunity Signals — the capture-analyst layer (early/shaping + fiscal
+    // timing + deadline urgency). Pure and cheap: derived from data already on
+    // each contract, no network, so it runs over the whole visible page.
+    contracts = contracts.map((c) => ({ ...c, signals: opportunitySignals(c) }))
 
     // Semantic + behavioral layer on the visible page (non-fatal)
     if (isEmbeddingEnabled() && session?.user?.id) {

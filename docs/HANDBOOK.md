@@ -205,6 +205,36 @@ verifies — profile → matches → proposal, so signups never land in silence.
    full plan + build gate in `docs/COMPLIANCE_MODULE.md`. Gate: ≥200 paying,
    churn <4%, proposal engine earning. Do not start early.
 
+## Opportunity Signals (the capture-analyst layer)
+
+`lib/signals.ts` derives the signals a seasoned capture manager acts on, from
+data already on every contract (no new API calls, no SAM quota cost). Every
+signal carries a one-sentence, user-facing `detail` — explainability is the rule;
+we never fabricate the human PWin factors (customer-relationship strength,
+solution differentiation), which stay the user's to own.
+
+Research grounding (real capture methodology — Shipley/APMP, PWin):
+- Capture scores three questions, not "fit": **is it real? / winnable? / worth it?**
+  PWin thresholds: <40% no-bid, >70% full pursuit.
+- **Sources Sought / RFI / Presolicitation** = the pre-RFP shaping window;
+  responding early can influence requirements and even trigger a set-aside.
+- Federal spending concentrates at fiscal year-end (Sept 30): Jul–Sep ≈ 33% of
+  annual, September alone ≈ 16%, final week ≈ 5× a normal week.
+
+Shipped (phase 1): `opportunitySignals(contract)` → early/shaping (SHAPE IT,
+FORMING, EARLY LOOK from notice type), fiscal timing (FY-END PUSH, YEAR-END
+RAMP), deadline urgency (DUE IN Nd). Attached in `app/api/contracts/route.ts`
+on the visible page; rendered as `SignalBadges` on the dashboard card (tone →
+color, full detail on hover).
+
+Still to build (phases 2–3, agreed):
+- **Winnability synthesis** — fold market concentration + incumbent strength
+  (already pulled from USAspending) into the score/verdict, mapped to the
+  analyst's <40 / >70 language. No new data source.
+- **Federal Register event feed** — free, keyless official API of new rules /
+  mandates that drive procurement (e.g. a cyber mandate → cyber demand). The
+  "monitor real-world events" layer, done explainably.
+
 ## Gap-closing features (agreed backlog, ranked by leverage/effort)
 
 The honest weak spots in "does IR help you *win*", and how to close them:

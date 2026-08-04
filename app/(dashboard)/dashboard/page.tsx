@@ -105,6 +105,41 @@ function MatchBar({ score }: { score: number }) {
   )
 }
 
+// Opportunity Signals — the capture-analyst flags (SHAPE IT / FY-END PUSH /
+// DUE IN 2D). Tone drives color; the full explanation is the hover tooltip so
+// the card stays clean but the reasoning is one hover away (our explainability
+// rule). Rendered prominently because these are "act now", not metadata.
+function SignalBadges({ signals }: { signals?: { kind: string; tone: string; label: string; detail: string }[] }) {
+  if (!signals || signals.length === 0) return null
+  const style = (tone: string) =>
+    tone === 'act-now'
+      ? { bg: 'rgba(196,18,48,0.09)', fg: '#C41230', bd: 'rgba(196,18,48,0.35)' }
+      : tone === 'positive'
+      ? { bg: 'rgba(22,163,74,0.09)', fg: '#15803d', bd: 'rgba(22,163,74,0.32)' }
+      : { bg: 'rgba(0,0,0,0.04)', fg: 'rgba(0,0,0,0.5)', bd: 'rgba(0,0,0,0.12)' }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+      {signals.map((s, i) => {
+        const c = style(s.tone)
+        return (
+          <span
+            key={i}
+            title={s.detail}
+            style={{
+              fontSize: 8.5, fontWeight: 700, letterSpacing: '0.1em', padding: '3px 8px',
+              background: c.bg, color: c.fg, border: `1px solid ${c.bd}`, borderRadius: 4,
+              fontFamily: 'var(--font-geist-mono, monospace)', cursor: 'help', display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: c.fg, opacity: 0.8 }} />
+            {s.label}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number; compact?: boolean }) {
   const [hovered, setHovered] = useState(false)
   const reason = topMatchReason(contract)
@@ -173,6 +208,9 @@ function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { c
           {contract.responseDeadline && <DeadlineBadge dateStr={contract.responseDeadline} />}
         </div>
       </div>
+
+      {/* Opportunity Signals — capture-analyst flags */}
+      <SignalBadges signals={contract.signals} />
 
       {/* Title */}
       <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', lineHeight: 1.4, margin: 0, fontFamily: 'var(--font-geist-sans, sans-serif)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
