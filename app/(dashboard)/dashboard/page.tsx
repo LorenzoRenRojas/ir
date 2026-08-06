@@ -455,20 +455,24 @@ export default function DashboardPage() {
     setLoading(true)
     setLoadError(false)
     setLoadErrorDetail('')
+
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (agency) params.set('agency', agency)
+    if (type) params.set('type', type)
+    if (setAside) params.set('setAside', setAside)
+    if (dueWithin) params.set('dueWithin', dueWithin)
+    if (naics) params.set('naics', naics)
+    if (!eligibleOnly) params.set('eligibleOnly', 'false')
+    const base = params.toString()
+
+    // Phase 1 — fast paint: scored matches + signals, no USAspending wait.
+    // This is what removes up to ~6s of cold-cache lag before the feed appears.
+    let ok = false
     try {
-      const params = new URLSearchParams()
-      if (q) params.set('q', q)
-      if (agency) params.set('agency', agency)
-      if (type) params.set('type', type)
-      if (setAside) params.set('setAside', setAside)
-      if (dueWithin) params.set('dueWithin', dueWithin)
-      if (naics) params.set('naics', naics)
-      if (!eligibleOnly) params.set('eligibleOnly', 'false')
-      const res = await fetch(`/api/contracts?${params.toString()}`)
+      const res = await fetch(`/api/contracts?${base}${base ? '&' : ''}enrich=skip`)
       const data = await res.json().catch(() => ({}))
-      // Ignore a stale response that a newer filter change has superseded —
-      // otherwise a slow broad query can land after a fast narrow one and
-      // show results that don't match the filters on screen
+      // Ignore a stale response that a newer filter change has superseded.
       if (seq !== reqSeq.current) return
       if (!res.ok) {
         setLoadError(true)
@@ -478,6 +482,7 @@ export default function DashboardPage() {
         setContracts(data.contracts ?? [])
         setHiddenIneligible(data.hiddenIneligible ?? 0)
         setFetchedAt(new Date())
+        ok = true
       }
     } catch (err) {
       console.error(err)
@@ -485,6 +490,23 @@ export default function DashboardPage() {
     } finally {
       if (seq === reqSeq.current) setLoading(false)
     }
+
+    // Phase 2 — background enrichment: win probability + incumbents fill onto
+    // the already-rendered cards. No spinner, never blocks; if it fails, the
+    // fast feed simply stays as-is.
+    if (!ok) return
+    try {
+      const res2 = await fetch(`/api/contracts?${base}`)
+      const data2 = await res2.json().catch(() => ({}))
+      if (seq !== reqSeq.current || !res2.ok) return
+      const byId = new Map<string, Contract>((data2.contracts ?? []).map((c: Contract) => [c.id, c]))
+      setContracts((prev) =>
+        prev.map((c) => {
+          const e = byId.get(c.id)
+          return e ? { ...c, winProbability: e.winProbability, incumbent: e.incumbent } : c
+        })
+      )
+    } catch { /* best-effort — the fast feed already rendered */ }
   }, [q, agency, type, setAside, dueWithin, naics, eligibleOnly])
 
   useEffect(() => { if (prefsLoaded) fetchContracts() }, [fetchContracts, prefsLoaded])

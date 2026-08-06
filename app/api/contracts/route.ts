@@ -49,6 +49,12 @@ export async function GET(req: NextRequest) {
     // Personalized eligibility filter — hide set-asides the company can't prime.
     // Default ON; the dashboard offers a "show all" toggle that sends 'false'.
     const eligibleOnly = searchParams.get('eligibleOnly') !== 'false'
+    // Progressive enrichment: enrich=skip returns the scored feed immediately,
+    // WITHOUT the USAspending calls (incumbents + win-share) that can add up to
+    // ~6s on a cold cache. The dashboard renders that fast feed first, then
+    // makes a second (full) request in the background to fill win probability
+    // and incumbents onto the cards. First paint no longer waits on USAspending.
+    const skipEnrich = searchParams.get('enrich') === 'skip'
 
     // Load company profile. Guarded: a failed profile read (DB hiccup,
     // unmigrated column) must degrade to an unscored feed, not 503 the
@@ -215,50 +221,54 @@ export async function GET(req: NextRequest) {
     // culprit on a cold cache, so they are (a) limited to the top few rows and
     // (b) hard-bounded by a deadline — if the network is slow, the feed still
     // returns with match scores, and enrichment simply fills in what it can.
-    const netEnriched = contracts.slice(0, NET_ENRICH_LIMIT)
-    let incumbents: (Awaited<ReturnType<typeof fetchIncumbents>>[number])[] = []
-    let sbShares = new Map<string, number | null>()
-    try {
-      const ENRICH_DEADLINE_MS = 6_000
-      const result = await Promise.race([
-        Promise.all([
-          fetchIncumbents(netEnriched),
-          fetchSmallBizShares(netEnriched.map((c) => c.naicsCode)),
-        ]),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), ENRICH_DEADLINE_MS)),
-      ])
-      if (result) {
-        incumbents = result[0]
-        sbShares = result[1]
-      } else {
-        console.warn('Contract enrichment exceeded deadline — serving scored feed unenriched')
-      }
-    } catch (err) {
-      console.error('Enrichment error (non-fatal):', err)
-    }
-
-    const winProfile = profile && dbProfile
-      ? {
-          businessTypes: profile.businessTypes,
-          naicsCodes: profile.naicsCodes,
-          certifications: profile.certifications,
-          contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
-          annualRevenue: dbProfile.annualRevenue ?? null,
-          agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+    // Skipped entirely for the fast (enrich=skip) first paint; the dashboard's
+    // background request runs this pass and merges the results in.
+    if (!skipEnrich) {
+      const netEnriched = contracts.slice(0, NET_ENRICH_LIMIT)
+      let incumbents: (Awaited<ReturnType<typeof fetchIncumbents>>[number])[] = []
+      let sbShares = new Map<string, number | null>()
+      try {
+        const ENRICH_DEADLINE_MS = 6_000
+        const result = await Promise.race([
+          Promise.all([
+            fetchIncumbents(netEnriched),
+            fetchSmallBizShares(netEnriched.map((c) => c.naicsCode)),
+          ]),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), ENRICH_DEADLINE_MS)),
+        ])
+        if (result) {
+          incumbents = result[0]
+          sbShares = result[1]
+        } else {
+          console.warn('Contract enrichment exceeded deadline — serving scored feed unenriched')
         }
-      : null
-    contracts = contracts.map((c, i) => {
-      if (i >= ENRICH_LIMIT) return c
-      // Incumbent only exists for the network-enriched top slice; win
-      // probability still computes for the rest (it degrades gracefully
-      // without an incumbent or a win-share signal)
-      const incumbent = i < NET_ENRICH_LIMIT ? incumbents[i] : null
-      return {
-        ...c,
-        ...(incumbent ? { incumbent } : {}),
-        ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
+      } catch (err) {
+        console.error('Enrichment error (non-fatal):', err)
       }
-    })
+
+      const winProfile = profile && dbProfile
+        ? {
+            businessTypes: profile.businessTypes,
+            naicsCodes: profile.naicsCodes,
+            certifications: profile.certifications,
+            contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
+            annualRevenue: dbProfile.annualRevenue ?? null,
+            agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+          }
+        : null
+      contracts = contracts.map((c, i) => {
+        if (i >= ENRICH_LIMIT) return c
+        // Incumbent only exists for the network-enriched top slice; win
+        // probability still computes for the rest (it degrades gracefully
+        // without an incumbent or a win-share signal)
+        const incumbent = i < NET_ENRICH_LIMIT ? incumbents[i] : null
+        return {
+          ...c,
+          ...(incumbent ? { incumbent } : {}),
+          ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
+        }
+      })
+    }
 
     return NextResponse.json({ contracts, hiddenIneligible, eligibilityFiltered: eligibleOnly && canJudgeEligibility })
   } catch (err) {
