@@ -117,6 +117,91 @@ function PartsBadges({ parts }: { parts: ScoreParts }) {
   )
 }
 
+// ─── Radar analytics ──────────────────────────────────────────────────────────
+// Both charts are built ENTIRELY from data already loaded on this page — no new
+// requests, no load-time cost. And both are honest: they describe award history
+// (who HOLDS the work and when it expires), never who will bid on it, which is
+// data the government does not disclose.
+
+// When contracts in your space expire, in 3-month buckets across the 18-mo horizon.
+function ExpirationTimeline({ recompetes }: { recompetes: Recompete[] }) {
+  const buckets = [
+    { label: '0–3', min: 0, max: 3, color: crimson },
+    { label: '3–6', min: 4, max: 6, color: crimson },
+    { label: '6–9', min: 7, max: 9, color: '#b45309' },
+    { label: '9–12', min: 10, max: 12, color: '#b45309' },
+    { label: '12–15', min: 13, max: 15, color: '#64748b' },
+    { label: '15–18', min: 16, max: 18, color: '#64748b' },
+  ].map(b => ({ ...b, count: recompetes.filter(r => r.monthsUntilExpiry >= b.min && r.monthsUntilExpiry <= b.max).length }))
+  const max = Math.max(1, ...buckets.map(b => b.count))
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '16px 18px' }}>
+      <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginBottom: 16 }}>EXPIRATION TIMELINE · MONTHS OUT</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 96 }}>
+        {buckets.map(b => (
+          <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: b.count > 0 ? '#0A0A0A' : 'rgba(0,0,0,0.2)', fontFamily: sans, fontVariantNumeric: 'tabular-nums' }}>{b.count}</span>
+            <div title={`${b.count} expiring in ${b.label} months`} style={{ width: '100%', height: `${(b.count / max) * 100}%`, minHeight: b.count > 0 ? 3 : 0, background: b.color, borderRadius: '2px 2px 0 0', transition: 'height 0.5s cubic-bezier(0.22,1,0.36,1)' }} />
+            <span style={{ fontSize: 8, letterSpacing: '0.04em', color: 'rgba(0,0,0,0.35)', fontFamily: mono }}>{b.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Who currently HOLDS the expiring work, by total contract value. Aggregated
+// from real award records — this is track record, not a prediction of bidders.
+function TopIncumbents({ recompetes }: { recompetes: Recompete[] }) {
+  const byInc = new Map<string, { total: number; count: number }>()
+  for (const r of recompetes) {
+    if (!r.incumbent) continue
+    const cur = byInc.get(r.incumbent) ?? { total: 0, count: 0 }
+    cur.total += r.amount ?? 0
+    cur.count += 1
+    byInc.set(r.incumbent, cur)
+  }
+  const top = [...byInc.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5)
+  const max = Math.max(1, ...top.map(([, v]) => v.total))
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '16px 18px' }}>
+      <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginBottom: 16 }}>WHO HOLDS THE EXPIRING WORK · BY VALUE</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {top.map(([name, v]) => (
+          <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+              <span title={name} style={{ fontSize: 11, color: '#0A0A0A', fontFamily: sans, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{name}</span>
+              <span style={{ fontSize: 10, color: crimson, fontFamily: mono, fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{formatAmount(v.total)}{v.count > 1 ? ` · ${v.count}` : ''}</span>
+            </div>
+            <div style={{ height: 5, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(v.total / max) * 100}%`, background: crimson, borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AnalyticsStrip({ recompetes }: { recompetes: Recompete[] }) {
+  // Need enough data for the charts to say something real, not noise.
+  if (recompetes.length < 4) return null
+  const distinctIncumbents = new Set(recompetes.map(r => r.incumbent).filter(Boolean)).size
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: distinctIncumbents >= 2 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 12 }}>
+        <ExpirationTimeline recompetes={recompetes} />
+        {distinctIncumbents >= 2 && <TopIncumbents recompetes={recompetes} />}
+      </div>
+      <p style={{ fontSize: 9, color: 'rgba(0,0,0,0.3)', fontFamily: sans, margin: '8px 2px 0', lineHeight: 1.5 }}>
+        Built from USAspending award records — this is who currently <em>holds</em> the expiring work and <em>when</em> it ends. Federal bidders on open solicitations are not public, so IR never guesses them.
+      </p>
+    </div>
+  )
+}
+
 export default function RecompetesPage() {
   const [recompetes, setRecompetes] = useState<Recompete[]>([])
   const [loading, setLoading] = useState(true)
@@ -202,6 +287,8 @@ export default function RecompetesPage() {
               <div style={{ fontSize: 22, fontWeight: 800, color: '#b45309', fontFamily: sans }}>{recompetes.filter(r => r.monthsUntilExpiry >= 6 && r.monthsUntilExpiry <= 12).length}</div>
             </div>
           </div>
+
+          <AnalyticsStrip recompetes={recompetes} />
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
             {WINDOWS.map(w => (
