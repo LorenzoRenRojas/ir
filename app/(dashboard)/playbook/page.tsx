@@ -95,9 +95,39 @@ function money(v: number | null): string {
 }
 const TONE_COLOR = { do: '#16a34a', watch: '#b45309', stop: crimson, info: 'rgba(0,0,0,0.4)' } as const
 
-function CaptureCommand({ pursuits }: { pursuits: Pursuit[] }) {
+function CaptureCommand({ pursuits, loaded }: { pursuits: Pursuit[]; loaded: boolean }) {
+  const [memo, setMemo] = useState<{ html: string; mode: string } | null>(null)
+  const [memoLoading, setMemoLoading] = useState(false)
+  const [memoError, setMemoError] = useState(false)
+
+  async function generateMemo() {
+    setMemoLoading(true); setMemoError(false)
+    try {
+      const r = await fetch('/api/playbook/memo', { method: 'POST' })
+      const d = await r.json()
+      if (r.ok && d.memo) setMemo({ html: d.memo, mode: d.mode })
+      else setMemoError(true)
+    } catch { setMemoError(true) } finally { setMemoLoading(false) }
+  }
+
   const active = pursuits.filter(p => ACTIVE_STATUSES.includes(p.status))
-  if (active.length === 0) return null
+
+  // Don't flash the empty state before the pipeline has loaded.
+  if (!loaded) return null
+
+  // Visible empty state — so the feature is discoverable even with no pursuits.
+  if (active.length === 0) {
+    return (
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', color: crimson, fontFamily: mono, marginBottom: 12, fontWeight: 700 }}>◆ CAPTURE COMMAND · YOUR LIVE PIPELINE</div>
+        <div style={{ background: '#fff', border: '1px dashed rgba(0,0,0,0.16)', borderRadius: 12, padding: '22px 24px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0A0A0A', fontFamily: sans, marginBottom: 6 }}>Your capture read appears here once you have a live pursuit.</div>
+          <p style={{ fontSize: 12.5, color: 'rgba(0,0,0,0.5)', fontFamily: sans, lineHeight: 1.6, margin: '0 0 14px' }}>Save a contract to your pipeline and IR gives you the analyst view — portfolio metrics, a bid/no-bid verdict, and the next capture move on every deal, plus a one-click capture memo.</p>
+          <Link href="/dashboard" style={{ display: 'inline-block', padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: crimson, border: '1px solid rgba(196,18,48,0.35)', borderRadius: 8, textDecoration: 'none' }}>FIND A CONTRACT TO SAVE →</Link>
+        </div>
+      </div>
+    )
+  }
 
   const totalValue = active.reduce((s, p) => s + (p.value ?? 0), 0)
   const weighted = active.reduce((s, p) => s + (p.value ?? 0) * (STAGE_WEIGHT[p.status] ?? 0.2), 0)
@@ -184,6 +214,36 @@ function CaptureCommand({ pursuits }: { pursuits: Pursuit[] }) {
           )
         })}
       </div>
+
+      {/* Analyst capture memo — deterministic today, AI-written once credits are added */}
+      <div style={{ marginTop: 16 }}>
+        {!memo && (
+          <button onClick={generateMemo} disabled={memoLoading} style={{ padding: '10px 18px', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', fontFamily: mono, cursor: memoLoading ? 'default' : 'pointer', background: '#0A0A0A', color: '#fff', border: 'none', borderRadius: 8 }}>
+            {memoLoading ? 'WRITING THE MEMO…' : '✎ GENERATE CAPTURE MEMO'}
+          </button>
+        )}
+        {memoError && <div style={{ marginTop: 10, fontSize: 12, color: crimson, fontFamily: sans }}>Couldn’t generate the memo — try again.</div>}
+        {memo && (
+          <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, padding: '4px 24px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16 }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, fontWeight: 700 }}>CAPTURE MEMO</span>
+              <span style={{ fontSize: 8, letterSpacing: '0.1em', fontFamily: mono, fontWeight: 700, padding: '3px 8px', borderRadius: 4, color: memo.mode === 'ai' ? '#16a34a' : 'rgba(0,0,0,0.4)', border: `1px solid ${memo.mode === 'ai' ? 'rgba(22,163,74,0.3)' : 'rgba(0,0,0,0.15)'}` }}>{memo.mode === 'ai' ? 'AI-WRITTEN' : 'TEMPLATE'}</span>
+            </div>
+            <div className="capture-memo" dangerouslySetInnerHTML={{ __html: memo.html }} />
+            <button onClick={generateMemo} disabled={memoLoading} style={{ marginTop: 6, padding: '6px 12px', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, cursor: 'pointer', background: 'transparent', color: 'rgba(0,0,0,0.45)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8 }}>{memoLoading ? 'REGENERATING…' : '↻ REGENERATE'}</button>
+          </div>
+        )}
+        <style>{`
+          .capture-memo { font-family: var(--font-geist-sans, sans-serif); color: rgba(0,0,0,0.75); }
+          .capture-memo h2 { font-size: 17px; font-weight: 800; color: #0A0A0A; letter-spacing: -0.01em; margin: 14px 0 8px; }
+          .capture-memo h3 { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${crimson}; margin: 16px 0 6px; }
+          .capture-memo p { font-size: 13px; line-height: 1.7; margin: 0 0 10px; }
+          .capture-memo ul, .capture-memo ol { margin: 0 0 10px; padding-left: 18px; }
+          .capture-memo li { font-size: 12.5px; line-height: 1.6; margin-bottom: 6px; }
+          .capture-memo strong { color: #0A0A0A; font-weight: 600; }
+          .capture-memo em { color: rgba(0,0,0,0.45); }
+        `}</style>
+      </div>
     </div>
   )
 }
@@ -195,6 +255,7 @@ export default function PlaybookPage() {
   const [state, setState] = useState<StepState>({ onboardingDone: false, savedCount: 0, docCount: 0 })
   const [manual, setManual] = useState<Set<string>>(new Set())
   const [pursuits, setPursuits] = useState<Pursuit[]>([])
+  const [pursuitsLoaded, setPursuitsLoaded] = useState(false)
 
   useEffect(() => {
     try {
@@ -213,6 +274,7 @@ export default function PlaybookPage() {
       fetch('/api/documents/generate').then((r) => r.json()).catch(() => ({})),
     ]).then(([saved, docs]) => {
       setPursuits(saved.saved ?? [])
+      setPursuitsLoaded(true)
       setState((s) => ({
         ...s,
         savedCount: (saved.saved ?? []).length,
@@ -246,7 +308,7 @@ export default function PlaybookPage() {
         subtitle="Seven moves that take you from a cold profile to a submitted bid. Do them in order — each one links straight to where it happens."
       />
 
-      <CaptureCommand pursuits={pursuits} />
+      <CaptureCommand pursuits={pursuits} loaded={pursuitsLoaded} />
 
       {/* Progress */}
       <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', padding: '18px 22px', marginBottom: 20 }}>
