@@ -29,6 +29,26 @@ function money(v: number | null): string {
   return `$${Math.round(v)}`
 }
 
+// Concentration gauge: share of dollars held by the top 5 firms. A true
+// part-to-whole from real award records — high = a closed incumbent club
+// (crimson), low = an open field a small business can break into (green).
+function ConcentrationGauge({ pct }: { pct: number }) {
+  const size = 92, stroke = 9, r = (size - stroke) / 2, circ = 2 * Math.PI * r
+  const color = pct >= 60 ? crimson : pct >= 40 ? '#b45309' : '#16a34a'
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${(pct / 100) * circ} ${circ}`} style={{ transition: 'stroke-dasharray 0.7s cubic-bezier(0.22,1,0.36,1)' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 20, fontWeight: 800, color: '#0A0A0A', fontFamily: sans, lineHeight: 1 }}>{pct}%</span>
+        <span style={{ fontSize: 7, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginTop: 3 }}>TOP 5</span>
+      </div>
+    </div>
+  )
+}
+
 export default function MarketIntel({ naics, agency }: { naics: string; agency: string | null }) {
   const [data, setData] = useState<Benchmark | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
@@ -100,11 +120,14 @@ export default function MarketIntel({ naics, agency }: { naics: string; agency: 
         </div>
       </div>
 
-      {/* Concentration read */}
-      <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)', fontFamily: sans, lineHeight: 1.7, marginBottom: 22, padding: '12px 14px', background: closedClub ? 'rgba(196,18,48,0.04)' : 'rgba(0,0,0,0.02)', border: `1px solid ${closedClub ? 'rgba(196,18,48,0.15)' : 'rgba(0,0,0,0.06)'}` }}>
-        {closedClub
-          ? <>The top 5 firms hold <strong style={{ color: crimson }}>{concentrationPct}%</strong> of the dollars here — this is a tight incumbent club. Your realistic paths are a <strong>set-aside lane</strong> or <strong>teaming</strong> with an established prime, not a head-on open bid.</>
-          : <>Awards are spread across <strong>{data.distinctWinners} firms</strong> with the top 5 holding <strong>{concentrationPct}%</strong> — a relatively open field where a strong small business can break in on merit.</>}
+      {/* Concentration read + gauge */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 22, flexWrap: 'wrap' }}>
+        <ConcentrationGauge pct={concentrationPct} />
+        <div style={{ flex: 1, minWidth: 220, fontSize: 12, color: 'rgba(0,0,0,0.55)', fontFamily: sans, lineHeight: 1.7, padding: '12px 14px', background: closedClub ? 'rgba(196,18,48,0.04)' : 'rgba(0,0,0,0.02)', border: `1px solid ${closedClub ? 'rgba(196,18,48,0.15)' : 'rgba(0,0,0,0.06)'}` }}>
+          {closedClub
+            ? <>The top 5 firms hold <strong style={{ color: crimson }}>{concentrationPct}%</strong> of the dollars here — this is a tight incumbent club. Your realistic paths are a <strong>set-aside lane</strong> or <strong>teaming</strong> with an established prime, not a head-on open bid.</>
+            : <>Awards are spread across <strong>{data.distinctWinners} firms</strong> with the top 5 holding <strong>{concentrationPct}%</strong> — a relatively open field where a strong small business can break in on merit.</>}
+        </div>
       </div>
 
       {/* Top players */}

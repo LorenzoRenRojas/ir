@@ -25,6 +25,7 @@ import {
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
+  const t0 = Date.now()
   // 60 requests per minute per IP
   const { allowed } = rateLimit(ipKey(req, 'contracts'), 60, 60_000)
   if (!allowed) {
@@ -223,7 +224,11 @@ export async function GET(req: NextRequest) {
     // returns with match scores, and enrichment simply fills in what it can.
     // Skipped entirely for the fast (enrich=skip) first paint; the dashboard's
     // background request runs this pass and merges the results in.
+    // feedReadyMs = everything up to here: the scored feed the fast paint shows.
+    const feedReadyMs = Date.now() - t0
+    let enrichMs: number | undefined
     if (!skipEnrich) {
+      const enrichT0 = Date.now()
       const netEnriched = contracts.slice(0, NET_ENRICH_LIMIT)
       let incumbents: (Awaited<ReturnType<typeof fetchIncumbents>>[number])[] = []
       let sbShares = new Map<string, number | null>()
@@ -268,7 +273,15 @@ export async function GET(req: NextRequest) {
           ...(winProfile ? { winProbability: calculateWinProbability(c, winProfile, incumbent, sbShares.get(c.naicsCode) ?? null) } : {}),
         }
       })
+      enrichMs = Date.now() - enrichT0
     }
+
+    // Record feed timing off the response path so the admin board can show the
+    // fast-paint vs enrichment split without browser devtools.
+    after(async () => {
+      const { recordFeedPerf } = await import('@/lib/perf')
+      await recordFeedPerf({ fastMs: feedReadyMs, enrichMs })
+    })
 
     return NextResponse.json({ contracts, hiddenIneligible, eligibilityFiltered: eligibleOnly && canJudgeEligibility })
   } catch (err) {

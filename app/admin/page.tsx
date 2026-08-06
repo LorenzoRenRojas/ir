@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { samQuotaStatus } from '@/lib/sam-quota'
 import { aiDraftStatus } from '@/lib/ai-budget'
 import { isAiDraftingConfigured } from '@/lib/proposal-engine'
+import { getFeedPerf } from '@/lib/perf'
 import AdminActions from './AdminActions'
 
 export const dynamic = 'force-dynamic'
@@ -92,6 +93,9 @@ export default async function AdminPage() {
   // AI proposal drafting: is Claude wired in, and how many drafts today
   const aiConfigured = isAiDraftingConfigured()
   const aiDrafts = await aiDraftStatus()
+
+  // Feed performance: fast-paint vs backgrounded enrichment (progressive load)
+  const feedPerf = await getFeedPerf()
 
   // Last save-contract error (recorded server-side for diagnosis)
   let lastSaveError: string | null = null
@@ -215,6 +219,13 @@ export default async function AdminPage() {
               sub={pipelineByStage.map(g => `${g._count} ${g.status}`).join(' · ')}
             />
           )}
+          <StatCard
+            title="FEED SPEED · FAST PAINT"
+            value={feedPerf ? `${feedPerf.fastMs}ms` : '—'}
+            sub={feedPerf
+              ? `enrichment +${feedPerf.enrichMs}ms now backgrounded (was blocking) · ${feedPerf.samples} loads`
+              : 'load the dashboard once to record a sample'}
+          />
         </div>
 
         <div style={label}>ENVIRONMENT CONFIG</div>
