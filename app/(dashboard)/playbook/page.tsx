@@ -36,12 +36,165 @@ const STEPS: Step[] = [
   { id: 'notify', title: 'Turn on your alerts', do: 'Switch on the daily match digest and deadline reminders so a winnable contract never slips past a due date.', href: '/settings', cta: 'OPEN SETTINGS' },
 ]
 
+// ─── Capture Command — the analyst read on your live pipeline ──────────────────
+// Everything here is computed from real pipeline data (stage, deadline, match,
+// and the same bid/no-bid scorecard the deal carries). No AI, no invented
+// numbers — a deterministic capture read in a top analyst's language.
+
+interface Pursuit {
+  id: string
+  contractId: string
+  title: string
+  agency: string
+  value: number | null
+  deadline: string | null
+  matchScore: number | null
+  status: string
+  scorecard: string | null
+}
+
+// Mirrors the pipeline scorecard exactly (0=weak,1=ok,2=strong, weighted).
+const BID_FACTORS = [
+  { key: 'customer', w: 3 }, { key: 'fit', w: 3 }, { key: 'pastPerf', w: 2 },
+  { key: 'competition', w: 2 }, { key: 'resources', w: 2 }, { key: 'price', w: 2 },
+] as const
+const BID_MAX = BID_FACTORS.reduce((s, f) => s + f.w * 2, 0)
+
+function bidGate(scorecard: string | null): { complete: boolean; rated: number; pct: number | null; verdict: string; tone: 'do' | 'watch' | 'stop' } {
+  let r: Record<string, number> = {}
+  try { if (scorecard) r = JSON.parse(scorecard) as Record<string, number> } catch { /* malformed */ }
+  const rated = BID_FACTORS.filter(f => typeof r[f.key] === 'number').length
+  const complete = rated === BID_FACTORS.length
+  if (!complete) return { complete, rated, pct: null, verdict: `GATE ${rated}/${BID_FACTORS.length}`, tone: 'watch' }
+  const pct = Math.round((BID_FACTORS.reduce((s, f) => s + (r[f.key] ?? 0) * f.w, 0) / BID_MAX) * 100)
+  if (pct >= 70) return { complete, rated, pct, verdict: `GO · ${pct}`, tone: 'do' }
+  if (pct >= 45) return { complete, rated, pct, verdict: `REVIEW · ${pct}`, tone: 'watch' }
+  return { complete, rated, pct, verdict: `NO-BID · ${pct}`, tone: 'stop' }
+}
+
+const CAPTURE_PHASE: Record<string, { phase: string; move: string }> = {
+  saved:     { phase: 'QUALIFICATION',    move: 'Run the bid/no-bid gate before you commit B&P hours — score customer intimacy, capability fit, and the competitive field. Clear the gate, then advance it to capture.' },
+  pursuing:  { phase: 'CAPTURE PLANNING', move: 'You’re in active capture. Lock your win themes and discriminators, decide prime vs. teaming from the market concentration, and shape the customer before the solicitation drops — draft early, don’t wait for the RFP.' },
+  submitted: { phase: 'AWAITING AWARD',   move: 'Proposal is in. Stand by for evaluation notices or a request for a Final Proposal Revision (FPR), and log the outcome so your win-rate model sharpens.' },
+  won:       { phase: 'AWARDED',          move: 'Transition to performance and secure a strong CPARS past-performance reference — it compounds your probability of win on every future bid in this NAICS.' },
+  lost:      { phase: 'DEBRIEF',          move: 'Request a formal debrief. The evaluators’ strengths and weaknesses are the single highest-value input to your next capture.' },
+}
+const ACTIVE_STATUSES = ['saved', 'pursuing', 'submitted']
+const STAGE_WEIGHT: Record<string, number> = { saved: 0.15, pursuing: 0.35, submitted: 0.5 }
+
+function daysUntil(d: string | null): number | null {
+  if (!d) return null
+  const t = new Date(d).getTime()
+  return isNaN(t) ? null : Math.ceil((t - Date.now()) / 86_400_000)
+}
+function money(v: number | null): string {
+  if (!v) return '—'
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `$${Math.round(v / 1_000)}K`
+  return `$${Math.round(v)}`
+}
+const TONE_COLOR = { do: '#16a34a', watch: '#b45309', stop: crimson, info: 'rgba(0,0,0,0.4)' } as const
+
+function CaptureCommand({ pursuits }: { pursuits: Pursuit[] }) {
+  const active = pursuits.filter(p => ACTIVE_STATUSES.includes(p.status))
+  if (active.length === 0) return null
+
+  const totalValue = active.reduce((s, p) => s + (p.value ?? 0), 0)
+  const weighted = active.reduce((s, p) => s + (p.value ?? 0) * (STAGE_WEIGHT[p.status] ?? 0.2), 0)
+  const matches = active.map(p => p.matchScore).filter((m): m is number => typeof m === 'number')
+  const avgMatch = matches.length ? Math.round(matches.reduce((a, b) => a + b, 0) / matches.length) : null
+  const closing14 = active.filter(p => { const d = daysUntil(p.deadline); return d !== null && d >= 0 && d <= 14 }).length
+  const gatesRun = active.filter(p => bidGate(p.scorecard).complete).length
+
+  // Urgency-first: soonest deadline leads, undated deals last.
+  const ordered = [...active].sort((a, b) => {
+    const da = daysUntil(a.deadline), db = daysUntil(b.deadline)
+    if (da === null) return 1
+    if (db === null) return -1
+    return da - db
+  })
+
+  const chip = (label: string, value: string, accent?: string) => (
+    <div style={{ background: '#fff', padding: '12px 16px' }}>
+      <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>{label}</div>
+      <div style={{ fontSize: 19, fontWeight: 800, color: accent ?? '#0A0A0A', fontFamily: sans, marginTop: 2 }}>{value}</div>
+    </div>
+  )
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ fontSize: 10, letterSpacing: '0.16em', color: crimson, fontFamily: mono, marginBottom: 12, fontWeight: 700 }}>◆ CAPTURE COMMAND · YOUR LIVE PIPELINE</div>
+
+      {/* Portfolio read */}
+      <div style={{ background: '#0A0A0A', borderRadius: 12, padding: '20px 22px', marginBottom: 14 }}>
+        <div style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>PORTFOLIO READ</div>
+        <p style={{ fontFamily: sans, fontSize: 14.5, color: '#fff', lineHeight: 1.65, margin: 0 }}>
+          You’re carrying <strong>{active.length} active pursuit{active.length === 1 ? '' : 's'}</strong> worth <strong style={{ color: '#fff' }}>{money(totalValue)}</strong> (<span style={{ color: crimson }}>{money(weighted)}</span> probability-weighted by stage).{' '}
+          {closing14 > 0
+            ? <><strong style={{ color: '#fff' }}>{closing14}</strong> {closing14 === 1 ? 'has' : 'have'} a response deadline inside two weeks — those lead your effort. </>
+            : <>No response deadlines inside two weeks. </>}
+          <strong style={{ color: '#fff' }}>{gatesRun}/{active.length}</strong> {gatesRun === active.length ? 'pursuits have cleared a bid/no-bid gate — disciplined.' : 'have cleared a bid/no-bid gate; score the rest before you sink proposal hours into them.'}
+        </p>
+      </div>
+
+      {/* Metric strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+        {chip('ACTIVE PURSUITS', String(active.length))}
+        {chip('PIPELINE VALUE', money(totalValue))}
+        {chip('WEIGHTED', money(weighted), crimson)}
+        {chip('AVG MATCH', avgMatch === null ? '—' : `${avgMatch}%`, avgMatch !== null && avgMatch >= 70 ? '#16a34a' : undefined)}
+        {chip('DUE ≤14D', String(closing14), closing14 > 0 ? crimson : undefined)}
+        {chip('GATES RUN', `${gatesRun}/${active.length}`)}
+      </div>
+
+      {/* Per-deal capture reads */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {ordered.map(p => {
+          const phase = CAPTURE_PHASE[p.status] ?? { phase: p.status.toUpperCase(), move: '' }
+          const gate = bidGate(p.scorecard)
+          const days = daysUntil(p.deadline)
+          const urgent = days !== null && days >= 0 && days <= 7
+          const gateColor = TONE_COLOR[gate.tone]
+          return (
+            <div key={p.id} style={{ background: '#fff', border: `1px solid ${urgent ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${gateColor}`, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', color: crimson, fontFamily: mono, border: '1px solid rgba(196,18,48,0.25)', padding: '2px 7px', borderRadius: 4 }}>{phase.phase}</span>
+                <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.1em', color: '#fff', background: gateColor, fontFamily: mono, padding: '3px 7px', borderRadius: 4 }}>{gate.verdict}</span>
+                {days !== null && days >= 0 && (
+                  <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', color: urgent ? crimson : 'rgba(0,0,0,0.4)', fontFamily: mono }}>DUE IN {days}D</span>
+                )}
+                {typeof p.matchScore === 'number' && (
+                  <span style={{ fontSize: 8.5, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginLeft: 'auto' }}>MATCH {p.matchScore}% · {money(p.value)}</span>
+                )}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, lineHeight: 1.45, marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.title}</div>
+              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: sans, marginBottom: 10 }}>{p.agency}</div>
+              <p style={{ fontSize: 12.5, color: 'rgba(0,0,0,0.6)', fontFamily: sans, lineHeight: 1.65, margin: 0 }}>
+                <span style={{ color: gateColor, fontWeight: 700 }}>Next move — </span>
+                {!gate.complete && p.status === 'saved'
+                  ? phase.move
+                  : gate.tone === 'stop'
+                    ? `The gate scored this a no-bid (${gate.pct}). Your hours are your scarcest asset — reallocate to a better-positioned pursuit unless something off-the-record changes the odds.`
+                    : phase.move}
+              </p>
+              <Link href="/saved" style={{ display: 'inline-block', marginTop: 10, padding: '6px 12px', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: crimson, border: '1px solid rgba(196,18,48,0.3)', borderRadius: 8, textDecoration: 'none' }}>
+                {gate.complete ? 'OPEN DEAL →' : 'RUN THE GATE →'}
+              </Link>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const LS_KEY = 'ir-playbook-done'
 
 export default function PlaybookPage() {
   const { data: session } = useSession()
   const [state, setState] = useState<StepState>({ onboardingDone: false, savedCount: 0, docCount: 0 })
   const [manual, setManual] = useState<Set<string>>(new Set())
+  const [pursuits, setPursuits] = useState<Pursuit[]>([])
 
   useEffect(() => {
     try {
@@ -59,6 +212,7 @@ export default function PlaybookPage() {
       fetch('/api/contracts/saved').then((r) => r.json()).catch(() => ({})),
       fetch('/api/documents/generate').then((r) => r.json()).catch(() => ({})),
     ]).then(([saved, docs]) => {
+      setPursuits(saved.saved ?? [])
       setState((s) => ({
         ...s,
         savedCount: (saved.saved ?? []).length,
@@ -91,6 +245,8 @@ export default function PlaybookPage() {
         title={allDone ? 'You’re running the full play.' : 'Your first win, step by step.'}
         subtitle="Seven moves that take you from a cold profile to a submitted bid. Do them in order — each one links straight to where it happens."
       />
+
+      <CaptureCommand pursuits={pursuits} />
 
       {/* Progress */}
       <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', padding: '18px 22px', marginBottom: 20 }}>

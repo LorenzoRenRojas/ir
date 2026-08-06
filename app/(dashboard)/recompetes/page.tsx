@@ -123,29 +123,46 @@ function PartsBadges({ parts }: { parts: ScoreParts }) {
 // (who HOLDS the work and when it expires), never who will bid on it, which is
 // data the government does not disclose.
 
-// When contracts in your space expire, in 3-month buckets across the 18-mo horizon.
-function ExpirationTimeline({ recompetes }: { recompetes: Recompete[] }) {
+// When contracts in your space expire, in 3-month buckets across the 18-mo
+// horizon. Interactive: click a bar to filter the list to that window; the bars
+// stay in sync with the filter chips below.
+function ExpirationTimeline({ recompetes, filter, onSelect }: { recompetes: Recompete[]; filter: string; onSelect: (key: string) => void }) {
+  const [hover, setHover] = useState(-1)
   const buckets = [
-    { label: '0–3', min: 0, max: 3, color: crimson },
-    { label: '3–6', min: 4, max: 6, color: crimson },
-    { label: '6–9', min: 7, max: 9, color: '#b45309' },
-    { label: '9–12', min: 10, max: 12, color: '#b45309' },
-    { label: '12–15', min: 13, max: 15, color: '#64748b' },
-    { label: '15–18', min: 16, max: 18, color: '#64748b' },
+    { label: '0–3', min: 0, max: 3, color: crimson, win: 'urgent' },
+    { label: '3–6', min: 4, max: 6, color: crimson, win: 'urgent' },
+    { label: '6–9', min: 7, max: 9, color: '#b45309', win: 'sweet' },
+    { label: '9–12', min: 10, max: 12, color: '#b45309', win: 'sweet' },
+    { label: '12–15', min: 13, max: 15, color: '#64748b', win: 'horizon' },
+    { label: '15–18', min: 16, max: 18, color: '#64748b', win: 'horizon' },
   ].map(b => ({ ...b, count: recompetes.filter(r => r.monthsUntilExpiry >= b.min && r.monthsUntilExpiry <= b.max).length }))
   const max = Math.max(1, ...buckets.map(b => b.count))
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '16px 18px' }}>
-      <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginBottom: 16 }}>EXPIRATION TIMELINE · MONTHS OUT</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+        <span style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono }}>EXPIRATION TIMELINE · MONTHS OUT</span>
+        <span style={{ fontSize: 8, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.2)', fontFamily: mono }}>CLICK TO FILTER</span>
+      </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 96 }}>
-        {buckets.map(b => (
-          <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: b.count > 0 ? '#0A0A0A' : 'rgba(0,0,0,0.2)', fontFamily: sans, fontVariantNumeric: 'tabular-nums' }}>{b.count}</span>
-            <div title={`${b.count} expiring in ${b.label} months`} style={{ width: '100%', height: `${(b.count / max) * 100}%`, minHeight: b.count > 0 ? 3 : 0, background: b.color, borderRadius: '2px 2px 0 0', transition: 'height 0.5s cubic-bezier(0.22,1,0.36,1)' }} />
-            <span style={{ fontSize: 8, letterSpacing: '0.04em', color: 'rgba(0,0,0,0.35)', fontFamily: mono }}>{b.label}</span>
-          </div>
-        ))}
+        {buckets.map((b, i) => {
+          const dimmed = filter !== 'all' && filter !== b.win
+          const isHover = hover === i
+          return (
+            <button
+              key={b.label}
+              onClick={() => onSelect(filter === b.win ? 'all' : b.win)}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(-1)}
+              title={`${b.count} expiring in ${b.label} months — click to filter`}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', opacity: dimmed ? 0.32 : 1, transition: 'opacity 0.2s ease' }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 800, color: b.count > 0 ? '#0A0A0A' : 'rgba(0,0,0,0.2)', fontFamily: sans, fontVariantNumeric: 'tabular-nums' }}>{b.count}</span>
+              <div style={{ width: '100%', height: `${(b.count / max) * 100}%`, minHeight: b.count > 0 ? 3 : 0, background: b.color, borderRadius: '2px 2px 0 0', filter: isHover ? 'brightness(1.2)' : 'none', boxShadow: isHover ? `0 0 0 2px ${b.color}22` : 'none', transition: 'height 0.5s cubic-bezier(0.22,1,0.36,1), filter 0.15s ease' }} />
+              <span style={{ fontSize: 8, letterSpacing: '0.04em', color: filter === b.win ? '#0A0A0A' : 'rgba(0,0,0,0.35)', fontWeight: filter === b.win ? 700 : 400, fontFamily: mono }}>{b.label}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -164,35 +181,47 @@ function TopIncumbents({ recompetes }: { recompetes: Recompete[] }) {
   }
   const top = [...byInc.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5)
   const max = Math.max(1, ...top.map(([, v]) => v.total))
+  const grandTotal = top.reduce((s, [, v]) => s + v.total, 0)
+  const [hover, setHover] = useState('')
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', padding: '16px 18px' }}>
       <div style={{ fontSize: 8, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.35)', fontFamily: mono, marginBottom: 16 }}>WHO HOLDS THE EXPIRING WORK · BY VALUE</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {top.map(([name, v]) => (
-          <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-              <span title={name} style={{ fontSize: 11, color: '#0A0A0A', fontFamily: sans, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{name}</span>
-              <span style={{ fontSize: 10, color: crimson, fontFamily: mono, fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{formatAmount(v.total)}{v.count > 1 ? ` · ${v.count}` : ''}</span>
+        {top.map(([name, v]) => {
+          const isHover = hover === name
+          const share = grandTotal > 0 ? Math.round((v.total / grandTotal) * 100) : 0
+          return (
+            <div
+              key={name}
+              onMouseEnter={() => setHover(name)}
+              onMouseLeave={() => setHover('')}
+              title={`${name} — ${formatAmount(v.total)} across ${v.count} expiring award${v.count > 1 ? 's' : ''} (${share}% of the top 5)`}
+              style={{ display: 'flex', flexDirection: 'column', gap: 4, cursor: 'default' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                <span style={{ fontSize: 11, color: '#0A0A0A', fontFamily: sans, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{name}</span>
+                <span style={{ fontSize: 10, color: crimson, fontFamily: mono, fontWeight: 700, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{isHover ? `${share}%` : `${formatAmount(v.total)}${v.count > 1 ? ` · ${v.count}` : ''}`}</span>
+              </div>
+              <div style={{ height: 5, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(v.total / max) * 100}%`, background: crimson, borderRadius: 3, filter: isHover ? 'brightness(1.15)' : 'none', transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1), filter 0.15s ease' }} />
+              </div>
             </div>
-            <div style={{ height: 5, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${(v.total / max) * 100}%`, background: crimson, borderRadius: 3, transition: 'width 0.6s cubic-bezier(0.22,1,0.36,1)' }} />
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function AnalyticsStrip({ recompetes }: { recompetes: Recompete[] }) {
+function AnalyticsStrip({ recompetes, filter, onSelect }: { recompetes: Recompete[]; filter: string; onSelect: (key: string) => void }) {
   // Need enough data for the charts to say something real, not noise.
   if (recompetes.length < 4) return null
   const distinctIncumbents = new Set(recompetes.map(r => r.incumbent).filter(Boolean)).size
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: distinctIncumbents >= 2 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 12 }}>
-        <ExpirationTimeline recompetes={recompetes} />
+        <ExpirationTimeline recompetes={recompetes} filter={filter} onSelect={onSelect} />
         {distinctIncumbents >= 2 && <TopIncumbents recompetes={recompetes} />}
       </div>
       <p style={{ fontSize: 9, color: 'rgba(0,0,0,0.3)', fontFamily: sans, margin: '8px 2px 0', lineHeight: 1.5 }}>
@@ -288,7 +317,7 @@ export default function RecompetesPage() {
             </div>
           </div>
 
-          <AnalyticsStrip recompetes={recompetes} />
+          <AnalyticsStrip recompetes={recompetes} filter={filter} onSelect={setFilter} />
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
             {WINDOWS.map(w => (
