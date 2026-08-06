@@ -186,7 +186,7 @@ function CaptureCommand({ pursuits, loaded }: { pursuits: Pursuit[]; loaded: boo
           const urgent = days !== null && days >= 0 && days <= 7
           const gateColor = TONE_COLOR[gate.tone]
           return (
-            <div key={p.id} style={{ background: '#fff', border: `1px solid ${urgent ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${gateColor}`, borderRadius: 12, padding: '16px 20px' }}>
+            <Link key={p.id} href={`/saved?focus=${encodeURIComponent(p.contractId)}`} className="deal-card" style={{ display: 'block', textDecoration: 'none', color: 'inherit', cursor: 'pointer', background: '#fff', border: `1px solid ${urgent ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${gateColor}`, borderRadius: 12, padding: '16px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', color: crimson, fontFamily: mono, border: '1px solid rgba(196,18,48,0.25)', padding: '2px 7px', borderRadius: 4 }}>{phase.phase}</span>
                 <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.1em', color: '#fff', background: gateColor, fontFamily: mono, padding: '3px 7px', borderRadius: 4 }}>{gate.verdict}</span>
@@ -207,10 +207,10 @@ function CaptureCommand({ pursuits, loaded }: { pursuits: Pursuit[]; loaded: boo
                     ? `The gate scored this a no-bid (${gate.pct}). Your hours are your scarcest asset — reallocate to a better-positioned pursuit unless something off-the-record changes the odds.`
                     : phase.move}
               </p>
-              <Link href="/saved" style={{ display: 'inline-block', marginTop: 10, padding: '6px 12px', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: crimson, border: '1px solid rgba(196,18,48,0.3)', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ display: 'inline-block', marginTop: 10, padding: '6px 12px', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: crimson, border: '1px solid rgba(196,18,48,0.3)', borderRadius: 8 }}>
                 {gate.complete ? 'OPEN DEAL →' : 'RUN THE GATE →'}
-              </Link>
-            </div>
+              </span>
+            </Link>
           )
         })}
       </div>
@@ -242,6 +242,8 @@ function CaptureCommand({ pursuits, loaded }: { pursuits: Pursuit[]; loaded: boo
           .capture-memo li { font-size: 12.5px; line-height: 1.6; margin-bottom: 6px; }
           .capture-memo strong { color: #0A0A0A; font-weight: 600; }
           .capture-memo em { color: rgba(0,0,0,0.45); }
+          .deal-card { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+          .deal-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
         `}</style>
       </div>
     </div>

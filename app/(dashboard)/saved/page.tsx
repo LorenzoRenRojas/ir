@@ -166,6 +166,8 @@ export default function PipelinePage() {
   const [removing, setRemoving] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const focusHandled = useRef(false)
   const [panelMsg, setPanelMsg] = useState<Record<string, string>>({})
   // One debounce timer PER contract — a single shared timer meant editing
   // contract A then clicking into B within 800ms cancelled A's save forever
@@ -196,6 +198,22 @@ export default function PipelinePage() {
   }
 
   useEffect(() => { loadSaved() }, [])
+
+  // Deep link from the Playbook's Capture Command (?focus=<contractId>): open
+  // and scroll to the exact deal, with a brief highlight. Runs once after load.
+  useEffect(() => {
+    if (focusHandled.current || contracts.length === 0) return
+    focusHandled.current = true
+    const focus = new URLSearchParams(window.location.search).get('focus')
+    if (!focus || !contracts.some(c => c.contractId === focus)) return
+    setExpanded(focus)
+    setFocusedId(focus)
+    requestAnimationFrame(() => {
+      document.getElementById(`deal-${focus}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    const t = setTimeout(() => setFocusedId(null), 2200)
+    return () => clearTimeout(t)
+  }, [contracts])
 
   function toggleExpand(contractId: string) {
     const next = expanded === contractId ? null : contractId
@@ -387,7 +405,7 @@ export default function PipelinePage() {
             const cProposals = proposalsFor(c)
             const msg = panelMsg[c.contractId]
             return (
-              <div key={c.id} style={{ background: '#FFFFFF', border: `1px solid ${isOpen ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${stage.color}`, borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', transition: 'border-color 0.2s ease' }}>
+              <div key={c.id} id={`deal-${c.contractId}`} style={{ background: '#FFFFFF', border: `1px solid ${isOpen ? 'rgba(196,18,48,0.3)' : 'rgba(0,0,0,0.08)'}`, borderLeft: `3px solid ${stage.color}`, borderRadius: 12, boxShadow: focusedId === c.contractId ? '0 0 0 2px rgba(196,18,48,0.55)' : '0 1px 3px rgba(0,0,0,0.03)', transition: 'border-color 0.2s ease, box-shadow 0.3s ease' }}>
                 {/* Row header — click to open the workspace */}
                 <div
                   onClick={() => toggleExpand(c.contractId)}
