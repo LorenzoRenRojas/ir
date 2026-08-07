@@ -22,6 +22,12 @@ export interface MarketBenchmark {
   totalSampledValue: number
   minAward: number | null
   maxAward: number | null
+  // Price band across the sampled (major) awards. The sample is the largest
+  // awards by dollar, so these describe the significant-award tier, not the
+  // whole market — labeled that way in the UI and never sold as a bid target.
+  p25Award: number | null
+  medianAward: number | null
+  p75Award: number | null
   distinctWinners: number
   topWinners: TopWinner[] // up to 5, by dollars
   top5Share: number // 0..1 — concentration of the market among the top 5
@@ -107,6 +113,7 @@ async function computeBenchmark(naicsCode: string, agency: string | null): Promi
   let totalSampledValue = 0
   let minAward: number | null = null
   let maxAward: number | null = null
+  const amounts: number[] = []
 
   for (const row of rows) {
     const name = row['Recipient Name']?.trim()
@@ -115,11 +122,20 @@ async function computeBenchmark(naicsCode: string, agency: string | null): Promi
     totalSampledValue += amt
     minAward = minAward === null ? amt : Math.min(minAward, amt)
     maxAward = maxAward === null ? amt : Math.max(maxAward, amt)
+    amounts.push(amt)
     const cur = byWinner.get(name) ?? { total: 0, awards: 0 }
     cur.total += amt
     cur.awards += 1
     byWinner.set(name, cur)
   }
+
+  // Price band (nearest-rank percentiles) across the sampled major awards.
+  amounts.sort((a, b) => a - b)
+  const pct = (p: number): number | null =>
+    amounts.length ? amounts[Math.min(amounts.length - 1, Math.floor(p * amounts.length))] : null
+  const p25Award = pct(0.25)
+  const medianAward = pct(0.5)
+  const p75Award = pct(0.75)
 
   const winners = [...byWinner.entries()]
     .map(([name, v]) => ({ name, total: v.total, awards: v.awards, share: totalSampledValue > 0 ? v.total / totalSampledValue : 0 }))
@@ -137,6 +153,9 @@ async function computeBenchmark(naicsCode: string, agency: string | null): Promi
     totalSampledValue,
     minAward,
     maxAward,
+    p25Award,
+    medianAward,
+    p75Award,
     distinctWinners: byWinner.size,
     topWinners,
     top5Share,
