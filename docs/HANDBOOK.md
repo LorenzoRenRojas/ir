@@ -248,10 +248,13 @@ The honest weak spots in "does IR help you *win*", and how to close them:
 1. **AI proposal narrative — already built, just needs credits.** `draftProposal()`
    flips template → Claude the moment `ANTHROPIC_API_KEY` + credits exist. Launch =
    add credits + set env var. No code work. Do first.
-2. **Price Intelligence (price-to-win)** — buildable now with USAspending (already
-   integrated): show the winning-price range for comparable awards on the contract
-   page ("comparable contracts awarded $X–$Y; median winner ~$Z"). Closes the biggest
-   gap; Pro-tier. Medium effort, no new data source.
+2. **Price Intelligence (price-to-win)** — ✅ SHIPPED. Price band (25th / median /
+   75th pct of comparable award values) on the contract detail page via
+   `lib/benchmarks.ts` + `MarketIntel`. Honestly scoped: the sample is the
+   largest awards by dollar, so it's labeled the "major-award tier," and values
+   are total obligated amounts (base+options+mods) — a sizing sanity-check, not
+   a bid-to-win price. No new API calls. (A future refinement could add a
+   representative, non-dollar-sorted sample for a truer whole-market median.)
 3. **Certification Advisor** — rules-based: from the profile, name the set-aside cert
    they qualify for + its ROI ("veteran-owned → SDVOSB unlocks $X you can't prime now").
    Cheap, high-impact for beginners. Set-asides are the biggest win lever.
