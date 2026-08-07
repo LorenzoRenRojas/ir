@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recompeteCodeKey } from '@/lib/usaspending'
 import SideNav, { type SideNavStats } from '@/components/layout/SideNav'
+import FeedbackWidget from '@/components/FeedbackWidget'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -68,6 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main style={{ flex: 1, overflow: 'auto' }}>
         {children}
       </main>
+      <FeedbackWidget />
     </div>
   )
 }
