@@ -11,6 +11,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login')
   }
 
+  // Take un-onboarded users straight to onboarding instead of dropping them on
+  // a feed that hasn't been scored to their profile yet. A new tester should
+  // set up their company first, then see matches — never a cold/empty feed.
+  if (!session.user.onboardingDone) {
+    redirect('/onboarding')
+  }
+
   const isEnterprise = session.user.subscriptionTier === 'enterprise'
 
   // Sidebar snapshot — everything in ONE parallel batch. These queries gate

@@ -756,9 +756,14 @@ export default function DashboardPage() {
         </div>
       ) : contracts.length === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 80, textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.2)', marginBottom: 12 }}>NO RESULTS</div>
-            <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.45)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>No contracts match your filters. Try broadening your search.</div>
+          <div style={{ maxWidth: 420 }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 12, fontFamily: 'var(--font-geist-mono, monospace)' }}>NO MATCHES RIGHT NOW</div>
+            <div style={{ fontSize: 14, color: 'rgba(0,0,0,0.5)', fontFamily: 'var(--font-geist-sans, sans-serif)', lineHeight: 1.6, marginBottom: 14 }}>
+              Nothing in the current window fits your profile and filters yet. New federal solicitations post every day — they’ll appear here as they land, scored to your business.
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+              Try widening your filters, or check the <Link href="/recompetes" style={{ color: '#C41230', textDecoration: 'none', fontWeight: 600 }}>Recompete Radar</Link> for contracts expiring in your space.
+            </div>
           </div>
         </div>
       ) : (
