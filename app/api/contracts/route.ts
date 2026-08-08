@@ -251,14 +251,21 @@ export async function GET(req: NextRequest) {
         console.error('Enrichment error (non-fatal):', err)
       }
 
+      // Guarded parse — a corrupt column must degrade the ranking, never 503
+      // the whole feed (the file's contract). agencyHistory reuses the value
+      // already safely parsed above.
+      let contractVehicles: string[] = []
+      try {
+        contractVehicles = JSON.parse(dbProfile?.contractVehicles ?? '[]') as string[]
+      } catch { /* malformed — treat as none */ }
       const winProfile = profile && dbProfile
         ? {
             businessTypes: profile.businessTypes,
             naicsCodes: profile.naicsCodes,
             certifications: profile.certifications,
-            contractVehicles: JSON.parse(dbProfile.contractVehicles ?? '[]') as string[],
+            contractVehicles,
             annualRevenue: dbProfile.annualRevenue ?? null,
-            agencyHistory: JSON.parse((dbProfile as { agencyHistory?: string }).agencyHistory ?? '[]') as string[],
+            agencyHistory,
           }
         : null
       contracts = contracts.map((c, i) => {

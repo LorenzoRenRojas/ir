@@ -77,9 +77,15 @@ export function earlySignal(c: Contract): OpportunitySignal | null {
 // concentrates massively in that window. We key off the contract's OWN response
 // deadline (stable for caching), not the wall clock, so the signal is about the
 // opportunity, not when the page was rendered.
-export function timingSignal(c: Contract): OpportunitySignal | null {
+export function timingSignal(c: Contract, now: number = Date.now()): OpportunitySignal | null {
   const dl = new Date(c.responseDeadline)
   if (isNaN(dl.getTime())) return null
+
+  // Only a live, near-term deadline can be a year-end signal. A deadline that
+  // has already passed, or is more than ~13 months out, is not "act now" — its
+  // September/August month is coincidental, not the fiscal-year-end surge.
+  const days = (dl.getTime() - now) / 86_400_000
+  if (days < 0 || days > 400) return null
 
   const month = dl.getUTCMonth() // 0=Jan … 8=Sep
 
@@ -137,7 +143,7 @@ export function opportunitySignals(c: Contract, now: number = Date.now()): Oppor
   const signals: OpportunitySignal[] = []
   const deadline = deadlineSignal(c, now)
   const early = earlySignal(c)
-  const timing = timingSignal(c)
+  const timing = timingSignal(c, now)
 
   if (deadline) signals.push(deadline)
   if (early) signals.push(early)

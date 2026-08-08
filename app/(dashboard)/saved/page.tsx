@@ -255,12 +255,13 @@ export default function PipelinePage() {
   }
 
   function handleScorecardRate(contractId: string, factor: string, val: number) {
-    let nextRatings: Record<string, number> = {}
-    setContracts(cs => cs.map(c => {
-      if (c.contractId !== contractId) return c
-      nextRatings = { ...parseScorecard(c.scorecard), [factor]: val }
-      return { ...c, scorecard: JSON.stringify(nextRatings) }
-    }))
+    // Compute the next ratings from current state OUTSIDE the updater — reading
+    // a value assigned inside a setState updater is not guaranteed to be
+    // populated by the time we PATCH, which could persist an empty scorecard
+    // and wipe the user's ratings.
+    const current = contracts.find(c => c.contractId === contractId)
+    const nextRatings = { ...parseScorecard(current?.scorecard ?? null), [factor]: val }
+    setContracts(cs => cs.map(c => (c.contractId === contractId ? { ...c, scorecard: JSON.stringify(nextRatings) } : c)))
     patchSaved(contractId, { scorecard: nextRatings })
   }
 

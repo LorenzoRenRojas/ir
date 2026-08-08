@@ -553,8 +553,6 @@ export default function DashboardPage() {
     }
   }
 
-  const onboardingDone = session?.user?.onboardingDone
-
   const [showWelcome, setShowWelcome] = useState(false)
   useEffect(() => {
     try {
@@ -621,17 +619,9 @@ export default function DashboardPage() {
 
       <RegulatoryRadar events={regEvents} />
 
-      {!onboardingDone && (
-        <div style={{ marginBottom: 24, padding: '16px 20px', background: 'rgba(196,18,48,0.04)', border: '1px solid rgba(196,18,48,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#C41230', marginBottom: 4 }}>Complete your profile to see personalized matches</div>
-            <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>Add NAICS codes, business type, and preferences to unlock match scores and reasons.</div>
-          </div>
-          <Link href="/onboarding" style={{ flexShrink: 0, padding: '8px 16px', background: '#C41230', color: '#ffffff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            COMPLETE SETUP →
-          </Link>
-        </div>
-      )}
+      {/* (Un-onboarded users are redirected to /onboarding by the dashboard
+          layout, so no "complete your profile" banner is needed here — and
+          rendering one off client useSession would flash on every load.) */}
 
       <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.03)', padding: '18px 20px', marginBottom: 22 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2.2fr) minmax(140px, 1fr) minmax(150px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr)', gap: 10 }}>
