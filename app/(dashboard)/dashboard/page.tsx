@@ -140,7 +140,7 @@ function SignalBadges({ signals }: { signals?: { kind: string; tone: string; lab
   )
 }
 
-function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number; compact?: boolean }) {
+function ContractCard({ contract, onSave, isSaved, saving, index, compact, unviewed }: { contract: Contract; onSave: (c: Contract) => void; isSaved: boolean; saving: boolean; index: number; compact?: boolean; unviewed?: boolean }) {
   const [hovered, setHovered] = useState(false)
   const reason = topMatchReason(contract)
   const hasScore = contract.matchScore !== undefined
@@ -206,6 +206,11 @@ function ContractCard({ contract, onSave, isSaved, saving, index, compact }: { c
         {hasScore && <MatchBar score={score} />}
         {hasScore && <BreakdownBadges contract={contract} />}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+          {unviewed && (
+            <span title="You haven't opened this one yet" style={{ fontSize: 8.5, fontWeight: 700, padding: '2px 7px', background: 'rgba(196,18,48,0.08)', color: '#C41230', border: '1px solid rgba(196,18,48,0.3)', letterSpacing: '0.1em', fontFamily: 'var(--font-geist-mono, monospace)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#C41230' }} /> UNVIEWED
+            </span>
+          )}
           {!noSetAside && (
             <span style={{ fontSize: 9, padding: '2px 7px', background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.4)', border: '1px solid rgba(0,0,0,0.08)', letterSpacing: '0.06em', fontFamily: 'var(--font-geist-mono, monospace)' }}>
               {contract.setAsideDescription}
@@ -385,6 +390,8 @@ export default function DashboardPage() {
   const reqSeq = useRef(0)
   const [saving, setSaving] = useState<string | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [viewedIds, setViewedIds] = useState<Set<string>>(new Set())
+  const [unviewedOnly, setUnviewedOnly] = useState(false)
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [q, setQ] = useState('')
@@ -521,6 +528,14 @@ export default function DashboardPage() {
       .catch(() => {})
   }, [])
 
+  // Which contracts this user has already opened — drives the UNVIEWED badge.
+  useEffect(() => {
+    fetch('/api/contracts/viewed')
+      .then(r => r.json())
+      .then(data => setViewedIds(new Set<string>(Array.isArray(data.viewed) ? data.viewed : [])))
+      .catch(() => {})
+  }, [])
+
   // Regulatory Radar — best-effort, never blocks the feed.
   useEffect(() => {
     fetch('/api/regulatory')
@@ -568,6 +583,7 @@ export default function DashboardPage() {
   const scoredForStat = contracts.filter((c) => c.matchScore !== undefined)
   const avgMatch = scoredForStat.length ? Math.round(scoredForStat.reduce((s, c) => s + (c.matchScore ?? 0), 0) / scoredForStat.length) : null
   const newToday = contracts.filter((c) => c.postedDate && Date.now() - new Date(c.postedDate).getTime() < 86_400_000).length
+  const unviewedCount = contracts.filter((c) => !viewedIds.has(c.id)).length
   const savedInFeedCount = contracts.filter((c) => savedIds.has(c.id)).length
   const dash = (n: number | null) => (loading || n === null ? '—' : String(n))
 
@@ -593,6 +609,7 @@ export default function DashboardPage() {
       <div style={{ marginBottom: 22 }}>
         <StatStrip items={[
           { label: 'OPPORTUNITIES', value: loading ? '—' : String(contracts.length) },
+          { label: 'UNVIEWED', value: dash(unviewedCount), accent: unviewedCount > 0 ? 'crimson' : 'muted' },
           { label: 'NEW TODAY', value: dash(newToday), accent: newToday > 0 ? 'crimson' : 'muted' },
           { label: 'AVG MATCH', value: avgMatch === null ? '—' : `${avgMatch}%`, accent: 'green' },
           { label: 'IN PIPELINE', value: dash(savedInFeedCount), accent: 'muted' },
@@ -689,6 +706,20 @@ export default function DashboardPage() {
               CONTRACTS I CAN PRIME
             </span>
           </button>
+          <button
+            onClick={() => setUnviewedOnly(v => !v)}
+            role="switch"
+            aria-checked={unviewedOnly}
+            title="Show only contracts you haven't opened yet"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <span style={{ width: 34, height: 18, borderRadius: 10, background: unviewedOnly ? '#C41230' : 'rgba(0,0,0,0.15)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', top: 2, left: unviewedOnly ? 18 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#0A0A0A', fontFamily: 'var(--font-geist-mono, monospace)' }}>
+              UNVIEWED ONLY
+            </span>
+          </button>
           <span style={{ fontSize: 10, color: 'rgba(0,0,0,0.4)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
             {eligibleOnly
               ? (hiddenIneligible > 0
@@ -770,7 +801,8 @@ export default function DashboardPage() {
             // unscored contracts (score undefined → treated as passing).
             const scored = minMatch > 0 ? contracts.filter(c => (c.matchScore ?? 100) >= minMatch) : contracts
             const savedInFeed = scored.filter(c => savedIds.has(c.id)).length
-            const visible = hideSaved ? scored.filter(c => !savedIds.has(c.id)) : scored
+            let visible = hideSaved ? scored.filter(c => !savedIds.has(c.id)) : scored
+            if (unviewedOnly) visible = visible.filter(c => !viewedIds.has(c.id))
             const compact = density === 'compact'
             return (
               <>
@@ -809,6 +841,7 @@ export default function DashboardPage() {
                         saving={saving === contract.id}
                         index={i}
                         compact={compact}
+                        unviewed={!viewedIds.has(contract.id)}
                       />
                     ))}
                   </div>

@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
+import { after } from 'next/server'
 import Link from 'next/link'
 import { fetchContractById, fetchContractDescription } from '@/lib/sam-api'
 import { auth } from '@/lib/auth'
+import { markViewed } from '@/lib/viewed'
 import { prisma } from '@/lib/prisma'
 import { calculateMatchScore } from '@/lib/matching'
 import { buildCapturePlaybook } from '@/lib/capture'
@@ -45,6 +47,12 @@ export default async function ContractDetailPage({
   ])
 
   const session = await auth()
+  // Opening a contract marks it viewed — this is what makes the UNVIEWED badge
+  // on the feed honest. Fire-and-forget so it never blocks the page.
+  if (session?.user?.id) {
+    const uid = session.user.id
+    after(() => markViewed(uid, [contract.id]))
+  }
   let breakdown = null
   let captureProfile: { certifications: string[]; businessTypes: string[] } | null = null
   if (session?.user?.id) {
