@@ -120,7 +120,7 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
 | `SAM_DAILY_BUDGET` | optional | override the 20/day default; safe to set high (auto-clamps to SAM's real limit — see `docs/SAM_SCALING.md`) |
 | `GOOGLE_CLIENT_ID/SECRET` | pending (free!) | Google sign-in |
 | `STRIPE_SECRET_KEY` + price IDs | pending (account issue) | billing — code fully ready in `lib/stripe.ts` |
-| `VOYAGE_API_KEY` | pending (free tier) | semantic matching layer — fully coded in `lib/embeddings.ts`, silently skipped without key |
+| `VOYAGE_API_KEY` | **set** | semantic matching layer live (`lib/embeddings.ts`); daily-digest cron pre-embeds fresh contracts so the feed is a cache hit |
 | `MIGRATION_KEY` | optional | `/api/admin/grant` (promote admins) |
 
 **Env changes only apply to NEW deployments — always redeploy after adding one.**

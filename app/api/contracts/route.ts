@@ -181,14 +181,23 @@ export async function GET(req: NextRequest) {
     try {
       agencyHistory = JSON.parse((dbProfile as { agencyHistory?: string } | null)?.agencyHistory ?? '[]') as string[]
     } catch { /* malformed */ }
-    const familiarity = (c: (typeof contracts)[number]) =>
-      agencyHistory.length > 0 &&
-      agencyHistory.some(a => `${c.agency} ${c.subAgency ?? ''}`.toLowerCase().includes(a.toLowerCase()))
-        ? 3
-        : 0
+    // Memoized per contract: computed once, then reused across the O(n log n)
+    // comparator calls AND the post-semantic re-sort below — so the boost is
+    // applied consistently whether or not embeddings are enabled, and the
+    // substring scan isn't repeated thousands of times.
+    const famBoost = new Map<string, number>()
+    const familiarityOf = (c: (typeof contracts)[number]): number => {
+      const cached = famBoost.get(c.id)
+      if (cached !== undefined) return cached
+      const v = agencyHistory.length > 0 &&
+        agencyHistory.some(a => `${c.agency} ${c.subAgency ?? ''}`.toLowerCase().includes(a.toLowerCase()))
+        ? 3 : 0
+      famBoost.set(c.id, v)
+      return v
+    }
 
     contracts.sort(
-      (a, b) => ((b.matchScore ?? 0) + familiarity(b)) - ((a.matchScore ?? 0) + familiarity(a))
+      (a, b) => ((b.matchScore ?? 0) + familiarityOf(b)) - ((a.matchScore ?? 0) + familiarityOf(a))
     )
 
     // The store can hold thousands of contracts. Everything below this line
@@ -211,7 +220,10 @@ export async function GET(req: NextRequest) {
     if (isEmbeddingEnabled() && session?.user?.id) {
       try {
         contracts = await applySemanticScores(contracts, session.user.id, dbProfile)
-        contracts.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+        // Re-sort with the SAME familiarity boost as the pre-semantic sort —
+        // otherwise the "agencies you've worked with rank higher" signal is
+        // silently lost on every embeddings-enabled feed load.
+        contracts.sort((a, b) => ((b.matchScore ?? 0) + familiarityOf(b)) - ((a.matchScore ?? 0) + familiarityOf(a)))
       } catch (err) {
         console.error('Semantic scoring error (non-fatal):', err)
       }
