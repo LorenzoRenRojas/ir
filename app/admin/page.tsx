@@ -87,6 +87,14 @@ export default async function AdminPage() {
   } catch { /* table missing pre-migration */ }
   const storeStarved = typeof storeCount === 'number' && liveCount < 400
 
+  // Semantic layer coverage — how many contracts actually have a Voyage
+  // embedding. "Voyage live" in env only means the KEY is set; this shows
+  // whether embeddings are really being populated (by the daily pre-embed cron).
+  let embeddingCount: number | null = null
+  try {
+    embeddingCount = await prisma.contractEmbedding.count()
+  } catch { /* table missing pre-migration */ }
+
   // SAM.gov daily budget
   const quota = await samQuotaStatus()
 
@@ -193,6 +201,18 @@ export default async function AdminPage() {
             sub={storeStarved
               ? '⚠ STARVED — run SYNC CONTRACTS NOW / set CRON_SECRET'
               : lastSync ? `healthy · last sync ${new Date(lastSync).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'never synced — run SYNC CONTRACTS NOW'}
+          />
+          <StatCard
+            title="SEMANTIC LAYER (VOYAGE)"
+            value={embeddingCount === null ? 'N/A' : `${embeddingCount.toLocaleString()}`}
+            warn={!!process.env.VOYAGE_API_KEY && embeddingCount === 0}
+            sub={!process.env.VOYAGE_API_KEY
+              ? 'no VOYAGE_API_KEY — keyword/NAICS matching only'
+              : embeddingCount === null
+                ? 'ContractEmbedding table missing — run DB migration'
+                : embeddingCount === 0
+                  ? '⚠ key set but 0 embedded — waiting on the daily pre-embed cron to run'
+                  : `contracts embedded of ${typeof storeCount === 'number' ? storeCount.toLocaleString() : '—'} live · grows as the daily cron runs`}
           />
           <StatCard
             title="SAM.GOV BUDGET TODAY"
