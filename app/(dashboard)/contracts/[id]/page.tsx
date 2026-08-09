@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import { after } from 'next/server'
 import Link from 'next/link'
 import { fetchContractById, fetchContractDescription } from '@/lib/sam-api'
@@ -33,10 +32,60 @@ export default async function ContractDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const contract = await fetchContractById(decodeURIComponent(id))
+  const decodedId = decodeURIComponent(id)
+  const contract = await fetchContractById(decodedId)
 
+  // Not fetchable — either an expired/pulled SAM.gov solicitation, or a
+  // Recompete Radar item (a USAspending award, never a live solicitation).
+  // Show a helpful page with what's on file, not a scary 404.
   if (!contract) {
-    notFound()
+    const isRecompete = decodedId.startsWith('recompete-')
+    const s = await auth()
+    let saved: { title: string; agency: string; deadline: Date | null } | null = null
+    if (s?.user?.id) {
+      try {
+        saved = await prisma.savedContract.findFirst({
+          where: { userId: s.user.id, contractId: decodedId },
+          select: { title: true, agency: true, deadline: true },
+        })
+      } catch { /* ignore */ }
+    }
+    const mono = 'var(--font-geist-mono, monospace)'
+    const sans = 'var(--font-geist-sans, sans-serif)'
+    return (
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '72px 24px' }}>
+        <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, padding: '32px 34px' }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: '#C41230', fontFamily: mono, fontWeight: 700, marginBottom: 14 }}>
+            {isRecompete ? 'RECOMPETE · NO LIVE SOLICITATION YET' : 'OPPORTUNITY NO LONGER LIVE'}
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0A0A0A', letterSpacing: '-0.02em', margin: '0 0 12px', fontFamily: sans }}>
+            {isRecompete ? 'This one hasn’t hit the street yet.' : 'This solicitation has closed.'}
+          </h1>
+          <p style={{ fontSize: 14, color: 'rgba(0,0,0,0.55)', lineHeight: 1.7, margin: '0 0 20px', fontFamily: sans }}>
+            {isRecompete
+              ? 'This is a Recompete Radar item — a contract expiring in the future, not an open solicitation. There’s no live match analysis until the agency posts the RFP. It stays in your pipeline, and IR surfaces the real solicitation when it drops.'
+              : 'This notice isn’t available anymore — federal solicitations are pulled from SAM.gov after their response deadline, so it closed or was removed since you saved it. It stays in your pipeline for your records.'}
+          </p>
+          {saved && (
+            <div style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ fontSize: 9, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.3)', fontFamily: mono, marginBottom: 6 }}>ON FILE IN YOUR PIPELINE</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', fontFamily: sans, marginBottom: 3 }}>{saved.title}</div>
+              <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', fontFamily: sans }}>
+                {saved.agency}{saved.deadline ? ` · deadline ${new Date(saved.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href={isRecompete ? '/recompetes' : '/saved'} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: '#C41230', border: '1px solid rgba(196,18,48,0.35)', borderRadius: 8, textDecoration: 'none' }}>
+              ← {isRecompete ? 'RECOMPETE RADAR' : 'YOUR PIPELINE'}
+            </Link>
+            <Link href="/dashboard" style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', fontFamily: mono, color: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,0,0,0.15)', borderRadius: 8, textDecoration: 'none' }}>
+              BROWSE LIVE OPPORTUNITIES →
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const [incumbent, description] = await Promise.all([
