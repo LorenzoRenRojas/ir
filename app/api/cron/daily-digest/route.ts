@@ -25,6 +25,27 @@ function parseJsonArray(value: string): string[] {
   }
 }
 
+// SAM.gov set-aside codes that reserve work for small businesses (any flavor)
+const SMALL_BIZ_SET_ASIDES = new Set([
+  'SBA', 'SBP', '8A', '8AN', 'SDVOSBC', 'SDVOSBS', 'WOSB', 'WOSBSS',
+  'EDWOSB', 'EDWOSBSS', 'HZC', 'HZS', 'VSA', 'VSS',
+])
+
+// One forwardable sentence about the user's market, computed in memory from
+// the store we already fetched — no extra API calls, no extra queries.
+function marketPulse(all: { naicsCode: string; setAsideType: string }[], userNaics: string[]): string | undefined {
+  if (userNaics.length === 0) return undefined
+  const prefixes = [...new Set(userNaics.map(n => n.slice(0, 4)).filter(p => p.length === 4))]
+  if (prefixes.length === 0) return undefined
+  const mine = all.filter(c => c.naicsCode && prefixes.some(p => c.naicsCode.startsWith(p)))
+  if (mine.length < 5) return undefined // too thin to be a meaningful stat
+  const setAside = mine.filter(c => SMALL_BIZ_SET_ASIDES.has((c.setAsideType || '').toUpperCase())).length
+  const pct = Math.round((setAside / mine.length) * 100)
+  return pct > 0
+    ? `${mine.length} opportunities are live in your NAICS codes right now — ${pct}% of them are set aside for small businesses.`
+    : `${mine.length} opportunities are live in your NAICS codes right now.`
+}
+
 export async function GET(req: NextRequest) {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -107,24 +128,50 @@ export async function GET(req: NextRequest) {
         const sentSet = new Set(alreadySent)
 
         const candidates = fresh.filter(c => !sentSet.has(c.noticeId))
-        const matches: DigestMatch[] = candidates
-          .map(c => ({ contract: c, score: calculateMatchScore(c, profile).total }))
+
+        // Watchlist keywords — terms the user explicitly asked to be told
+        // about. A keyword hit is included regardless of profile score,
+        // because the user's own words outrank our heuristics.
+        let watchTerms: string[] = []
+        try {
+          const row = await prisma.kv.findUnique({ where: { key: `watch:${user.id}` } })
+          if (row) watchTerms = parseJsonArray(row.value).map(t => t.toLowerCase()).filter(t => t.length >= 3)
+        } catch { /* Kv missing pre-migration */ }
+        const watchHitIds = new Set<string>()
+        if (watchTerms.length > 0) {
+          for (const c of candidates) {
+            const hay = `${c.title} ${c.description ?? ''}`.toLowerCase()
+            if (watchTerms.some(t => hay.includes(t))) watchHitIds.add(c.noticeId)
+          }
+        }
+
+        const scored = candidates.map(c => ({ contract: c, score: calculateMatchScore(c, profile).total }))
+        const profileMatches = scored
           .filter(m => m.score >= MIN_SCORE)
           .sort((a, b) => b.score - a.score)
           .slice(0, MAX_MATCHES_PER_EMAIL)
-          .map(m => ({
-            title: m.contract.title,
-            agency: m.contract.agency,
-            valueFormatted: m.contract.valueFormatted,
-            setAsideDescription: m.contract.setAsideDescription,
-            responseDeadline: m.contract.responseDeadline,
-            matchScore: m.score,
-            link: m.contract.link,
-          }))
+        // Watchlist hits ride along even under the score floor (capped at 3
+        // extra so one broad keyword can't flood the email)
+        const watchExtras = scored
+          .filter(m => watchHitIds.has(m.contract.noticeId) && !profileMatches.includes(m))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+
+        const matches: DigestMatch[] = [...profileMatches, ...watchExtras].map(m => ({
+          title: m.contract.title,
+          agency: m.contract.agency,
+          valueFormatted: m.contract.valueFormatted,
+          setAsideDescription: m.contract.setAsideDescription,
+          responseDeadline: m.contract.responseDeadline,
+          matchScore: m.score,
+          link: m.contract.link,
+          ...(watchHitIds.has(m.contract.noticeId) ? { watchlist: true } : {}),
+        }))
 
         if (matches.length === 0) continue
 
-        await sendDailyDigestEmail(user.email, user.name, matches, baseUrl, user.id)
+        const pulse = marketPulse(contracts, profile.naicsCodes)
+        await sendDailyDigestEmail(user.email, user.name, matches, baseUrl, user.id, pulse)
         emailsSent++
 
         const sentIds = candidates

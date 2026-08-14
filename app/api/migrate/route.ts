@@ -77,6 +77,10 @@ export async function GET() {
     `CREATE TABLE IF NOT EXISTS "UserEmbedding" ("userId" TEXT NOT NULL PRIMARY KEY,"preferenceEmbedding" TEXT NOT NULL,"saveCount" INTEGER NOT NULL DEFAULT 0,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "UserEmbedding_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE)`,
     // Session invalidation on password change
     `ALTER TABLE "User" ADD COLUMN "passwordChangedAt" DATETIME`,
+    // Referral tracking
+    `ALTER TABLE "User" ADD COLUMN "referralCode" TEXT`,
+    `ALTER TABLE "User" ADD COLUMN "referredBy" TEXT`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "User_referralCode_key" ON "User"("referralCode")`,
     // Hot-query indexes (dashboard read filter, prune, reminders, doc lists)
     `CREATE INDEX IF NOT EXISTS "ContractCache_deadline_idx" ON "ContractCache"("deadline")`,
     `CREATE INDEX IF NOT EXISTS "SavedContract_deadline_idx" ON "SavedContract"("deadline")`,

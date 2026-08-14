@@ -342,6 +342,9 @@ export interface DigestMatch {
   responseDeadline: string
   matchScore: number
   link: string
+  // True when this hit came from the user's watchlist keywords rather than
+  // (or in addition to) profile scoring — rendered with a WATCHLIST tag.
+  watchlist?: boolean
 }
 
 export async function sendDailyDigestEmail(
@@ -349,7 +352,10 @@ export async function sendDailyDigestEmail(
   name: string | null,
   matches: DigestMatch[],
   baseUrl: string,
-  userId?: string
+  userId?: string,
+  // One-sentence market stat computed from IR's own store — the line that
+  // makes the digest worth forwarding. Omitted cleanly when unavailable.
+  pulse?: string
 ): Promise<void> {
   const rows = matches
     .map(
@@ -368,6 +374,7 @@ export async function sendDailyDigestEmail(
                   </p>
                 </td>
                 <td align="right" valign="top" style="white-space:nowrap;padding-left:16px;">
+                  ${m.watchlist ? '<div style="color:#b45309;font-size:8px;letter-spacing:0.12em;font-weight:700;margin-bottom:4px;">◉ WATCHLIST</div>' : ''}
                   <span style="color:#C41230;font-size:16px;font-weight:700;">${m.matchScore}</span>
                   <span style="color:rgba(255,255,255,0.25);font-size:9px;letter-spacing:0.1em;"> MATCH</span>
                 </td>
@@ -398,6 +405,10 @@ export async function sendDailyDigestEmail(
             <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">DAILY MATCH REPORT</p>
             <h1 style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 8px;font-family:sans-serif;">${matches.length} new ${matches.length === 1 ? 'opportunity matches' : 'opportunities match'} your profile.</h1>
             <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0 0 24px;font-family:sans-serif;">${name ? `${esc(name)}, these` : 'These'} were posted in the last 24 hours and scored against your company profile.</p>
+            ${pulse ? `<div style="background:rgba(196,18,48,0.06);border:1px solid rgba(196,18,48,0.25);padding:14px 18px;margin:0 0 24px;">
+              <p style="color:rgba(255,255,255,0.3);font-size:8px;letter-spacing:0.16em;margin:0 0 6px;">◆ MARKET PULSE</p>
+              <p style="color:rgba(255,255,255,0.65);font-size:13px;line-height:1.6;margin:0;font-family:sans-serif;">${esc(pulse)}</p>
+            </div>` : ''}
             <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
             <a href="${baseUrl}/dashboard"
                style="display:inline-block;margin-top:28px;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">

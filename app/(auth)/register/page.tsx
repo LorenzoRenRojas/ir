@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -26,6 +26,21 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [ref, setRef] = useState('')
+
+  // Referral capture (?ref=CODE) — read off the URL, kept in sessionStorage so
+  // it survives a bounce to login/terms and back before the form is submitted.
+  useEffect(() => {
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get('ref')
+      if (fromUrl) {
+        sessionStorage.setItem('ir-ref', fromUrl)
+        setRef(fromUrl)
+      } else {
+        setRef(sessionStorage.getItem('ir-ref') ?? '')
+      }
+    } catch { /* private mode — referral tracking is best-effort */ }
+  }, [])
 
   const mono = 'var(--font-geist-mono, monospace)'
   const sans = 'var(--font-geist-sans, sans-serif)'
@@ -53,7 +68,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email.trim().toLowerCase(), password: form.password }),
+        body: JSON.stringify({ name: form.name, email: form.email.trim().toLowerCase(), password: form.password, ...(ref ? { ref } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Registration failed.'); return }

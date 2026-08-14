@@ -56,6 +56,10 @@ model User {
   feedDensity          String  @default("comfortable")
   feedDefaultDueWithin String  @default("")
   feedMinMatch         Int     @default(0)
+  // Referral tracking — referralCode is this user's shareable code (generated
+  // lazily), referredBy stores the userId of whoever referred them.
+  referralCode     String?   @unique
+  referredBy       String?
   createdAt        DateTime  @default(now())
 
   accounts           Account[]

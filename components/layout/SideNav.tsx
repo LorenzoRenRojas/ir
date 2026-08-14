@@ -116,7 +116,10 @@ export default function SideNav({
           {email}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: crimson, textTransform: 'uppercase' }}>{tier}</span>
+          {/* During early access, granted enterprise accounts ARE the founding
+              members — show them the status they actually hold. Revisit when
+              paid enterprise launches. */}
+          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: crimson, textTransform: 'uppercase' }}>{tier === 'enterprise' ? 'founding member' : tier}</span>
           <SignOutButton />
         </div>
       </div>

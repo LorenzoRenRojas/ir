@@ -149,6 +149,102 @@ function Card({ title, desc, right, children }: { title: string; desc?: string; 
   )
 }
 
+// Self-contained referral card — fetches its own data and hides itself
+// entirely if the DB hasn't been migrated for referral columns yet.
+function ReferralCard() {
+  const [data, setData] = useState<{ available: boolean; link?: string; referredCount?: number } | null>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    fetch('/api/referral').then(r => r.json()).then(setData).catch(() => setData(null))
+  }, [])
+  if (!data?.available || !data.link) return null
+  const copy = () => {
+    navigator.clipboard?.writeText(data.link!).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    }).catch(() => {})
+  }
+  return (
+    <Card title="Refer a founder" desc="Anyone who registers through your link is credited to you. Founding members who bring in other founders are how this thing grows.">
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <code style={{ flex: 1, minWidth: 220, padding: '11px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, fontSize: 12, fontFamily: mono, color: '#0A0A0A', overflowX: 'auto', whiteSpace: 'nowrap' }}>{data.link}</code>
+        <button onClick={copy} type="button"
+          style={{ padding: '11px 18px', background: copied ? 'rgba(22,163,74,0.1)' : crimson, color: copied ? '#16a34a' : '#fff', border: copied ? '1px solid rgba(22,163,74,0.3)' : 'none', borderRadius: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: mono, transition: 'all 0.2s ease' }}>
+          {copied ? 'COPIED ✓' : 'COPY LINK'}
+        </button>
+      </div>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'rgba(0,0,0,0.4)', fontFamily: mono, letterSpacing: '0.06em' }}>
+        {data.referredCount ?? 0} SIGNUP{(data.referredCount ?? 0) === 1 ? '' : 'S'} FROM YOUR LINK
+      </div>
+    </Card>
+  )
+}
+
+// Watchlist keywords — self-contained card (own fetch/save) so it never
+// tangles with the main settings form state.
+function WatchlistCard() {
+  const [terms, setTerms] = useState<string[]>([])
+  const [input, setInput] = useState('')
+  const [loaded, setLoaded] = useState(false)
+  const [pulse, setPulse] = useState(false)
+  useEffect(() => {
+    fetch('/api/watchlist').then(r => r.json()).then(d => {
+      if (Array.isArray(d.terms)) setTerms(d.terms)
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [])
+  function persist(next: string[]) {
+    setTerms(next)
+    fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terms: next }),
+    }).then(() => {
+      setPulse(true)
+      setTimeout(() => setPulse(false), 1500)
+    }).catch(() => {})
+  }
+  function add() {
+    const t = input.trim()
+    if (t.length < 3 || terms.length >= 12) return
+    setInput('')
+    if (!terms.some(x => x.toLowerCase() === t.toLowerCase())) persist([...terms, t])
+  }
+  if (!loaded) return null
+  return (
+    <Card title="Watchlist keywords" desc='Terms you want flagged no matter what the match score says — "cybersecurity", "janitorial", "drone", a program name. New postings mentioning them ride along in your daily digest with a WATCHLIST tag.'
+      right={<span style={{ fontSize: 9, letterSpacing: '0.1em', color: pulse ? '#16a34a' : 'rgba(0,0,0,0.25)', fontFamily: mono, transition: 'color 0.2s' }}>{pulse ? 'SAVED ✓' : `${terms.length}/12`}</span>}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: terms.length > 0 ? 14 : 0 }}>
+        <input
+          className="ir-set-input"
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder="Add a keyword and press Enter"
+          maxLength={60}
+          style={{ flex: 1, padding: '10px 13px', background: '#F8F8F7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, color: '#0A0A0A', fontSize: 12.5, fontFamily: sans, outline: 'none' }}
+        />
+        <button type="button" onClick={add} disabled={input.trim().length < 3 || terms.length >= 12}
+          style={{ padding: '10px 16px', background: input.trim().length >= 3 && terms.length < 12 ? crimson : 'rgba(0,0,0,0.12)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', cursor: 'pointer', fontFamily: mono }}>
+          ADD
+        </button>
+      </div>
+      {terms.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {terms.map(t => (
+            <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 11px', background: 'rgba(196,18,48,0.06)', border: '1px solid rgba(196,18,48,0.22)', borderRadius: 100, fontSize: 12, fontFamily: sans, color: '#0A0A0A' }}>
+              {t}
+              <button type="button" onClick={() => persist(terms.filter(x => x !== t))} aria-label={`Remove ${t}`}
+                style={{ background: 'none', border: 'none', color: crimson, cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0, fontWeight: 700 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function SaveButton({ saving, saved, label = 'SAVE CHANGES', savedLabel = 'SAVED ✓' }: { saving: boolean; saved: boolean; label?: string; savedLabel?: string }) {
   return (
     <button type="submit" disabled={saving}
@@ -432,6 +528,7 @@ export default function SettingsPage() {
         {/* Panel */}
         <div key={tab} className="ir-panel" style={{ minWidth: 0, maxWidth: 720 }}>
           {tab === 'account' && (
+            <>
             <Card title="Account" desc="Your login identity and headline company details. Changing your email requires re-verifying the new address.">
               <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -447,6 +544,8 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}><SaveButton saving={saving} saved={saved} /></div>
               </form>
             </Card>
+            <ReferralCard />
+            </>
           )}
 
           {tab === 'company' && (
@@ -510,6 +609,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </Card>
+              <WatchlistCard />
             </>
           )}
 

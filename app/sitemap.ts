@@ -3,6 +3,7 @@ import { TOP_NAICS_CODES } from '@/lib/naics'
 import { COMPARISONS } from '@/lib/comparisons'
 import { SET_ASIDES } from '@/lib/set-asides'
 import { AGENCIES } from '@/lib/agencies'
+import { STATES } from '@/lib/states'
 
 const BASE = 'https://ir-gov.app'
 
@@ -27,6 +28,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily' as const,
       priority: 0.8,
     })),
+    { url: `${BASE}/states`, changeFrequency: 'daily', priority: 0.9 },
+    ...STATES.map(s => ({
+      url: `${BASE}/states/${s.slug}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    })),
+    { url: `${BASE}/eligibility`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/changelog`, changeFrequency: 'weekly', priority: 0.5 },
     { url: `${BASE}/capabilities`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/how-it-works`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/how-to-win`, changeFrequency: 'monthly', priority: 0.8 },

@@ -169,6 +169,9 @@ export default function PipelinePage() {
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const focusHandled = useRef(false)
   const [panelMsg, setPanelMsg] = useState<Record<string, string>>({})
+  // Cleanup nudge — offered at most once a week (localStorage snooze), and
+  // only when stale pursuits actually exist.
+  const [cleanupOpen, setCleanupOpen] = useState(false)
   // One debounce timer PER contract — a single shared timer meant editing
   // contract A then clicking into B within 800ms cancelled A's save forever
   const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -198,6 +201,14 @@ export default function PipelinePage() {
   }
 
   useEffect(() => { loadSaved() }, [])
+
+  // Open the cleanup nudge once per week when there's something to clean.
+  useEffect(() => {
+    try {
+      const snooze = parseInt(localStorage.getItem('ir-cleanup-snooze') ?? '0', 10)
+      if (Date.now() > snooze) setCleanupOpen(true)
+    } catch { /* private mode — just show it */ setCleanupOpen(true) }
+  }, [])
 
   // Deep link from the Playbook's Capture Command (?focus=<contractId>): open
   // and scroll to the exact deal, with a brief highlight. Runs once after load.
@@ -332,6 +343,20 @@ export default function PipelinePage() {
   const activeValue = activeContracts.reduce((s, c) => s + (c.value ?? 0), 0)
   const wonValue = contracts.filter(c => c.status === 'won').reduce((s, c) => s + (c.value ?? 0), 0)
 
+  // Stale pursuits — still sitting in saved/pursuing after the response
+  // deadline closed. Candidates for the cleanup nudge; never auto-removed.
+  const staleContracts = contracts.filter(c => {
+    if (c.status !== 'saved' && c.status !== 'pursuing') return false
+    const d = daysLeft(c.deadline)
+    return d !== null && d < 0
+  })
+  const showCleanup = cleanupOpen && staleContracts.length > 0
+
+  function snoozeCleanup() {
+    setCleanupOpen(false)
+    try { localStorage.setItem('ir-cleanup-snooze', String(Date.now() + 7 * 86_400_000)) } catch { /* private mode */ }
+  }
+
   return (
     <div style={{ padding: '30px 40px 48px', minHeight: '100vh' }}>
       <PageHeader
@@ -350,6 +375,47 @@ export default function PipelinePage() {
             { label: 'ACTIVE BIDS', value: String(activeContracts.length), accent: 'muted' },
             { label: 'TOTAL TRACKED', value: String(contracts.length), accent: 'muted' },
           ]} />
+        </div>
+      )}
+
+      {/* Cleanup nudge — stale pursuits whose deadlines closed while the deal
+          never advanced. One-tap triage; snoozes for a week; never auto-removes. */}
+      {!loading && showCleanup && (
+        <div style={{ marginBottom: 20, background: '#FFFDF7', border: '1px solid rgba(180,83,9,0.25)', borderLeft: '3px solid #b45309', borderRadius: 12, padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#b45309', fontFamily: mono }}>
+              ⌛ {staleContracts.length} PURSUIT{staleContracts.length > 1 ? 'S' : ''} CLOSED WITHOUT A DECISION
+            </div>
+            <button onClick={snoozeCleanup} style={{ ...btn, fontSize: 8, padding: '5px 10px' }}>REMIND ME NEXT WEEK</button>
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', fontFamily: sans, marginBottom: 12, lineHeight: 1.5 }}>
+            These deadlines passed while the deal sat in saved or pursuing. Mark them lost to keep your record honest, or remove them to clear the clutter — submitted, won, and lost items are never touched.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {staleContracts.slice(0, 6).map(c => (
+              <div key={c.contractId} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 12px', background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 8 }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, fontFamily: sans, color: '#0A0A0A' }}>{c.title}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.35)', fontFamily: sans, marginTop: 2 }}>{c.agency} · closed {formatDate(c.deadline)}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => handleStageChange(c.contractId, 'lost')} style={{ ...btn, fontSize: 8, padding: '5px 10px' }}>MARK LOST</button>
+                  <button
+                    onClick={() => handleRemove(c.contractId)}
+                    disabled={removing === c.contractId}
+                    style={{ ...btn, fontSize: 8, padding: '5px 10px', color: crimson, borderColor: 'rgba(196,18,48,0.3)' }}
+                  >
+                    {removing === c.contractId ? '…' : '✕ REMOVE'}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {staleContracts.length > 6 && (
+              <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono, letterSpacing: '0.08em', paddingLeft: 4 }}>
+                +{staleContracts.length - 6} MORE BELOW
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -47,6 +47,27 @@ export async function POST(req: NextRequest) {
       throw err
     }
 
+    // Referral attribution — a separate best-effort UPDATE after create, so a
+    // pre-migration DB (no referredBy column yet) can never break signup.
+    const ref = typeof body.ref === 'string' ? body.ref.trim().slice(0, 40) : ''
+    if (ref) {
+      try {
+        const referrer = await prisma.user.findUnique({
+          where: { referralCode: ref },
+          select: { id: true },
+        })
+        if (referrer && referrer.id !== user.id) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { referredBy: referrer.id },
+            select: { id: true },
+          })
+        }
+      } catch (refErr) {
+        console.error('Referral attribution failed (non-fatal):', refErr)
+      }
+    }
+
     let emailSent = false
     try {
       const token = crypto.randomBytes(32).toString('hex')

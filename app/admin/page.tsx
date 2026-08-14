@@ -62,6 +62,30 @@ export default async function AdminPage() {
     })
   } catch { /* table missing pre-migration */ }
 
+  // Referral attribution — who's bringing in signups. Guarded: pre-migration
+  // DBs without the referredBy column just show nothing.
+  let referredTotal = 0
+  let topReferrers: { email: string; count: number }[] = []
+  try {
+    const referred = await prisma.user.findMany({
+      where: { referredBy: { not: null } },
+      select: { referredBy: true },
+    })
+    referredTotal = referred.length
+    const counts = new Map<string, number>()
+    for (const r of referred) if (r.referredBy) counts.set(r.referredBy, (counts.get(r.referredBy) ?? 0) + 1)
+    if (counts.size > 0) {
+      const referrers = await prisma.user.findMany({
+        where: { id: { in: [...counts.keys()] } },
+        select: { id: true, email: true },
+      })
+      topReferrers = referrers
+        .map(u => ({ email: u.email, count: counts.get(u.id) ?? 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3)
+    }
+  } catch { /* referral columns missing pre-migration */ }
+
   let emailLogs: { to: string; subject: string; status: string; error: string | null; createdAt: Date }[] = []
   let emailLogsAvailable = true
   try {
@@ -186,6 +210,11 @@ export default async function AdminPage() {
         <div style={label}>PLATFORM METRICS</div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
           <StatCard title="USERS" value={users} sub={`${verified} verified`} />
+          <StatCard
+            title="REFERRED SIGNUPS"
+            value={referredTotal}
+            sub={topReferrers.length > 0 ? topReferrers.map(r => `${r.email.split('@')[0]}: ${r.count}`).join(' · ') : 'no referrals yet'}
+          />
           <StatCard title="COMPANY PROFILES" value={profiles} />
           <StatCard title="SAVED CONTRACTS" value={saved} />
           <StatCard title="PROPOSALS" value={proposals} />

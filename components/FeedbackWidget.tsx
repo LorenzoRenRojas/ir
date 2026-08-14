@@ -37,7 +37,8 @@ export default function FeedbackWidget() {
         <div style={{ position: 'absolute', bottom: 52, right: 0, width: 300, background: '#fff', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', padding: 16, animation: 'fbIn 0.18s ease both' }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(0,0,0,0.4)', fontFamily: mono, marginBottom: 4 }}>BETA FEEDBACK</div>
           <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.5)', marginBottom: 10, lineHeight: 1.5 }}>
-            Confusing? Broken? Missing something? Tell us — every note goes straight to the founder.
+            Confusing? Broken? Missing something? Tell us — every note goes straight to the founder.{' '}
+            <a href="/changelog" target="_blank" rel="noopener" style={{ color: crimson, textDecoration: 'none', fontWeight: 600 }}>See what feedback has shipped →</a>
           </div>
           {state === 'done' ? (
             <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, padding: '10px 0' }}>Got it — thank you. ✓</div>
