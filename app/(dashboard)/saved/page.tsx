@@ -424,6 +424,14 @@ export default function PipelinePage() {
                           {dLeft === 0 ? 'DUE TODAY' : `${dLeft}D LEFT`}
                         </span>
                       )}
+                      {/* Deadline passed while the deal never left saved/pursuing:
+                          label it honestly instead of hiding it. Submitted/won/lost
+                          items are past their deadline by definition — no badge. */}
+                      {dLeft !== null && dLeft < 0 && (c.status === 'saved' || c.status === 'pursuing') && (
+                        <span title="The response deadline has passed — this solicitation is closed. Mark it lost, or keep it for reference." style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', fontFamily: mono, color: 'rgba(0,0,0,0.35)', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.12)' }}>
+                          CLOSED
+                        </span>
+                      )}
                       {cProposals.length > 0 && (
                         <span style={{ fontSize: 9, letterSpacing: '0.08em', color: 'rgba(0,0,0,0.35)', fontFamily: mono }}>
                           ☰ {cProposals.length} DRAFT{cProposals.length > 1 ? 'S' : ''}

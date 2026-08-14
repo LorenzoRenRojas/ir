@@ -141,6 +141,7 @@ export default async function AdminPage() {
     { name: 'STRIPE_SECRET_KEY', ok: !!process.env.STRIPE_SECRET_KEY, note: 'payments' },
     { name: 'CRON_SECRET', ok: !!process.env.CRON_SECRET, note: 'cron endpoint auth' },
     { name: 'ADMIN_EMAIL', ok: !!process.env.ADMIN_EMAIL, note: 'admin access (bootstrap: first account)' },
+    { name: 'EMAIL_REPLY_TO', ok: !!process.env.EMAIL_REPLY_TO, note: 'replies to app email reach this mailbox' },
   ]
 
   const fmtDate = (d: Date) =>

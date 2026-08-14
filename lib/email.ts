@@ -74,6 +74,11 @@ async function send(to: string, subject: string, html: string, replyTo?: string,
     return
   }
 
+  // Replies should reach a person, not noreply@. Explicit replyTo (e.g. the
+  // proposal sender) always wins; otherwise fall back to EMAIL_REPLY_TO
+  // (the founder's mailbox) once that env var is set.
+  const effectiveReplyTo = replyTo ?? process.env.EMAIL_REPLY_TO
+
   try {
     const res = await fetch(RESEND_API, {
       method: 'POST',
@@ -81,7 +86,7 @@ async function send(to: string, subject: string, html: string, replyTo?: string,
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from: FROM, to: [to], subject, html, ...(replyTo ? { reply_to: [replyTo] } : {}) }),
+      body: JSON.stringify({ from: FROM, to: [to], subject, html, ...(effectiveReplyTo ? { reply_to: [effectiveReplyTo] } : {}) }),
     })
 
     if (!res.ok) {
