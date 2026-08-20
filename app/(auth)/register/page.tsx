@@ -186,6 +186,14 @@ export default function RegisterPage() {
             Have an account?{' '}
             <Link href="/login" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>Sign in →</Link>
           </span>
+          {/* A sign-up form on a domain containing "gov" is the shape phishing
+              classifiers look for. State plainly, at the point of credential
+              entry, that this is not a government site. */}
+          <p style={{ color: 'rgba(0,0,0,0.3)', fontSize: 10.5, lineHeight: 1.6, fontFamily: sans, margin: '16px 0 0' }}>
+            IR is an independent software company. This is not a government website and is
+            not affiliated with or endorsed by any federal agency. Never enter your
+            SAM.gov or Login.gov credentials here — IR will never ask for them.
+          </p>
         </div>
       </div>
     </div>

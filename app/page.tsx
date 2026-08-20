@@ -330,6 +330,20 @@ export default function LandingPage() {
             © {new Date().getFullYear()} IR — DATA SOURCED FROM SAM.GOV
           </div>
         </div>
+        {/* Affiliation disclaimer, stated plainly and site-visible. A domain
+            containing "gov" plus a sign-in form is the exact shape automated
+            phishing classifiers flag, so this must live where a scanner (and a
+            first-time visitor) actually sees it — not only in the Terms page. */}
+        <div style={{ maxWidth: 1200, margin: '24px auto 0', paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <p style={{ fontFamily: sans, color: 'rgba(0,0,0,0.3)', fontSize: 11, lineHeight: 1.6, margin: 0, maxWidth: 780 }}>
+            IR is an independent, privately owned software company. IR is not a government
+            website and is not affiliated with, endorsed by, or officially associated with
+            the U.S. General Services Administration, the Department of Defense, the Small
+            Business Administration, or any other federal agency. Contract information is
+            sourced from publicly available U.S. government data, including SAM.gov and
+            USAspending.gov.
+          </p>
+        </div>
       </footer>
 
     </div>
