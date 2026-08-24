@@ -86,6 +86,9 @@ export default async function AdminPage() {
     }
   } catch { /* referral columns missing pre-migration */ }
 
+  const { coverage } = await import('@/lib/base-rates')
+  const evidence = await coverage()
+
   let emailLogs: { to: string; subject: string; status: string; error: string | null; createdAt: Date }[] = []
   let emailLogsAvailable = true
   try {
@@ -282,6 +285,23 @@ export default async function AdminPage() {
             sub={feedPerf
               ? `enrichment +${feedPerf.enrichMs}ms now backgrounded (was blocking) · ${feedPerf.samples} loads`
               : 'load the dashboard once to record a sample'}
+          />
+          {/* The evidence layer, stated honestly. These thresholds decide what
+              the product is allowed to claim about its own accuracy. */}
+          <StatCard
+            title="GROUND TRUTH (OUTCOMES)"
+            value={evidence.outcomes}
+            warn={evidence.outcomes === 0}
+            sub={evidence.outcomes === 0
+              ? 'collector has not recorded a match yet — runs nightly'
+              : `${evidence.quotable} quotable · ${evidence.naicsCovered} NAICS covered`}
+          />
+          <StatCard
+            title="EVIDENCE MILESTONES"
+            value={evidence.readyForTraining ? 'TRAINING' : evidence.readyForCalibration ? 'CALIBRATION' : 'COLLECTING'}
+            sub={evidence.readyForCalibration
+              ? `${evidence.quotable}/5000 toward a trainable set`
+              : `${evidence.quotable}/500 toward calibration`}
           />
         </div>
 

@@ -295,6 +295,112 @@ function PlatformGrid() {
   )
 }
 
+// ─── How the score is actually built ──────────────────────────────────────────
+// Published because a score a contractor can't interrogate is a score they
+// shouldn't act on. The tiers are the same ones the scoring layer emits, and
+// the "what we can't claim yet" panel is deliberate: stating the limits is
+// what makes the rest credible.
+const TIERS = [
+  {
+    tag: 'MEASURED',
+    title: 'Counted, not assumed',
+    body: 'Your own federal award history, pulled from public records by UEI, and the outcomes of contracts IR has already watched close. "You have won 3 awards in this NAICS code" is a count, not an opinion.',
+    accent: crimson,
+  },
+  {
+    tag: 'STRUCTURAL',
+    title: 'Rules, not predictions',
+    body: 'Set-aside eligibility is binary and published in the solicitation. If a contract is reserved for SDVOSB firms and you are not one, that is a fact about the contract, and no model is involved.',
+    accent: '#4ADE80',
+  },
+  {
+    tag: 'HEURISTIC',
+    title: 'Reasoned, and labelled as such',
+    body: 'Incumbent size as a proxy for entrenchment, for example. Defensible reasoning, not yet validated against outcomes — so it is marked, and it is the part that shrinks as evidence accumulates.',
+    accent: '#b45309',
+  },
+]
+
+const PIPELINE_LAYERS = [
+  { n: '01', name: 'Ground truth', body: 'Every solicitation IR sees is archived. When the award posts to USAspending months later, a collector matches it back and records what happened: who won, at what price, how long it took. Each match carries a confidence score and its matching method.' },
+  { n: '02', name: 'Market base rates', body: 'Those outcomes aggregate into segment statistics: what awards in this NAICS code and agency actually go for, how far from the advertised value, how much of the market genuinely goes to small business. Every figure ships with the sample size behind it.' },
+  { n: '03', name: 'Firm evidence', body: 'Your UEI resolves to your real award history. Which agencies have bought from you, in which codes, at what values. This replaces the self-reported profile as the basis for fit.' },
+  { n: '04', name: 'Attributed score', body: 'The score is assembled from those inputs, and every component states its points, its evidence tier, and the count behind it. Nothing enters the total without a reason you can read.' },
+]
+
+function AlgorithmSection() {
+  const { ref, inView } = useInView<HTMLDivElement>(0.12)
+  return (
+    <section ref={ref} style={{ padding: '72px 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', fontFamily: mono }}>HOW THE SCORE IS BUILT</p>
+      <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 12px', fontFamily: sans }}>
+        A score you can’t interrogate <span style={{ color: crimson }}>is a score you shouldn’t trust.</span>
+      </h2>
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '0 0 44px', maxWidth: 660, fontFamily: sans, lineHeight: 1.7 }}>
+        Most tools hand you a number. IR shows the arithmetic: every point carries a reason, a source,
+        and how many real awards stand behind it. Where we are reasoning rather than measuring, we say so.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 48 }}>
+        {TIERS.map((t, i) => (
+          <div key={t.tag} style={{
+            border: '1px solid rgba(255,255,255,0.09)', background: '#111', padding: '24px 22px',
+            borderTop: `2px solid ${t.accent}`,
+            opacity: inView ? 1 : 0,
+            transform: inView ? 'translateY(0)' : 'translateY(20px)',
+            transition: `all 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 110}ms`,
+          }}>
+            <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: t.accent, marginBottom: 12 }}>{t.tag}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 9, fontFamily: sans }}>{t.title}</div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', margin: 0, fontFamily: sans }}>{t.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)', margin: '0 0 20px', fontFamily: mono }}>THE FOUR LAYERS</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)', marginBottom: 40 }}>
+        {PIPELINE_LAYERS.map(l => (
+          <div key={l.n} style={{ background: '#111', padding: '22px 24px', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: mono, fontSize: 12, fontWeight: 700, color: crimson, flex: '0 0 auto', paddingTop: 2 }}>{l.n}</div>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 7, fontFamily: sans }}>{l.name}</div>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', margin: 0, fontFamily: sans }}>{l.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ border: '1px solid rgba(255,255,255,0.09)', background: '#111', padding: '28px 26px', marginBottom: 24 }}>
+        <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: crimson, marginBottom: 14 }}>
+          WHY IT GETS SHARPER FOR YOU SPECIFICALLY
+        </div>
+        <p style={{ fontSize: 13.5, lineHeight: 1.8, color: 'rgba(255,255,255,0.5)', margin: '0 0 14px', fontFamily: sans }}>
+          Market base rates are shared: what a segment does is the same fact for everybody. Everything
+          layered on top is yours alone. Your award history defines which lanes you are proven in and
+          how large a contract you have actually delivered. Your saves and your recorded wins and losses
+          train a preference vector that shifts what surfaces next — a win pulls harder than a save, a
+          loss nudges away, because results are stronger evidence than interest.
+        </p>
+        <p style={{ fontSize: 13.5, lineHeight: 1.8, color: 'rgba(255,255,255,0.5)', margin: 0, fontFamily: sans }}>
+          Two firms looking at the same solicitation see different scores, and each can read exactly why.
+        </p>
+      </div>
+
+      <div style={{ border: '1px dashed rgba(255,255,255,0.16)', padding: '24px 26px' }}>
+        <div style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
+          WHAT WE CAN’T CLAIM YET
+        </div>
+        <p style={{ fontSize: 13, lineHeight: 1.8, color: 'rgba(255,255,255,0.42)', margin: 0, fontFamily: sans }}>
+          The outcome record is still accumulating, so the heuristic components have not yet been
+          validated against real results. IR does not claim its score is a calibrated probability, and
+          it will not until there is enough evidence to publish the check — including if the answer is
+          unflattering. A tool that tells you your odds should be willing to be measured on it.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 // ─── The honest win-odds math ─────────────────────────────────────────────────
 // Federal contracting is a numbers game: P(win ≥1 in a year) = 1 - (1-p)^n,
 // where p = per-bid win rate and n = well-fit bids submitted. A tool moves n
@@ -533,6 +639,9 @@ export default function CapabilitiesClient() {
 
         {/* AI Proposal Studio — the draft → review → send flow */}
         <ProposalStudio />
+
+        {/* How the score is actually built — evidence tiers and the four layers */}
+        <AlgorithmSection />
 
         {/* Everything else in the platform */}
         <PlatformGrid />

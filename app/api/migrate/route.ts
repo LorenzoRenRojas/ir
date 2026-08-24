@@ -90,6 +90,13 @@ export async function GET() {
     `CREATE TABLE IF NOT EXISTS "ContractArchive" ("noticeId" TEXT NOT NULL PRIMARY KEY,"payload" TEXT NOT NULL,"naicsCode" TEXT NOT NULL DEFAULT '',"setAside" TEXT NOT NULL DEFAULT '',"postedDate" DATETIME,"deadline" DATETIME,"archivedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE INDEX IF NOT EXISTS "ContractArchive_naicsCode_idx" ON "ContractArchive"("naicsCode")`,
     `CREATE INDEX IF NOT EXISTS "ContractArchive_postedDate_idx" ON "ContractArchive"("postedDate")`,
+    // Ground truth: solicitations matched to their real awards
+    `CREATE TABLE IF NOT EXISTS "ContractOutcome" ("noticeId" TEXT NOT NULL PRIMARY KEY,"solicitationNum" TEXT NOT NULL DEFAULT '',"naicsCode" TEXT NOT NULL DEFAULT '',"setAside" TEXT NOT NULL DEFAULT '',"agency" TEXT NOT NULL DEFAULT '',"estimatedValue" REAL,"postedDate" DATETIME,"deadline" DATETIME,"awardId" TEXT NOT NULL DEFAULT '',"awardee" TEXT NOT NULL DEFAULT '',"awardeeUei" TEXT NOT NULL DEFAULT '',"awardAmount" REAL,"awardDate" DATETIME,"offersReceived" INTEGER,"awardeeIsSmall" BOOLEAN,"matchConfidence" INTEGER NOT NULL DEFAULT 0,"matchMethod" TEXT NOT NULL DEFAULT '',"features" TEXT NOT NULL DEFAULT '{}',"recordedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS "ContractOutcome_naicsCode_idx" ON "ContractOutcome"("naicsCode")`,
+    `CREATE INDEX IF NOT EXISTS "ContractOutcome_agency_idx" ON "ContractOutcome"("agency")`,
+    `CREATE INDEX IF NOT EXISTS "ContractOutcome_awardDate_idx" ON "ContractOutcome"("awardDate")`,
+    // Firm award history by UEI — evidence in place of self-description
+    `CREATE TABLE IF NOT EXISTS "FirmHistory" ("uei" TEXT NOT NULL PRIMARY KEY,"recipientName" TEXT NOT NULL DEFAULT '',"totalAwards" INTEGER NOT NULL DEFAULT 0,"totalValue" REAL NOT NULL DEFAULT 0,"naicsLanes" TEXT NOT NULL DEFAULT '[]',"agencyLanes" TEXT NOT NULL DEFAULT '[]',"largestAward" REAL,"medianAward" REAL,"firstAward" DATETIME,"lastAward" DATETIME,"fetchedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   ]
 
   const results: string[] = []

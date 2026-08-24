@@ -312,6 +312,22 @@ export async function GET(req: NextRequest) {
     console.error('Recompete scan-and-notify skipped:', err)
   }
 
+  // Ground-truth collection. Runs last and strictly inside the leftover time
+  // budget: this dataset compounds over months, so a short run today costs
+  // nothing, while delaying a single user's digest would cost something real.
+  let outcomeStats: unknown = null
+  try {
+    const left = timeBudgetLeft()
+    if (left > 20_000) {
+      const { collectOutcomes } = await import('@/lib/outcomes')
+      outcomeStats = await collectOutcomes({ limit: 40, timeBudgetMs: Math.min(left - 10_000, 60_000) })
+    } else {
+      degraded.push('Outcome collection skipped — no time budget left this run.')
+    }
+  } catch (err) {
+    degraded.push(`Outcome collection failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
   // EmailLog retention: the audit trail grows by every send forever — keep 90 days
   try {
     await prisma.emailLog.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } })
@@ -337,5 +353,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, radarAlertsSent, sync: syncStats, problems, degraded })
+  return NextResponse.json({ ok: problems.length === 0, usersProcessed, emailsSent, radarAlertsSent, sync: syncStats, outcomes: outcomeStats, problems, degraded })
 }

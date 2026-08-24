@@ -188,6 +188,66 @@ model ContractArchive {
   @@index([postedDate])
 }
 
+// GROUND TRUTH. One row per solicitation we saw that we later matched to a
+// real federal award. This is the labeled dataset the scoring layer is
+// calibrated against, and eventually the training set for a ranking model.
+//
+// It only accumulates going forward — awards land months after a solicitation
+// closes, so history not captured is history lost. That asymmetry is why this
+// table exists before anything is trained on it.
+model ContractOutcome {
+  noticeId        String   @id // the solicitation we scored
+  solicitationNum String   @default("")
+  naicsCode       String   @default("")
+  setAside        String   @default("")
+  agency          String   @default("")
+  estimatedValue  Float? // what the solicitation advertised
+  postedDate      DateTime?
+  deadline        DateTime?
+
+  // The award, as recorded by USAspending/FPDS
+  awardId         String   @default("")
+  awardee         String   @default("")
+  awardeeUei      String   @default("")
+  awardAmount     Float?
+  awardDate       DateTime?
+  offersReceived  Int? // the single strongest predictor of win probability
+  awardeeIsSmall  Boolean? // did a small business actually win
+
+  // How confident are we that this award belongs to this solicitation?
+  // 100 = matched on solicitation number; lower = statistical match.
+  matchConfidence Int      @default(0)
+  matchMethod     String   @default("")
+
+  // Feature snapshot at scoring time, JSON. Persisted so a model trained later
+  // sees exactly what the scorer saw, not a backfilled reconstruction.
+  features        String   @default("{}")
+
+  recordedAt      DateTime @default(now())
+
+  @@index([naicsCode])
+  @@index([agency])
+  @@index([awardDate])
+}
+
+// A company's real federal award history, keyed by UEI and refreshed
+// periodically. Evidence replaces self-description: what a firm has actually
+// won predicts what it can win far better than what it says it does.
+model FirmHistory {
+  uei          String   @id
+  recipientName String  @default("")
+  totalAwards  Int      @default(0)
+  totalValue   Float    @default(0)
+  // JSON arrays: [{code|name, count, value}] — the firm's proven lanes
+  naicsLanes   String   @default("[]")
+  agencyLanes  String   @default("[]")
+  largestAward Float?
+  medianAward  Float?
+  firstAward   DateTime?
+  lastAward    DateTime?
+  fetchedAt    DateTime @default(now())
+}
+
 // Tiny key-value store for counters and operational state (e.g. the daily
 // SAM.gov API request budget shared across all serverless instances).
 model Kv {
