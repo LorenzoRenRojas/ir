@@ -127,7 +127,11 @@ export default function EligibilityClient() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={qBox}>
             <p style={qLabel}>Is your business small under SBA size standards?</p>
-            <p style={qHint}>Rule of thumb: under 500 employees for manufacturing, or under the revenue cap for your industry (often $9–47M). Most U.S. businesses qualify.</p>
+            <p style={qHint}>
+              Size standards are set per NAICS code, by employee count or annual receipts, and most U.S. businesses qualify.
+              Confirm yours at sba.gov. Note that SBA has proposed a major overhaul of these thresholds, so a firm that is
+              not small today may qualify once it takes effect.
+            </p>
             <TriRow value={answers.small} onChange={v => { setShowResults(false); setAnswers(a => ({ ...a, small: v })) }} />
           </div>
 
