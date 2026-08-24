@@ -166,6 +166,7 @@ export default async function AdminPage() {
     { name: 'CRON_SECRET', ok: !!process.env.CRON_SECRET, note: 'cron endpoint auth' },
     { name: 'ADMIN_EMAIL', ok: !!process.env.ADMIN_EMAIL, note: 'admin access (bootstrap: first account)' },
     { name: 'EMAIL_REPLY_TO', ok: !!process.env.EMAIL_REPLY_TO, note: 'replies to app email reach this mailbox' },
+    { name: 'WIDGET_TOKEN', ok: !!process.env.WIDGET_TOKEN, note: 'iPhone home-screen stats widget' },
   ]
 
   const fmtDate = (d: Date) =>
