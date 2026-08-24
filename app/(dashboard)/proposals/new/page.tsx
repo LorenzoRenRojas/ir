@@ -83,8 +83,48 @@ export default function NewProposalPage() {
   const [emailSending, setEmailSending] = useState(false)
   const [emailResult, setEmailResult] = useState<{ sent: number; total: number } | null>(null)
 
+  // Deep link from the pipeline (?contractId=…): pull the opportunity straight
+  // from IR instead of making the user retype what we already know. A draft
+  // for a DIFFERENT contract must not be silently merged into this one, so a
+  // mismatched draft is replaced rather than layered over.
+  const [prefill, setPrefill] = useState<{ title: string } | null>(null)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('contractId')
+    if (!id) return
+    let cancelled = false
+    fetch(`/api/contracts/${encodeURIComponent(id)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        const c = data?.contract
+        if (!c || cancelled) return
+        setQ(prev => {
+          // Resuming the same contract? Keep every answer already typed.
+          if (prev.contractTitle && prev.contractTitle === c.title) return prev
+          const base = prev.contractTitle ? blank() : prev
+          const deadline = c.responseDeadline ? String(c.responseDeadline).slice(0, 10) : ''
+          return {
+            ...base,
+            contractTitle: c.title ?? '',
+            agencyName: c.agency ?? '',
+            solicitationNumber: c.solicitationNumber ?? '',
+            issuingOffice: c.subAgency ?? c.agency ?? '',
+            responseDeadline: deadline,
+            estimatedValue: c.valueFormatted && c.valueFormatted !== 'Not posted' ? c.valueFormatted : '',
+            naicsCode: c.naicsCode ?? '',
+            placeOfPerformance: c.placeOfPerformance ?? '',
+            requirementSummary: (c.description ?? '').slice(0, 1200),
+          }
+        })
+        setPrefill({ title: c.title ?? 'this opportunity' })
+      })
+      .catch(() => { /* prefill is a convenience — a blank form still works */ })
+    return () => { cancelled = true }
+  }, [])
+
   // Persist draft
   useEffect(() => {
+    // A deep-linked prefill owns the form; don't let a stale draft race it.
+    if (new URLSearchParams(window.location.search).get('contractId')) return
     const saved = localStorage.getItem(STORAGE_KEY)
     if (!saved) return
     try {
@@ -330,6 +370,12 @@ export default function NewProposalPage() {
       {step === 1 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <SectionTitle>THE OPPORTUNITY — Tell us about the contract you&apos;re pursuing</SectionTitle>
+          {prefill && (
+            <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(196,18,48,0.05)', border: '1px solid rgba(196,18,48,0.2)', borderRadius: 8, fontSize: 12.5, lineHeight: 1.6, color: 'rgba(0,0,0,0.6)', fontFamily: 'var(--font-geist-sans, sans-serif)' }}>
+              <strong style={{ color: '#C41230' }}>Pulled from your pipeline.</strong>{' '}
+              We filled in what IR already knows about <strong>{prefill.title}</strong>. Check it over and correct anything the solicitation states differently.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <Field lbl="CONTRACT / SOLICITATION TITLE" req>

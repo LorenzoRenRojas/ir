@@ -167,6 +167,7 @@ export default async function AdminPage() {
     { name: 'ADMIN_EMAIL', ok: !!process.env.ADMIN_EMAIL, note: 'admin access (bootstrap: first account)' },
     { name: 'EMAIL_REPLY_TO', ok: !!process.env.EMAIL_REPLY_TO, note: 'replies to app email reach this mailbox' },
     { name: 'WIDGET_TOKEN', ok: !!process.env.WIDGET_TOKEN, note: 'iPhone home-screen stats widget' },
+    { name: 'ENGAGEMENT_PACK_URL', ok: !!process.env.ENGAGEMENT_PACK_URL, note: 'link in the Monday founder brief' },
   ]
 
   const fmtDate = (d: Date) =>
@@ -207,6 +208,11 @@ export default async function AdminPage() {
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 8 }}>Most recent failed save. Clears when a save next succeeds enough to overwrite it, or ignore once resolved.</div>
           </div>
         )}
+
+        <div style={label}>SYSTEM ACTIONS</div>
+        <div style={{ marginBottom: 40 }}>
+          <AdminActions />
+        </div>
 
         <div style={label}>PLATFORM METRICS</div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
@@ -290,11 +296,6 @@ export default async function AdminPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        <div style={label}>SYSTEM ACTIONS</div>
-        <div style={{ marginBottom: 40 }}>
-          <AdminActions />
         </div>
 
         {waitlistRecent.length > 0 && (

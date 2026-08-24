@@ -92,6 +92,28 @@ export async function GET(req: NextRequest) {
     console.warn('[weekly-report] degraded (non-paging):', degraded)
   }
 
+  // Founder brief — admin only. Rides this cron rather than claiming another
+  // slot, and is deliberately last: a failure here must never affect a single
+  // user's weekly report.
+  let founderBriefSent = false
+  if (ADMIN_EMAIL) {
+    try {
+      const { buildFounderBrief, briefTalkingPoints } = await import('@/lib/founder-brief')
+      const { sendFounderBriefEmail } = await import('@/lib/email')
+      const brief = await buildFounderBrief()
+      await sendFounderBriefEmail(
+        ADMIN_EMAIL,
+        brief,
+        briefTalkingPoints(brief),
+        process.env.ENGAGEMENT_PACK_URL ?? `${baseUrl}/admin`,
+        baseUrl
+      )
+      founderBriefSent = true
+    } catch (err) {
+      degraded.push(`Founder brief failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   if (problems.length > 0 && ADMIN_EMAIL) {
     const body = degraded.length > 0
       ? [...problems, '—', 'Also degraded this run (informational, not the alert cause):', ...degraded]
@@ -99,5 +121,5 @@ export async function GET(req: NextRequest) {
     try { await sendAdminAlertEmail(ADMIN_EMAIL, 'Weekly report cron', body) } catch { /* best-effort */ }
   }
 
-  return NextResponse.json({ ok: problems.length === 0, processed, sent, newThisWeek, problems, degraded })
+  return NextResponse.json({ ok: problems.length === 0, processed, sent, newThisWeek, founderBriefSent, problems, degraded })
 }

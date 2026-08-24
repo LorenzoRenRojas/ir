@@ -231,11 +231,19 @@ export default async function ContractDetailPage({
           <div style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)', padding: '24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(0,0,0,0.25)', marginBottom: 8 }}>ACTIONS</div>
             <SaveContractButton contract={contract} />
+            {/* Straight into the draft with this contract's details already
+                filled, rather than dropping the user on a blank Doc Suite. */}
+            <Link
+              href={`/proposals/new?contractId=${encodeURIComponent(contract.id)}`}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', fontSize: 10, letterSpacing: '0.08em', background: '#C41230', color: '#fff', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)', fontWeight: 700 }}
+            >
+              ✎ DRAFT PROPOSAL FOR THIS
+            </Link>
             <Link
               href="/documents"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', fontSize: 10, letterSpacing: '0.08em', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(0,0,0,0.45)', textDecoration: 'none', fontFamily: 'var(--font-geist-mono, monospace)' }}
             >
-              ☰ GENERATE DOCUMENTS
+              ☰ ALL DOCUMENT TYPES
             </Link>
             <a
               href={contract.link}

@@ -668,6 +668,91 @@ export async function sendRecompeteAlertEmail(
   await send(email, `[IR Radar] ${items.length} expiring contract${items.length === 1 ? '' : 's'} in your NAICS codes`, html, undefined, { bulk: true })
 }
 
+// Monday founder brief — goes to the admin only. Deliberately not gated on
+// notifyDigest: this is the accountability loop for outreach, not a product
+// notification, and it's transactional (never counts against the bulk budget).
+export async function sendFounderBriefEmail(
+  adminEmail: string,
+  brief: {
+    users: number; signupsWeek: number; founding: number; referred: number
+    liveCount: number; postedThisWeek: number
+  },
+  talkingPoints: string[],
+  packUrl: string,
+  baseUrl: string
+): Promise<void> {
+  const tile = (label: string, value: string, accent?: boolean) => `
+    <td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:18px 20px;">
+      <div style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.14em;font-family:monospace;margin-bottom:8px;">${label}</div>
+      <div style="color:${accent ? '#C41230' : '#ffffff'};font-size:26px;font-weight:800;font-family:sans-serif;letter-spacing:-0.02em;">${value}</div>
+    </td>`
+
+  const points = talkingPoints.length
+    ? talkingPoints.map(p => `
+        <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <span style="color:#C41230;font-weight:700;margin-right:10px;">◆</span>
+          <span style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6;font-family:sans-serif;">${esc(p)}</span>
+        </td></tr>`).join('')
+    : `<tr><td style="color:rgba(255,255,255,0.35);font-size:12px;font-family:sans-serif;padding:10px 0;">No fresh postings this week — the sync may not have run. Worth a look at the admin board.</td></tr>`
+
+  const movement = brief.signupsWeek > 0
+    ? `<span style="color:#C41230;font-weight:700;">${brief.signupsWeek} new signup${brief.signupsWeek === 1 ? '' : 's'}</span> this week.`
+    : `No signups this week. Two comments a day is the whole job — the number moves when you talk to people.`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid rgba(255,255,255,0.08);">
+        <tr>
+          <td style="padding:32px 44px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#C41230;font-size:20px;font-weight:700;">ᛁ</span>
+            <span style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.12em;margin-left:8px;">IR</span>
+            <span style="color:rgba(255,255,255,0.25);font-size:10px;letter-spacing:0.1em;margin-left:6px;">FOUNDER BRIEF</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:34px 44px 8px;">
+            <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 16px;">THIS WEEK</p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:0 0 10px;font-family:sans-serif;">Two comments a day.</h1>
+            <p style="color:rgba(255,255,255,0.45);font-size:13.5px;line-height:1.7;margin:0 0 24px;font-family:sans-serif;">${movement}</p>
+            <table width="100%" cellpadding="0" cellspacing="6" style="margin:0 0 8px;"><tr>
+              ${tile('USERS', String(brief.users))}
+              ${tile('FOUNDING', String(brief.founding), true)}
+              ${tile('REFERRED', String(brief.referred))}
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 44px 8px;">
+            <p style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:0.14em;font-family:monospace;margin:0 0 6px;">USE THESE IN COMMENTS THIS WEEK</p>
+            <p style="color:rgba(255,255,255,0.35);font-size:12px;line-height:1.6;margin:0 0 10px;font-family:sans-serif;">Live numbers from IR's own store. Nobody else in that comment section can quote these.</p>
+            <table width="100%" cellpadding="0" cellspacing="0">${points}</table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:26px 44px 34px;">
+            <a href="${packUrl}" style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
+              OPEN THE ENGAGEMENT PACK →
+            </a>
+            <p style="color:rgba(255,255,255,0.25);font-size:11px;line-height:1.7;margin:22px 0 0;font-family:sans-serif;">
+              Targets, comment shapes, and this week's post schedule are all in the pack.<br>
+              Admin board: <a href="${baseUrl}/admin" style="color:#C41230;">${baseUrl}/admin</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  await send(adminEmail, `[IR] Founder brief — ${brief.signupsWeek} signup${brief.signupsWeek === 1 ? '' : 's'} this week`, html)
+}
+
 export async function sendAdminAlertEmail(
   adminEmail: string,
   subject: string,

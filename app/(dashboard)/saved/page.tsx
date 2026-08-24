@@ -542,7 +542,10 @@ export default function PipelinePage() {
                         <div style={{ fontSize: 10, color: 'rgba(0,0,0,0.3)', fontFamily: mono }}>LOADING…</div>
                       ) : cProposals.length === 0 ? (
                         <p style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)', fontFamily: sans, margin: '0 0 12px', lineHeight: 1.6 }}>
-                          No documents for this contract yet. <Link href="/documents" style={{ color: crimson, textDecoration: 'none', fontWeight: 600 }}>Generate one in the Doc Suite →</Link>
+                          No documents for this contract yet.{' '}
+                          <Link href={`/proposals/new?contractId=${encodeURIComponent(c.contractId)}`} style={{ color: crimson, textDecoration: 'none', fontWeight: 600 }}>
+                            Draft one for {c.title.length > 40 ? 'this contract' : c.title} →
+                          </Link>
                         </p>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
@@ -593,9 +596,19 @@ export default function PipelinePage() {
                             The solicitation doesn&apos;t exist yet; when it posts to SAM.gov, save the live notice and it gains full match analysis.
                           </div>
                         ) : (
-                          <Link href={`/contracts/${encodeURIComponent(c.contractId)}`} style={{ ...btn, justifyContent: 'center' }}>
-                            <MetatronIcon size={11} /> MATCH ANALYSIS + DETAILS
-                          </Link>
+                          <>
+                            <Link href={`/contracts/${encodeURIComponent(c.contractId)}`} style={{ ...btn, justifyContent: 'center' }}>
+                              <MetatronIcon size={11} /> MATCH ANALYSIS + DETAILS
+                            </Link>
+                            {/* Straight from the pursuit into the draft, with the
+                                opportunity fields already filled from this contract. */}
+                            <Link
+                              href={`/proposals/new?contractId=${encodeURIComponent(c.contractId)}`}
+                              style={{ ...btn, justifyContent: 'center', background: crimson, color: '#fff', border: 'none' }}
+                            >
+                              ✎ DRAFT PROPOSAL FOR THIS
+                            </Link>
+                          </>
                         )}
                         {c.samNoticeId && (
                           <a href={`https://sam.gov/opp/${c.samNoticeId}`} target="_blank" rel="noopener noreferrer" style={{ ...btn, justifyContent: 'center' }}>
