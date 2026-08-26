@@ -17,6 +17,14 @@ import { TOP_NAICS_CODES } from './naics'
 //
 // These are drafts, not scheduled posts. A human reads and edits before
 // anything is published under their name.
+//
+// COVERAGE, and this constrains every number below: SAM.gov returns ~1000
+// records per query and offset paging past the first page returns nothing, so
+// a single sync cannot pull a full window. The store accumulates coverage over
+// days within a per-run request budget. It is therefore a SUBSET of the federal
+// market, not a census. Every volume claim must be phrased as what IR tracked,
+// never as what exists. "1,247 contracts were posted" would be a false claim;
+// "IR tracked 1,247" is true and still useful.
 
 export type PostKind =
   | 'weekly-pulse'
@@ -162,18 +170,18 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
       audience: 'company',
       label: 'Weekly market pulse',
       body: [
-        `${n(week.length)} new federal opportunities posted in the last seven days.`,
+        `IR tracked ${n(week.length)} new federal solicitations over the last seven days.`,
         ``,
-        `${pct}% of them are set aside for small business. That is ${n(setAside)} contracts where the large primes are not allowed to bid against you.`,
+        `${pct}% of them carry a small-business set-aside. That is ${n(setAside)} requirements where the competitive field is restricted rather than wide open.`,
         ``,
-        `Most small businesses never see these, because checking means searching SAM.gov manually, every day, forever.`,
+        `Worth being precise about that: some are open to any small business, and some are narrower still, restricted to 8(a), SDVOSB, WOSB or HUBZone firms specifically. Narrower pool, fewer competitors, but only if you hold the certification.`,
         ``,
         `The opportunities are not the scarce part. Knowing which ones are worth your time is.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
       firstComment: 'ir-gov.app',
-      dataNote: `Counted ${n(week.length)} solicitations with a posted date in the last 7 days; ${n(setAside)} carried a small-business set-aside code.`,
-      image: { stat: n(week.length), label: 'NEW OPPORTUNITIES THIS WEEK', sub: `${pct}% set aside for small business` },
+      dataNote: `Counted ${n(week.length)} solicitations in IR's store with a posted date in the last 7 days; ${n(setAside)} carried a small-business set-aside code. IR's store is a synced subset of SAM.gov, not a complete census — the post says "IR tracked" for exactly this reason.`,
+      image: { stat: n(week.length), label: 'SOLICITATIONS TRACKED THIS WEEK', sub: `${pct}% carry a small-business set-aside` },
     })
   }
 
@@ -184,19 +192,19 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     posts.push({
       kind: 'sector-heat',
       audience: 'company',
-      label: 'Where the money moved this week',
+      label: 'Where new requirements appeared',
       body: [
-        `Where federal buying actually moved this week:`,
+        `Where new federal requirements appeared this week, by volume of solicitations IR tracked:`,
         ``,
         ...lines,
         ``,
-        `If your NAICS code is on this list, the market is active for you right now and you should be looking.`,
+        `This is posting volume, not dollars awarded. A code can be busy with small requirements or quiet with one large one, so read it as where activity is, not where the money is.`,
         ``,
-        `If it is not, that is worth knowing too. Timing your capture effort to when your sector is actually buying beats bidding year-round on whatever appears.`,
+        `If your code is on this list, there is something to look at this week.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #NAICS',
       firstComment: 'ir-gov.app',
-      dataNote: `Grouped ${n(week.length)} solicitations posted in the last 7 days by NAICS code; top ${topNaics.length} shown.`,
+      dataNote: `Grouped ${n(week.length)} solicitations in IR's store, posted in the last 7 days, by NAICS code; top ${topNaics.length} by count. Counts are solicitations tracked, not award dollars.`,
     })
   }
 
@@ -211,7 +219,7 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
       audience: 'company',
       label: `Agency spotlight: ${topAgency.key}`,
       body: [
-        `${topAgency.key} posted ${n(topAgency.count)} opportunities this week, more than any other buyer.`,
+        `${topAgency.key} was the most active buyer in what IR tracked this week, with ${n(topAgency.count)} solicitations.`,
         ``,
         `${pct}% of them are small-business set-asides.`,
         ``,
@@ -221,7 +229,7 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
       firstComment: 'ir-gov.app',
-      dataNote: `${topAgency.key} accounted for ${n(topAgency.count)} of ${n(week.length)} solicitations posted in the last 7 days; ${n(theirSetAside)} were small-business set-asides.`,
+      dataNote: `${topAgency.key} accounted for ${n(topAgency.count)} of ${n(week.length)} solicitations in IR's store over 7 days; ${n(theirSetAside)} carried small-business set-aside codes. "Most active" is scoped to IR's synced subset and to solicitation count, not award value. Agency strings come from SAM.gov and are grouped verbatim, so sub-agency naming variants may split a count.`,
     })
   }
 
@@ -238,18 +246,18 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
       audience: 'founder',
       label: 'Closing this week',
       body: [
-        `${n(soon.length)} federal contracts close in the next seven days. ${n(soonSetAside)} of them are reserved for small business.`,
+        `${n(soon.length)} of the contracts IR is tracking close in the next seven days. ${n(soonSetAside)} carry small-business set-asides.`,
         ``,
-        `Here is the uncomfortable part: if you are seeing a solicitation for the first time with a week left, you have already lost it.`,
+        `Here is the uncomfortable part: if you are seeing a solicitation for the first time with a week left, you are usually already too late.`,
         ``,
-        `The firms that win were talking to that program office months ago, during market research, before anything was published. By the time it posts, the requirement is often shaped around whoever did that work.`,
+        `The firms that win were often talking to that program office months earlier, during market research, before anything was published. Requirements get shaped by those conversations.`,
         ``,
         `Bidding on what closes this week is not a strategy. Knowing what closes next quarter is.`,
       ].join('\n'),
       hashtags: '#GovCon #CaptureManagement #FederalContracting',
       firstComment: 'ir-gov.app',
-      dataNote: `Counted ${n(soon.length)} open solicitations with response deadlines within 7 days; ${n(soonSetAside)} carried small-business set-aside codes.`,
-      image: { stat: n(soon.length), label: 'CONTRACTS CLOSING IN 7 DAYS', sub: `${n(soonSetAside)} reserved for small business` },
+      dataNote: `Counted ${n(soon.length)} solicitations in IR's store with response deadlines within 7 days; ${n(soonSetAside)} carried small-business set-aside codes. Scoped to IR's synced subset.`,
+      image: { stat: n(soon.length), label: 'TRACKED CONTRACTS CLOSING IN 7 DAYS', sub: `${n(soonSetAside)} carry small-business set-asides` },
     })
   }
 
@@ -259,12 +267,15 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     for (const c of live) {
       const code = c.setAside.toUpperCase()
       if (!SMALL_BIZ_SET_ASIDES.has(code)) continue
+      // SBP is a PARTIAL small-business set-aside and must not be folded in
+      // with total set-asides — they are different competitive situations.
       const label =
         code.startsWith('8A') ? '8(a)'
         : code.startsWith('SDVOSB') ? 'SDVOSB'
         : code.startsWith('WOSB') || code.startsWith('EDWOSB') ? 'WOSB / EDWOSB'
         : code.startsWith('HZ') ? 'HUBZone'
         : code.startsWith('VS') ? 'VOSB'
+        : code === 'SBP' ? 'Partial Small Business'
         : 'Total Small Business'
       buckets[label] = (buckets[label] ?? 0) + 1
     }
@@ -276,7 +287,7 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         audience: 'company',
         label: 'Set-aside breakdown, live market',
         body: [
-          `${n(total)} federal contracts are open right now under small-business set-asides. Here is how they split:`,
+          `${n(total)} of the open contracts IR is tracking carry small-business set-asides. Here is how they split:`,
           ``,
           ...rows.map(([label, count]) => `${label} — ${n(count)}`),
           ``,
@@ -284,20 +295,23 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
           ``,
           `The narrower programs have far fewer contracts, but far fewer competitors chasing them. A smaller pool you are eligible for beats a large one you are not.`,
           ``,
-          `And most firms qualify for more of these than they think. The certification is usually the barrier people imagine, not the one they actually face.`,
+          `And plenty of firms qualify for more of these than they realise. Worth checking rather than assuming.`,
         ].join('\n'),
         hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
         firstComment: 'ir-gov.app/eligibility',
-        dataNote: `Grouped ${n(total)} currently-open solicitations by set-aside code out of ${n(live.length)} live records.`,
-        image: { stat: n(total), label: 'OPEN SET-ASIDE CONTRACTS', sub: 'Reserved for small business right now' },
+        dataNote: `Grouped ${n(total)} open solicitations in IR's store by set-aside code, out of ${n(live.length)} live records tracked. Scoped to IR's synced subset, not the full federal market.`,
+        image: { stat: n(total), label: 'TRACKED SET-ASIDE CONTRACTS', sub: 'Open to small business right now' },
       })
     }
   }
 
   // ── 6. Pricing reality — only once outcomes exist ────────────────────────
   try {
+    // 75+ means the award record actually cites the solicitation. Lower
+    // confidences are statistical guesses — fine for internal aggregates,
+    // not fine to publish a pricing claim on.
     const outcomes = await prisma.contractOutcome.findMany({
-      where: { matchConfidence: { gte: 55 }, awardAmount: { gt: 0 }, estimatedValue: { gt: 0 } },
+      where: { matchConfidence: { gte: 75 }, awardAmount: { gt: 0 }, estimatedValue: { gt: 0 } },
       select: { estimatedValue: true, awardAmount: true },
       take: 1000,
     })
@@ -315,15 +329,15 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         body: [
           `We have been recording what federal contracts actually award for, against what the solicitation advertised.`,
           ``,
-          `Across ${n(ratios.length)} matched awards, the median came in at ${pct}% of the advertised value.`,
+          `Across ${n(ratios.length)} awards we matched back to their original solicitation, the median landed at ${pct}% of the advertised value.`,
           ``,
-          `Estimated value is a planning figure, not a price signal. Treating it as the target is one of the most common and most expensive mistakes a first-time bidder makes.`,
+          `Two caveats we would rather state than have pointed out. That is our sample, not the whole market. And advertised value is often a ceiling, especially on IDIQs, so a ratio under 100% is not automatically a discount.`,
           ``,
-          `The number that matters is what similar work actually awarded for, and that is public record if you know where to look.`,
+          `The point stands regardless: estimated value is a planning figure, not a price signal, and bidding to it is a common and expensive mistake.`,
         ].join('\n'),
         hashtags: '#GovCon #FederalContracting #Pricing',
         firstComment: 'ir-gov.app',
-        dataNote: `Median of ${n(ratios.length)} solicitation-to-award matches at confidence 55+, comparing final award amount to advertised value.`,
+        dataNote: `Median of ${n(ratios.length)} solicitation-to-award matches at confidence 75+ (the award record cites the solicitation number, not a statistical guess), comparing award amount to advertised value. Ratios outside 0.05-20x are excluded as mismatches or IDIQ ceilings. Sample is IR's records only.`,
       })
     }
   } catch { /* outcomes table not migrated yet — skip this draft */ }
@@ -361,14 +375,14 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       ``,
       `That is six to eight weeks of work on a single pursuit.`,
       ``,
-      `IR runs the same sequence against ${liveText} federal solicitation, scores each one against your business, and shows the reasoning for every point it assigns. Not a filtered list. An assessment.`,
+      `IR scores ${liveText} solicitation it tracks against your business profile, then runs the deeper work — incumbent, competition, pricing benchmarks, bid recommendation — on the ones that actually match you. Every point it assigns comes with its reasoning.`,
       ``,
-      `We are not claiming to replace judgment. We are claiming that nobody should be doing the mechanical part by hand at eleven at night.`,
+      `We are not claiming to replace judgment. We are claiming nobody should be doing the mechanical part by hand at eleven at night.`,
     ].join('\n'),
     hashtags: '#GovCon #CaptureManagement #FederalContracting',
     firstComment: 'ir-gov.app/capabilities',
-    dataNote: `References ${counts.live > 0 ? `${n(counts.live)} live solicitations currently in the store` : 'the live store'}. Capability claims map to shipped features on the capabilities page.`,
-    image: { stat: '5 min', label: 'VS 6–8 WEEKS OF ANALYST WORK', sub: 'Scored, sourced, and explained' },
+    dataNote: `References ${counts.live > 0 ? `${n(counts.live)} live solicitations currently in IR's store` : 'the live store'} — a synced subset of SAM.gov, not the full market. Scoring runs across the store; incumbent, competition and pricing enrichment run on matched results, and the copy says so rather than implying full enrichment on every record. The 6-8 week figure describes a full capture cycle on a single pursuit, a widely used industry range, not an IR measurement.`,
+    image: { stat: '5 min', label: 'VS WEEKS OF MANUAL CAPTURE WORK', sub: 'Scored, sourced, and explained' },
   })
 
   // ── COMPANY: explainability, the real differentiator ─────────────────────
@@ -398,9 +412,9 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     audience: 'company',
     label: 'Positioning vs enterprise platforms',
     body: [
-      `The best federal market intelligence platforms cost more per year than most small contractors make on their first three contracts.`,
+      `The best federal market intelligence platforms are priced for enterprise buyers, sold through a sales team, and usually locked to an annual contract.`,
       ``,
-      `That is not a criticism. Those platforms are built for mid-to-large integrators with capture teams and analyst budgets, and for that buyer they are worth it.`,
+      `That is not a criticism. They are built for mid-to-large integrators with capture teams and analyst budgets, and for that buyer they are genuinely worth it.`,
       ``,
       `The problem is everyone underneath that line. A ten-person shop competing for the same set-asides gets a SAM.gov search box and a spreadsheet.`,
       ``,
@@ -410,7 +424,7 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #FederalContracting',
     firstComment: 'ir-gov.app/compare/govwin',
-    dataNote: 'Positioning claims are price-tier and access-model only, per docs/COMPETITION.md. No capability superiority is asserted over enterprise research desks.',
+    dataNote: 'Positioning claims are price-tier and access-model only, per docs/COMPETITION.md. No capability superiority is asserted over enterprise research desks, and no specific competitor price figure is stated — quoting a rival\'s pricing publicly requires re-verifying it first, and it changes. Describes access model (sales-gated, annual) which is publicly documented by those vendors.',
   })
 
   // ── FOUNDER: why ─────────────────────────────────────────────────────────
@@ -419,7 +433,7 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     audience: 'founder',
     label: 'Why I built this',
     body: [
-      `The federal government is the largest buyer on earth, and most small businesses never sell it anything.`,
+      `The federal government is the largest buyer on earth, and the overwhelming majority of small businesses never sell it anything.`,
       ``,
       `Not because they cannot do the work. Because the part before the work, figuring out which contracts are worth chasing, is a full-time analyst job, and a ten-person company does not have an analyst.`,
       ``,
@@ -433,7 +447,7 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #BuildInPublic',
     firstComment: 'ir-gov.app',
-    dataNote: 'Personal narrative. No factual claims requiring substantiation.',
+    dataNote: 'Personal narrative. The only factual claim is that the US federal government is the world\'s largest single buyer of goods and services, which is widely documented. No IR-specific performance claims.',
   })
 
   // ── FOUNDER: build in public ─────────────────────────────────────────────
