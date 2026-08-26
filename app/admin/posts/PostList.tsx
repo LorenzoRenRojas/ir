@@ -26,12 +26,23 @@ export default function PostList({ posts }: { posts: GeneratedPost[] }) {
           <div key={p.kind} style={{ border: '1px solid rgba(255,255,255,0.09)', background: '#111' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ color: crimson, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em' }}>{p.kind.toUpperCase()}</div>
+                <div style={{ color: crimson, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em' }}>
+                  {p.format === 'article' ? 'LINKEDIN ARTICLE' : p.kind.toUpperCase()}
+                </div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginTop: 4, fontFamily: sans }}>{p.label}</div>
               </div>
-              <CopyBlock text={`${p.body}\n\n${p.hashtags}`} label="COPY POST" />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {p.title && <CopyBlock text={p.title} label="COPY TITLE" small />}
+                <CopyBlock text={p.format === 'article' ? p.body : `${p.body}\n\n${p.hashtags}`} label={p.format === 'article' ? 'COPY BODY' : 'COPY POST'} />
+              </div>
             </div>
 
+            {p.title && (
+              <div style={{ padding: '18px 20px 0' }}>
+                <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 9, letterSpacing: '0.14em', marginBottom: 8 }}>ARTICLE HEADLINE</div>
+                <div style={{ color: '#fff', fontSize: 19, fontWeight: 800, lineHeight: 1.3, fontFamily: sans, letterSpacing: '-0.01em' }}>{p.title}</div>
+              </div>
+            )}
             <pre style={{ margin: 0, padding: '20px', color: 'rgba(255,255,255,0.72)', fontSize: 13, lineHeight: 1.75, whiteSpace: 'pre-wrap', fontFamily: sans }}>
               {p.body}
             </pre>

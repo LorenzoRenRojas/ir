@@ -42,6 +42,7 @@ export type PostKind =
   | 'sba-alarm'
   | 'sba-thesis'
   | 'sba-our-exposure'
+  | 'founder-article-why'
 
 /**
  * Who is speaking.
@@ -69,6 +70,9 @@ export interface GeneratedPost {
   firstComment: string // links go here, never in the body
   dataNote: string     // what was counted, so the claim is defensible
   image?: PostImage
+  /** Long-form. LinkedIn articles take a headline separate from the body. */
+  format?: 'post' | 'article'
+  title?: string
 }
 
 const SMALL_BIZ_SET_ASIDES = new Set([
@@ -574,6 +578,85 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     hashtags: '#BuildInPublic #GovCon #ProductDevelopment',
     firstComment: 'ir-gov.app/capabilities',
     dataNote: 'Describes the evidence-tier system shipped in lib/evidence-score.ts and published on the capabilities page.',
+  })
+
+  // ── FOUNDER: the long-form founding piece ────────────────────────────────
+  // The Featured article. Written to do three jobs at once: explain the
+  // asymmetry that justifies the product, separate IR from the enterprise
+  // incumbents AND the wave of unverifiable AI scoring tools, and establish
+  // credibility by publishing IR's own limitations before anyone finds them.
+  out.push({
+    kind: 'founder-article-why',
+    audience: 'founder',
+    format: 'article',
+    label: 'ARTICLE: The number that decides your next 60 hours',
+    title: 'The number that decides your next 60 hours',
+    body: [
+      `Somewhere tonight, a small business owner is going to sit down after everyone has gone home and decide whether to bid on a federal contract.`,
+      ``,
+      `It is not a small decision. A serious proposal runs 40 to 80 hours. For a ten person company that is a meaningful piece of a month, taken directly out of billable work. Get it wrong six times and you have spent a quarter of your year on nothing.`,
+      ``,
+      `So they will look for signal. Is the incumbent beatable? Is this really open, or shaped for someone else? Has anyone like us ever won work like this?`,
+      ``,
+      `At the large primes, a person is paid six figures a year to answer exactly those questions. They are called capture analysts, and the work takes weeks per pursuit.`,
+      ``,
+      `The small business owner has a search box and a gut feeling.`,
+      ``,
+      `That asymmetry is the entire reason IR exists. Not the paperwork, not the searching. The fact that one side of the market gets a professional answer and the other side guesses.`,
+      ``,
+      `WHY THE EXISTING TOOLS DID NOT CLOSE IT`,
+      ``,
+      `The established federal intelligence platforms are genuinely good. They employ real analyst desks, they produce real forecasting, and for a mid sized integrator with a capture team and a budget, they earn their price.`,
+      ``,
+      `They are just not built for the ten person shop. Enterprise pricing, a sales call before you can see the product, annual contracts. That is a coherent business. It is simply aimed above the buyer we are talking about, and everyone underneath that line was left with the search box.`,
+      ``,
+      `AND WHY THE NEW WAVE DOES NOT CLOSE IT EITHER`,
+      ``,
+      `Then AI arrived, and with it a wave of tools promising to score your odds. Point the model at the market, get a number back.`,
+      ``,
+      `Here is our problem with that. A score is a claim. When a tool tells a contractor they have a 73 percent chance, it is asking them to spend 60 hours of a small company's capacity on that assertion. And almost none of these tools will tell you where the number came from, what it weighed, what evidence sits behind it, or whether their scores have ever been checked against what actually happened.`,
+      ``,
+      `Confidence is the cheapest thing to manufacture and the most expensive thing to be wrong about. A number with no provenance is not intelligence. It is a guess wearing a lab coat.`,
+      ``,
+      `WHAT WE DID INSTEAD`,
+      ``,
+      `IR scores contracts too. The difference is that every score opens up.`,
+      ``,
+      `Each point carries three things: the factor, the reasoning, and what tier of evidence it rests on.`,
+      ``,
+      `Measured means counted from awards that actually happened, including your own federal award history pulled from public records. "You have won three contracts in this NAICS code" is a count, not an opinion.`,
+      ``,
+      `Structural means a rule rather than a prediction. Set aside eligibility is binary and published in the solicitation. No model involved.`,
+      ``,
+      `Heuristic means reasoned but not yet validated against outcomes. Defensible thinking, unproven.`,
+      ``,
+      `That third label is the uncomfortable one to ship. It means our product openly tells you which parts of its own scoring are still assumption.`,
+      ``,
+      `We went back and forth on it, because admitting uncertainty looks weaker in a demo. We shipped it anyway, for a simple reason. If we want someone to bet real weeks on a number, we should be willing to show them where it came from, including when the honest answer is that this part is reasoning rather than measurement.`,
+      ``,
+      `WHAT WE CANNOT CLAIM YET`,
+      ``,
+      `Since we are being straight: we cannot currently tell you our scores are calibrated. Nobody has verified that a 70 wins more often than a 40. Not ours, and as far as we can tell, not anyone's in this market.`,
+      ``,
+      `So we started recording. Every solicitation IR sees gets archived, and when the award posts months later we match it back: who won, at what price, against what field. That record accumulates whether anyone is watching or not.`,
+      ``,
+      `Eventually it lets us publish something almost nobody in this industry publishes. Our own accuracy. Including the years it is unflattering.`,
+      ``,
+      `That is a slower way to build a product. It is also the only version we would be comfortable asking a small business to trust.`,
+      ``,
+      `THE ACTUAL GOAL`,
+      ``,
+      `We are not trying to replace judgment. The owner who knows their customer, their capacity and their real differentiators will always know things no system can see.`,
+      ``,
+      `We are trying to make sure that person is not doing an analyst's job at eleven at night, alone, with no information, while the competition has a whole team doing it in daylight.`,
+      ``,
+      `If that is your situation, we would genuinely like to hear what you would need it to do.`,
+      ``,
+      `Lorenzo Rojas, Founder, IR`,
+    ].join('\n'),
+    hashtags: '#GovCon #FederalContracting #SmallBusiness #BuildInPublic',
+    firstComment: 'ir-gov.app',
+    dataNote: 'Long-form article. Factual claims: capture analyst compensation (six figures, widely documented for the role) and the 40-80 hour proposal range (a commonly cited industry figure, stated as such). All claims about IR describe shipped behaviour — the evidence tiers in lib/evidence-score.ts and the outcome collector in lib/outcomes.ts. The statement that IR cannot yet claim calibration is accurate and deliberate. No competitor is named and no competitor pricing is quoted.',
   })
 
   // ── FOUNDER: contrarian ──────────────────────────────────────────────────
