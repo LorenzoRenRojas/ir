@@ -387,7 +387,7 @@ function topicalPosts(): GeneratedPost[] {
   if (now > SBA_RELEVANCE_END) return out
 
   const sourceNote =
-    'SBA proposed rule published 2026-08-20 (Docket SBA-2026-0199, RIN 3245-AI67), third five-year review under the Small Business Jobs Act. Figures — 338 standards replacing roughly 1,000, ~114,500 firms gaining small status against fewer than 200 losing it, comment deadline 2026-09-21 — are from SBA and law-firm summaries of the rule. PROPOSED, not adopted; every draft states this.'
+    'SBA proposed rule published 2026-08-20 in the Federal Register, RIN 3245-AI67 / Docket No. SBA-2026-0199. Note SBA issued TWO companion rules that day (industry size standards, and a revised size standards methodology); the figures below come from the rule carrying this RIN. Verified figures: 995 existing size standards consolidated to 338; 114,541 additional firms become eligible, of which about 37,002 are FY2025 federal contractors holding 105,655 contracts worth more than $71 billion; total eligible small businesses rise from 6,344,967 to 6,459,508 (+1.8%); 24 industry groups see a reduction in eligible firms totalling fewer than 200; comments due 2026-09-21. Cross-checked across Pillsbury, Holland & Knight, Hunton, Schwabe and Potomac Law summaries plus SBA Office of Advocacy. PROPOSED, not adopted; every draft states this.'
 
   if (now <= SBA_COMMENT_DEADLINE) {
     out.push({
@@ -397,20 +397,24 @@ function topicalPosts(): GeneratedPost[] {
       body: [
         `SBA has proposed the largest expansion of small business size standards in decades, and I do not think enough small contractors have registered what it would do.`,
         ``,
-        `The proposal replaces roughly 1,000 industry size standards with 338, set at the 4 and 5 digit NAICS level. It removes the ceiling on standards entirely and adds a productivity adjustment on top of inflation. In professional services, IT, engineering and logistics, thresholds rise as much as tenfold.`,
+        `The proposal consolidates 995 industry size standards into 338, set at the 4 and 5 digit NAICS level. It removes the ceiling on size standards and adds a productivity adjustment on top of inflation. In professional services, IT, engineering and logistics, thresholds rise as much as tenfold or more.`,
         ``,
-        `SBA proposes not to reduce a single standard, even in industries where its own analysis supported a reduction.`,
+        `SBA proposes not to reduce standards even in industries where its own analysis supported a decrease.`,
         ``,
-        `Their estimate: about 114,500 firms gain small business status. Fewer than 200 lose it.`,
+        `Their estimate: 114,541 additional firms become eligible small businesses. Fewer than 200 lose eligibility.`,
         ``,
-        `If you are genuinely small, sit with that number. The set aside pool does not get bigger. The number of companies allowed into it does.`,
+        `Here is the number I keep coming back to. Roughly 37,002 of those newly eligible firms are already federal contractors, holding 105,655 contracts worth more than 71 billion dollars.`,
         ``,
-        `This is a proposed rule, not law. Comments close September 21. If it would affect how you compete, that is the window.`,
+        `Those are not hypothetical competitors. They are companies currently winning federal work who would be able to bid in the small business pool alongside you.`,
+        ``,
+        `The pool does not get bigger. The number of companies allowed into it does.`,
+        ``,
+        `This is a proposed rule, not law. Comments close September 21, under RIN 3245-AI67. If it would change how you compete, that is the window.`,
       ].join('\n'),
       hashtags: '#GovCon #SmallBusiness #FederalContracting #SBA',
-      firstComment: 'Docket SBA-2026-0199 on regulations.gov — comments close September 21.',
+      firstComment: 'RIN 3245-AI67 / Docket SBA-2026-0199 on regulations.gov. Comments close September 21.',
       dataNote: sourceNote,
-      image: { stat: '114,500', label: 'FIRMS WOULD GAIN SMALL STATUS', sub: 'Fewer than 200 would lose it · SBA proposed rule' },
+      image: { stat: '114,541', label: 'FIRMS WOULD GAIN SMALL STATUS', sub: 'Fewer than 200 would lose it. SBA proposed rule, comments close Sept 21.' },
     })
   }
 
@@ -421,7 +425,7 @@ function topicalPosts(): GeneratedPost[] {
     body: [
       `A thought on SBA's proposed size standard overhaul that I have not seen made often enough.`,
       ``,
-      `If roughly 114,500 firms move into small business status, the thing that actually erodes is not any single threshold. It is what the words "small business set aside" mean as a competitive category.`,
+      `If 114,541 firms move into small business status, the thing that actually erodes is not any single threshold. It is what the words "small business set aside" mean as a competitive category.`,
       ``,
       `A ten person shop would be bidding against companies many times its size, under the same label, for the same work. The broad Total Small Business set aside stops being much of an edge.`,
       ``,
@@ -434,7 +438,7 @@ function topicalPosts(): GeneratedPost[] {
     hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
     firstComment: 'ir-gov.app/eligibility',
     dataNote: sourceNote + ' The "certifications become more valuable" conclusion is analysis, presented as opinion rather than fact.',
-    image: { stat: '338', label: 'STANDARDS REPLACING ROUGHLY 1,000', sub: 'SBA proposed rule · comments close Sept 21' },
+    image: { stat: '338', label: 'STANDARDS REPLACING 995', sub: 'SBA proposed rule. Comments close Sept 21.' },
   })
 
   out.push({
@@ -446,7 +450,7 @@ function topicalPosts(): GeneratedPost[] {
       ``,
       `IR scores federal opportunities partly on how open a market has been to small business. That input comes from historical award data: what share of awards in a NAICS code actually went to small firms.`,
       ``,
-      `If 114,500 companies become small overnight, that history stops describing the present. The competitive field gets more crowded, but the past will not show it for years.`,
+      `If 114,541 companies become small overnight, that history stops describing the present. The competitive field gets more crowded, but the past will not show it for years.`,
       ``,
       `Which means my own scoring would quietly become optimistic. It would keep telling a genuinely small shop their odds look good, based on a market that no longer exists.`,
       ``,
