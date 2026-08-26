@@ -101,12 +101,22 @@ export async function GET(req: NextRequest) {
       const { buildFounderBrief, briefTalkingPoints } = await import('@/lib/founder-brief')
       const { sendFounderBriefEmail } = await import('@/lib/email')
       const brief = await buildFounderBrief()
+      // Strongest available draft rides along, so the email is something to
+      // act on rather than another reminder to go look somewhere.
+      let draft: { label: string; body: string } | null = null
+      try {
+        const { generatePosts } = await import('@/lib/post-generator')
+        const drafts = await generatePosts()
+        if (drafts.length > 0) draft = { label: drafts[0].label, body: drafts[0].body }
+      } catch { /* a missing draft must not block the brief */ }
+
       await sendFounderBriefEmail(
         ADMIN_EMAIL,
         brief,
         briefTalkingPoints(brief),
         process.env.ENGAGEMENT_PACK_URL ?? `${baseUrl}/admin`,
-        baseUrl
+        baseUrl,
+        draft
       )
       founderBriefSent = true
     } catch (err) {

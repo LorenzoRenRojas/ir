@@ -202,6 +202,12 @@ export default async function AdminPage() {
           <span style={{ color: crimson, fontSize: 20, fontWeight: 700 }}>ᛁ</span>
           <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', marginLeft: 8 }}>IR</span>
           <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: '0.1em', marginLeft: 6 }}>ADMIN CONSOLE</span>
+          <a
+            href="/admin/posts"
+            style={{ marginLeft: 16, fontSize: 10, letterSpacing: '0.1em', fontWeight: 700, color: crimson, textDecoration: 'none', border: `1px solid ${crimson}`, padding: '6px 12px' }}
+          >
+            POST STUDIO →
+          </a>
         </div>
 
         {lastSaveError && (

@@ -679,7 +679,10 @@ export async function sendFounderBriefEmail(
   },
   talkingPoints: string[],
   packUrl: string,
-  baseUrl: string
+  baseUrl: string,
+  // This week's strongest generated draft, so the email carries something
+  // publishable rather than only a reminder to go look.
+  draft?: { label: string; body: string } | null
 ): Promise<void> {
   const tile = (label: string, value: string, accent?: boolean) => `
     <td style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:18px 20px;">
@@ -733,6 +736,17 @@ export async function sendFounderBriefEmail(
             <table width="100%" cellpadding="0" cellspacing="0">${points}</table>
           </td>
         </tr>
+        ${draft ? `<tr>
+          <td style="padding:22px 44px 4px;">
+            <p style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:0.14em;font-family:monospace;margin:0 0 6px;">READY TO POST · ${esc(draft.label.toUpperCase())}</p>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:18px 20px;">
+              <pre style="margin:0;color:rgba(255,255,255,0.7);font-size:12.5px;line-height:1.75;white-space:pre-wrap;font-family:sans-serif;">${esc(draft.body)}</pre>
+            </div>
+            <p style="color:rgba(255,255,255,0.25);font-size:11px;margin:10px 0 0;font-family:sans-serif;">
+              Built from this week's real market data. More drafts at <a href="${baseUrl}/admin/posts" style="color:#C41230;">${baseUrl}/admin/posts</a>
+            </p>
+          </td>
+        </tr>` : ''}
         <tr>
           <td style="padding:26px 44px 34px;">
             <a href="${packUrl}" style="display:inline-block;padding:13px 28px;background:#C41230;color:#ffffff;font-size:10px;font-weight:700;letter-spacing:0.1em;text-decoration:none;">
