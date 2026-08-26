@@ -39,6 +39,9 @@ export type PostKind =
   | 'founder-why'
   | 'founder-build'
   | 'founder-contrarian'
+  | 'sba-alarm'
+  | 'sba-thesis'
+  | 'sba-our-exposure'
 
 /**
  * Who is speaking.
@@ -346,8 +349,108 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
   // These do not depend on a weekly sample, so they always have something to
   // publish, but they still quote live counts where they can.
   posts.push(...evergreenPosts({ live: live.length, week: week.length }))
+  posts.push(...topicalPosts())
 
   return posts
+}
+
+// ── TOPICAL: SBA size-standard overhaul ────────────────────────────────────
+//
+// Proposed rule published 2026-08-20 (Docket SBA-2026-0199, RIN 3245-AI67),
+// SBA's third five-year review under the Small Business Jobs Act. Comments
+// close 2026-09-21.
+//
+// PROPOSED, not final — every draft below says so, because a rule that has not
+// been adopted being described as law is the kind of error that costs a
+// reputation in this industry permanently.
+//
+// The alarm draft is gated on the comment deadline: telling people to file a
+// comment after the window shuts is worse than saying nothing. The analytical
+// drafts survive the deadline because the competitive consequence outlives it.
+const SBA_COMMENT_DEADLINE = new Date('2026-09-21T23:59:59Z')
+// Once the rule is finalised, revisit these: the framing shifts from
+// "proposed" to "adopted" and the numbers may move.
+const SBA_RELEVANCE_END = new Date('2027-03-01T00:00:00Z')
+
+function topicalPosts(): GeneratedPost[] {
+  const now = new Date()
+  const out: GeneratedPost[] = []
+  if (now > SBA_RELEVANCE_END) return out
+
+  const sourceNote =
+    'SBA proposed rule published 2026-08-20 (Docket SBA-2026-0199, RIN 3245-AI67), third five-year review under the Small Business Jobs Act. Figures — 338 standards replacing roughly 1,000, ~114,500 firms gaining small status against fewer than 200 losing it, comment deadline 2026-09-21 — are from SBA and law-firm summaries of the rule. PROPOSED, not adopted; every draft states this.'
+
+  if (now <= SBA_COMMENT_DEADLINE) {
+    out.push({
+      kind: 'sba-alarm',
+      audience: 'founder',
+      label: 'SBA size standards — the alarm (expires Sept 21)',
+      body: [
+        `SBA has proposed the largest expansion of small business size standards in decades, and I do not think enough small contractors have registered what it would do.`,
+        ``,
+        `The proposal replaces roughly 1,000 industry size standards with 338, set at the 4 and 5 digit NAICS level. It removes the ceiling on standards entirely and adds a productivity adjustment on top of inflation. In professional services, IT, engineering and logistics, thresholds rise as much as tenfold.`,
+        ``,
+        `SBA proposes not to reduce a single standard, even in industries where its own analysis supported a reduction.`,
+        ``,
+        `Their estimate: about 114,500 firms gain small business status. Fewer than 200 lose it.`,
+        ``,
+        `If you are genuinely small, sit with that number. The set aside pool does not get bigger. The number of companies allowed into it does.`,
+        ``,
+        `This is a proposed rule, not law. Comments close September 21. If it would affect how you compete, that is the window.`,
+      ].join('\n'),
+      hashtags: '#GovCon #SmallBusiness #FederalContracting #SBA',
+      firstComment: 'Docket SBA-2026-0199 on regulations.gov — comments close September 21.',
+      dataNote: sourceNote,
+      image: { stat: '114,500', label: 'FIRMS WOULD GAIN SMALL STATUS', sub: 'Fewer than 200 would lose it · SBA proposed rule' },
+    })
+  }
+
+  out.push({
+    kind: 'sba-thesis',
+    audience: 'founder',
+    label: 'SBA thesis — certifications become the moat',
+    body: [
+      `A thought on SBA's proposed size standard overhaul that I have not seen made often enough.`,
+      ``,
+      `If roughly 114,500 firms move into small business status, the thing that actually erodes is not any single threshold. It is what the words "small business set aside" mean as a competitive category.`,
+      ``,
+      `A ten person shop would be bidding against companies many times its size, under the same label, for the same work. The broad Total Small Business set aside stops being much of an edge.`,
+      ``,
+      `Which I think makes the narrower certifications considerably more valuable, not less. The 8(a), SDVOSB, WOSB and HUBZone pools do not expand the same way, because those turn on certification rather than size alone. When the broad category stops meaning much, the specific ones become the moat.`,
+      ``,
+      `The counterargument I keep sitting with: there is a real gap where firms graduate out of small status before they can win full and open, and this proposal genuinely helps them. I am not convinced the fix should come out of the smallest firms' share.`,
+      ``,
+      `Still a proposed rule. But if you have been putting off a certification you qualify for, this is the argument for stopping putting it off.`,
+    ].join('\n'),
+    hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
+    firstComment: 'ir-gov.app/eligibility',
+    dataNote: sourceNote + ' The "certifications become more valuable" conclusion is analysis, presented as opinion rather than fact.',
+    image: { stat: '338', label: 'STANDARDS REPLACING ROUGHLY 1,000', sub: 'SBA proposed rule · comments close Sept 21' },
+  })
+
+  out.push({
+    kind: 'sba-our-exposure',
+    audience: 'founder',
+    label: 'SBA — what it breaks in our own product',
+    body: [
+      `Everyone writing about SBA's proposed size standard overhaul is explaining what it means for contractors. Here is what it would mean for the tool I build, because I think that is the more useful thing to show.`,
+      ``,
+      `IR scores federal opportunities partly on how open a market has been to small business. That input comes from historical award data: what share of awards in a NAICS code actually went to small firms.`,
+      ``,
+      `If 114,500 companies become small overnight, that history stops describing the present. The competitive field gets more crowded, but the past will not show it for years.`,
+      ``,
+      `Which means my own scoring would quietly become optimistic. It would keep telling a genuinely small shop their odds look good, based on a market that no longer exists.`,
+      ``,
+      `I would rather say that in public now than have someone discover it later.`,
+      ``,
+      `It is also the argument for the thing we are building underneath the product: recording what actually happens to the contracts we score, so the model can be corrected against reality instead of assumption. A tool that tells you your odds should be willing to be measured on them, especially when the ground moves.`,
+    ].join('\n'),
+    hashtags: '#GovCon #BuildInPublic #FederalContracting',
+    firstComment: 'ir-gov.app/capabilities',
+    dataNote: sourceNote + ' The product exposure described is real: IR blends historical small-business award share into scoring, and that input would lag a size-standard change. Stated as a limitation, not a feature.',
+  })
+
+  return out
 }
 
 /**
