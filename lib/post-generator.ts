@@ -54,12 +54,17 @@ export type PostKind =
  */
 export type Audience = 'company' | 'founder'
 
-/** Optional artwork spec; the studio turns this into a branded 1200x1200 PNG. */
-export interface PostImage {
-  stat: string
-  label: string
-  sub: string
-}
+/**
+ * Optional artwork spec.
+ *
+ * `stat` renders a square 1200x1200 built around one headline number, which is
+ * what works in a feed. `article` renders a 1920x1080 cover built around a
+ * headline, which is what LinkedIn's article editor wants. Different jobs,
+ * different shapes, so they are different modes rather than one compromise.
+ */
+export type PostImage =
+  | { mode?: 'stat'; stat: string; label: string; sub: string }
+  | { mode: 'article'; headline: string; eyebrow: string; deck: string }
 
 export interface GeneratedPost {
   kind: PostKind
@@ -657,6 +662,12 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
     hashtags: '#GovCon #FederalContracting #SmallBusiness #BuildInPublic',
     firstComment: 'ir-gov.app',
     dataNote: 'Long-form article. Factual claims: capture analyst compensation (six figures, widely documented for the role) and the 40-80 hour proposal range (a commonly cited industry figure, stated as such). All claims about IR describe shipped behaviour — the evidence tiers in lib/evidence-score.ts and the outcome collector in lib/outcomes.ts. The statement that IR cannot yet claim calibration is accurate and deliberate. No competitor is named and no competitor pricing is quoted.',
+    image: {
+      mode: 'article',
+      eyebrow: 'GOVCON INTELLIGENCE',
+      headline: 'The number that decides your next 60 hours',
+      deck: 'A score is a claim. If we want you to bet real weeks on ours, we should show you where it came from.',
+    },
   })
 
   // ── FOUNDER: contrarian ──────────────────────────────────────────────────

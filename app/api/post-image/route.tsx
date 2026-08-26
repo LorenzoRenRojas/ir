@@ -36,9 +36,79 @@ function latticePath(scale: number, cx: number, cy: number): string {
 const clamp = (s: string | null, max: number, fallback = '') =>
   (s ?? fallback).slice(0, max)
 
+// Article cover: 1920x1080, headline-led rather than number-led. LinkedIn's
+// article editor wants a wide image and gives the headline real estate, so the
+// square stat treatment would waste it.
+function articleCover(headline: string, eyebrow: string, deck: string) {
+  // Long headlines have to step down or they run into the deck.
+  const size = headline.length <= 42 ? 104 : headline.length <= 62 ? 84 : 68
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: '100%', height: '100%', background: INK, display: 'flex',
+          flexDirection: 'column', justifyContent: 'space-between',
+          padding: '86px 96px', position: 'relative',
+        }}
+      >
+        <svg
+          width="1150" height="1150" viewBox="0 0 1150 1150"
+          style={{ position: 'absolute', right: -330, top: -120, opacity: 0.12 }}
+        >
+          <path d={latticePath(17, 575, 575)} stroke={CRIMSON} strokeWidth={3.5} fill="none" />
+          {NODES.map((nd, i) => (
+            <circle key={i} cx={(nd[0] - 16) * 17 + 575} cy={(nd[1] - 16) * 17 + 575} r={14} fill={CRIMSON} />
+          ))}
+        </svg>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <svg width="46" height="46" viewBox="0 0 46 46">
+            <path d={latticePath(1.35, 23, 23)} stroke={CRIMSON} strokeWidth={1.5} fill="none" opacity={0.8} />
+            {NODES.map((nd, i) => (
+              <circle key={i} cx={(nd[0] - 16) * 1.35 + 23} cy={(nd[1] - 16) * 1.35 + 23} r={2.4} fill={CRIMSON} />
+            ))}
+          </svg>
+          <div style={{ color: '#fff', fontSize: 27, fontWeight: 800, letterSpacing: 4 }}>IR</div>
+          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 15, letterSpacing: 3.5 }}>{eyebrow}</div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 1220 }}>
+          <div style={{ display: 'flex', width: 96, height: 6, background: CRIMSON, marginBottom: 38 }} />
+          <div style={{ color: '#fff', fontSize: size, fontWeight: 800, letterSpacing: -2.5, lineHeight: 1.12 }}>
+            {headline}
+          </div>
+          {deck ? (
+            <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 30, lineHeight: 1.5, marginTop: 30, maxWidth: 1080 }}>
+              {deck}
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 20, letterSpacing: 2 }}>IR-GOV.APP</div>
+          <div style={{ color: 'rgba(255,255,255,0.22)', fontSize: 18, letterSpacing: 1.5 }}>LORENZO ROJAS · FOUNDER</div>
+        </div>
+      </div>
+    ),
+    { width: 1920, height: 1080 }
+  )
+}
+
 export function GET(req: NextRequest) {
   const q = new URL(req.url).searchParams
-  const stat = clamp(q.get('stat'), 14, '—')
+
+  if (q.get('mode') === 'article') {
+    return articleCover(
+      clamp(q.get('headline'), 90, 'Untitled'),
+      clamp(q.get('eyebrow'), 40, 'GOVCON INTELLIGENCE').toUpperCase(),
+      clamp(q.get('deck'), 150)
+    )
+  }
+
+  // ASCII only in fallbacks: the default OG font has no em-dash glyph, so a
+  // missing stat rendered as a tofu box instead of anything readable.
+  const stat = clamp(q.get('stat'), 14, 'n/a')
   const label = clamp(q.get('label'), 46, 'FEDERAL MARKET').toUpperCase()
   const sub = clamp(q.get('sub'), 90)
 

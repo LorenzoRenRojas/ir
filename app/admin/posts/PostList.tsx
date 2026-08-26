@@ -5,6 +5,9 @@ const sans = 'var(--font-geist-sans, sans-serif)'
 const crimson = '#C41230'
 
 export function imageUrl(img: NonNullable<GeneratedPost['image']>): string {
+  if (img.mode === 'article') {
+    return `/api/post-image?mode=article&headline=${encodeURIComponent(img.headline)}&eyebrow=${encodeURIComponent(img.eyebrow)}&deck=${encodeURIComponent(img.deck)}`
+  }
   return `/api/post-image?stat=${encodeURIComponent(img.stat)}&label=${encodeURIComponent(img.label)}&sub=${encodeURIComponent(img.sub)}`
 }
 
@@ -22,6 +25,7 @@ export default function PostList({ posts }: { posts: GeneratedPost[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {posts.map(p => {
         const img = p.image ? imageUrl(p.image) : null
+        const isArticleCover = p.image?.mode === 'article'
         return (
           <div key={p.kind} style={{ border: '1px solid rgba(255,255,255,0.09)', background: '#111' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -50,9 +54,17 @@ export default function PostList({ posts }: { posts: GeneratedPost[] }) {
 
             {img && (
               <div style={{ padding: '0 20px 18px' }}>
-                <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 9, letterSpacing: '0.14em', marginBottom: 10 }}>ATTACH THIS IMAGE</div>
+                <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 9, letterSpacing: '0.14em', marginBottom: 10 }}>
+                  {isArticleCover ? 'ARTICLE COVER · 1920×1080' : 'ATTACH THIS IMAGE · 1200×1200'}
+                </div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt="" width={260} height={260} style={{ border: '1px solid rgba(255,255,255,0.1)', display: 'block' }} />
+                <img
+                  src={img}
+                  alt=""
+                  width={isArticleCover ? 460 : 260}
+                  height={isArticleCover ? 259 : 260}
+                  style={{ border: '1px solid rgba(255,255,255,0.1)', display: 'block', maxWidth: '100%', height: 'auto' }}
+                />
                 <a href={img} download={`ir-${p.kind}.png`} style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: '#fff', background: crimson, textDecoration: 'none' }}>
                   DOWNLOAD PNG
                 </a>

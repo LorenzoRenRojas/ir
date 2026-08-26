@@ -23,7 +23,9 @@ export default async function GraphicsPage() {
 
   const presets: Preset[] = []
   for (const p of posts) {
-    if (p.image) presets.push({ name: p.label, ...p.image })
+    // Article covers are headline-led and belong to their article, not to the
+    // stat maker — only square stat specs make sense as presets here.
+    if (p.image && p.image.mode !== 'article') presets.push({ name: p.label, ...p.image })
   }
 
   // A few extra angles the drafts do not cover, still from real counts.
