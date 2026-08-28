@@ -72,10 +72,15 @@ export default function PostList({ posts }: { posts: GeneratedPost[] }) {
             )}
 
             <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11.5, fontFamily: sans }}>
-                <strong style={{ color: 'rgba(255,255,255,0.55)' }}>First comment:</strong> {p.firstComment}
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11.5, fontFamily: sans, flex: 1, minWidth: 200 }}>
+                <strong style={{ color: 'rgba(255,255,255,0.55)' }}>Close the post with:</strong> {p.cta}
+                {p.reference && (
+                  <div style={{ marginTop: 5, color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>
+                    Link lives in your Featured section, not the post: {p.reference}
+                  </div>
+                )}
               </div>
-              <CopyBlock text={p.firstComment} label="COPY LINK" small />
+              <CopyBlock text={p.cta} label="COPY CTA" small />
             </div>
 
             <div style={{ padding: '12px 20px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>

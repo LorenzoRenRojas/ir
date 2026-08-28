@@ -46,8 +46,11 @@ export default function Shell({
 
         <div style={{ marginTop: 36, padding: '18px 22px', border: '1px solid rgba(255,255,255,0.09)' }}>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12.5, lineHeight: 1.7, margin: 0, fontFamily: sans }}>
-            Read the data note before posting — that is the claim you are making. Put links in the first
-            comment, never the post body: LinkedIn suppresses reach on posts that send people off-platform.
+            Read the data note before posting — that is the claim you are making. <strong style={{ color: 'rgba(255,255,255,0.6)' }}>No links in
+            posts, and none in the first comment either.</strong> LinkedIn cuts reach on posts carrying external
+            links, and now throttles first-comment links as bridge behaviour. Close with the CTA instead
+            and let your Featured section do the converting — which also sidesteps the suspicious-link
+            warning on the domain.
           </p>
         </div>
       </div>

@@ -35,6 +35,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     })),
     { url: `${BASE}/eligibility`, changeFrequency: 'monthly', priority: 0.8 },
+    // Deadline-bound: high priority and daily crawl until comments close
+    // 2026-09-21, after which it stays up as reference and can drop.
+    { url: `${BASE}/sba-comment`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${BASE}/changelog`, changeFrequency: 'weekly', priority: 0.5 },
     { url: `${BASE}/capabilities`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/how-it-works`, changeFrequency: 'monthly', priority: 0.8 },

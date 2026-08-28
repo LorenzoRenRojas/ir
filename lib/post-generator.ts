@@ -72,7 +72,19 @@ export interface GeneratedPost {
   label: string        // internal name for the admin list
   body: string         // paste-ready
   hashtags: string
-  firstComment: string // links go here, never in the body
+  /**
+   * The call to action that goes IN the post. Never a URL.
+   *
+   * LinkedIn penalises external links in the body (19-60% reach loss depending
+   * on the study), and the old link-in-first-comment workaround is now
+   * throttled as "bridge behaviour" too. So posts carry no link at all: the CTA
+   * points at a DM or the profile's Featured section, which converts without
+   * paying a reach penalty — and sidesteps the suspicious-link interstitial on
+   * the domain entirely.
+   */
+  cta: string
+  /** Where the link actually lives. Author reference, not post content. */
+  reference?: string
   dataNote: string     // what was counted, so the claim is defensible
   image?: PostImage
   /** Long-form. LinkedIn articles take a headline separate from the body. */
@@ -191,7 +203,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         `The opportunities are not the scarce part. Knowing which ones are worth your time is.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
-      firstComment: 'ir-gov.app',
+      cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
       dataNote: `Counted ${n(week.length)} solicitations in IR's store with a posted date in the last 7 days; ${n(setAside)} carried a small-business set-aside code. IR's store is a synced subset of SAM.gov, not a complete census — the post says "IR tracked" for exactly this reason.`,
       image: { stat: n(week.length), label: 'SOLICITATIONS TRACKED THIS WEEK', sub: `${pct}% carry a small-business set-aside` },
     })
@@ -215,7 +228,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         `If your code is on this list, there is something to look at this week.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #NAICS',
-      firstComment: 'ir-gov.app',
+      cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
       dataNote: `Grouped ${n(week.length)} solicitations in IR's store, posted in the last 7 days, by NAICS code; top ${topNaics.length} by count. Counts are solicitations tracked, not award dollars.`,
     })
   }
@@ -240,7 +254,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         `Which agency is your best customer right now?`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
-      firstComment: 'ir-gov.app',
+      cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
       dataNote: `${topAgency.key} accounted for ${n(topAgency.count)} of ${n(week.length)} solicitations in IR's store over 7 days; ${n(theirSetAside)} carried small-business set-aside codes. "Most active" is scoped to IR's synced subset and to solicitation count, not award value. Agency strings come from SAM.gov and are grouped verbatim, so sub-agency naming variants may split a count.`,
     })
   }
@@ -267,7 +282,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
         `Bidding on what closes this week is not a strategy. Knowing what closes next quarter is.`,
       ].join('\n'),
       hashtags: '#GovCon #CaptureManagement #FederalContracting',
-      firstComment: 'ir-gov.app',
+      cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
       dataNote: `Counted ${n(soon.length)} solicitations in IR's store with response deadlines within 7 days; ${n(soonSetAside)} carried small-business set-aside codes. Scoped to IR's synced subset.`,
       image: { stat: n(soon.length), label: 'TRACKED CONTRACTS CLOSING IN 7 DAYS', sub: `${n(soonSetAside)} carry small-business set-asides` },
     })
@@ -310,7 +326,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
           `And plenty of firms qualify for more of these than they realise. Worth checking rather than assuming.`,
         ].join('\n'),
         hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
-        firstComment: 'ir-gov.app/eligibility',
+        cta: 'The free eligibility check is pinned in my Featured section.',
+    reference: 'ir-gov.app/eligibility',
         dataNote: `Grouped ${n(total)} open solicitations in IR's store by set-aside code, out of ${n(live.length)} live records tracked. Scoped to IR's synced subset, not the full federal market.`,
         image: { stat: n(total), label: 'TRACKED SET-ASIDE CONTRACTS', sub: 'Open to small business right now' },
       })
@@ -348,7 +365,8 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
           `The point stands regardless: estimated value is a planning figure, not a price signal, and bidding to it is a common and expensive mistake.`,
         ].join('\n'),
         hashtags: '#GovCon #FederalContracting #Pricing',
-        firstComment: 'ir-gov.app',
+        cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
         dataNote: `Median of ${n(ratios.length)} solicitation-to-award matches at confidence 75+ (the award record cites the solicitation number, not a statistical guess), comparing award amount to advertised value. Ratios outside 0.05-20x are excluded as mismatches or IDIQ ceilings. Sample is IR's records only.`,
       })
     }
@@ -412,7 +430,8 @@ function topicalPosts(): GeneratedPost[] {
         `This is a proposed rule, not law. Comments close September 21, under RIN 3245-AI67. If it would change how you compete, that is the window.`,
       ].join('\n'),
       hashtags: '#GovCon #SmallBusiness #FederalContracting #SBA',
-      firstComment: 'RIN 3245-AI67 / Docket SBA-2026-0199 on regulations.gov. Comments close September 21.',
+      cta: 'Search RIN 3245-AI67 or Docket SBA-2026-0199 on regulations.gov. Comments close September 21.',
+    reference: 'regulations.gov — Docket SBA-2026-0199',
       dataNote: sourceNote,
       image: { stat: '114,541', label: 'FIRMS WOULD GAIN SMALL STATUS', sub: 'Fewer than 200 would lose it. SBA proposed rule, comments close Sept 21.' },
     })
@@ -436,7 +455,8 @@ function topicalPosts(): GeneratedPost[] {
       `Still a proposed rule. But if you have been putting off a certification you qualify for, this is the argument for stopping putting it off.`,
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
-    firstComment: 'ir-gov.app/eligibility',
+    cta: 'The free eligibility check is pinned in my Featured section.',
+    reference: 'ir-gov.app/eligibility',
     dataNote: sourceNote + ' The "certifications become more valuable" conclusion is analysis, presented as opinion rather than fact.',
     image: { stat: '338', label: 'STANDARDS REPLACING 995', sub: 'SBA proposed rule. Comments close Sept 21.' },
   })
@@ -459,7 +479,8 @@ function topicalPosts(): GeneratedPost[] {
       `It is also the argument for the thing we are building underneath the product: recording what actually happens to the contracts we score, so the model can be corrected against reality instead of assumption. A tool that tells you your odds should be willing to be measured on them, especially when the ground moves.`,
     ].join('\n'),
     hashtags: '#GovCon #BuildInPublic #FederalContracting',
-    firstComment: 'ir-gov.app/capabilities',
+    cta: 'The full breakdown is linked from my profile.',
+    reference: 'ir-gov.app/capabilities',
     dataNote: sourceNote + ' The product exposure described is real: IR blends historical small-business award share into scoring, and that input would lag a size-standard change. Stated as a limitation, not a feature.',
   })
 
@@ -496,7 +517,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `We are not claiming to replace judgment. We are claiming nobody should be doing the mechanical part by hand at eleven at night.`,
     ].join('\n'),
     hashtags: '#GovCon #CaptureManagement #FederalContracting',
-    firstComment: 'ir-gov.app/capabilities',
+    cta: 'The full breakdown is linked from my profile.',
+    reference: 'ir-gov.app/capabilities',
     dataNote: `References ${counts.live > 0 ? `${n(counts.live)} live solicitations currently in IR's store` : 'the live store'} — a synced subset of SAM.gov, not the full market. Scoring runs across the store; incumbent, competition and pricing enrichment run on matched results, and the copy says so rather than implying full enrichment on every record. The 6-8 week figure describes a full capture cycle on a single pursuit, a widely used industry range, not an IR measurement.`,
     image: { stat: '5 min', label: 'VS WEEKS OF MANUAL CAPTURE WORK', sub: 'Scored, sourced, and explained' },
   })
@@ -518,7 +540,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `That last category is the uncomfortable one to publish. We publish it anyway, because a tool that tells you your odds should be willing to be measured on them.`,
     ].join('\n'),
     hashtags: '#GovCon #FederalContracting #DataDriven',
-    firstComment: 'ir-gov.app/capabilities',
+    cta: 'The full breakdown is linked from my profile.',
+    reference: 'ir-gov.app/capabilities',
     dataNote: 'Describes the evidence-tier scoring architecture as implemented in lib/evidence-score.ts and documented on the capabilities page.',
   })
 
@@ -539,7 +562,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `We are not trying to out-analyst an enterprise research desk. We are trying to make sure the firms they price out are not flying blind.`,
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #FederalContracting',
-    firstComment: 'ir-gov.app/compare/govwin',
+    cta: 'More on where we fit is linked from my profile.',
+    reference: 'ir-gov.app/compare/govwin',
     dataNote: 'Positioning claims are price-tier and access-model only, per docs/COMPETITION.md. No capability superiority is asserted over enterprise research desks, and no specific competitor price figure is stated — quoting a rival\'s pricing publicly requires re-verifying it first, and it changes. Describes access model (sales-gated, annual) which is publicly documented by those vendors.',
   })
 
@@ -562,7 +586,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `If you run a small business chasing federal work, I would genuinely like to hear what you would need it to do.`,
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #BuildInPublic',
-    firstComment: 'ir-gov.app',
+    cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
     dataNote: 'Personal narrative. The only factual claim is that the US federal government is the world\'s largest single buyer of goods and services, which is widely documented. No IR-specific performance claims.',
   })
 
@@ -585,7 +610,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `Building the record now so that eventually it can be measurement.`,
     ].join('\n'),
     hashtags: '#BuildInPublic #GovCon #ProductDevelopment',
-    firstComment: 'ir-gov.app/capabilities',
+    cta: 'The full breakdown is linked from my profile.',
+    reference: 'ir-gov.app/capabilities',
     dataNote: 'Describes the evidence-tier system shipped in lib/evidence-score.ts and published on the capabilities page.',
   })
 
@@ -664,7 +690,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `Lorenzo Rojas, Founder, IR`,
     ].join('\n'),
     hashtags: '#GovCon #FederalContracting #SmallBusiness #BuildInPublic',
-    firstComment: 'ir-gov.app',
+    cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
     dataNote: 'Long-form article. Factual claims: capture analyst compensation (six figures, widely documented for the role) and the 40-80 hour proposal range (a commonly cited industry figure, stated as such). All claims about IR describe shipped behaviour — the evidence tiers in lib/evidence-score.ts and the outcome collector in lib/outcomes.ts. The statement that IR cannot yet claim calibration is accurate and deliberate. No competitor is named and no competitor pricing is quoted.',
     image: {
       mode: 'article',
@@ -691,7 +718,8 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       `The hard part of this business was never finding contracts. It is knowing which ones deserve your only real asset, which is your time.`,
     ].join('\n'),
     hashtags: '#GovCon #SmallBusiness #CaptureManagement',
-    firstComment: 'ir-gov.app',
+    cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
     dataNote: 'Opinion piece. The 40–80 hour proposal estimate is a widely cited industry range, presented as such rather than as IR-measured data.',
   })
 

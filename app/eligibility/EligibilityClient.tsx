@@ -130,7 +130,10 @@ export default function EligibilityClient() {
             <p style={qHint}>
               Size standards are set per NAICS code, by employee count or annual receipts, and most U.S. businesses qualify.
               Confirm yours at sba.gov. Note that SBA has proposed a major overhaul of these thresholds, so a firm that is
-              not small today may qualify once it takes effect.
+              not small today may qualify once it takes effect.{' '}
+              <Link href="/sba-comment" style={{ color: crimson, textDecoration: 'none', fontWeight: 700 }}>
+                It is still a proposal, and the comment period is open →
+              </Link>
             </p>
             <TriRow value={answers.small} onChange={v => { setShowResults(false); setAnswers(a => ({ ...a, small: v })) }} />
           </div>
