@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { SET_ASIDES } from '@/lib/set-asides'
+import EmailCapture from '@/components/EmailCapture'
 
 const mono = 'var(--font-geist-mono, monospace)'
 const sans = 'var(--font-geist-sans, sans-serif)'
@@ -224,6 +225,16 @@ export default function EligibilityClient() {
               Directional only — each program has detailed requirements and a certification process.
               The program guides above spell out both.
             </p>
+
+            {/* The lighter ask. Most people who take the quiz are not ready
+                to build a profile today; an email is the step they will take. */}
+            <div style={{ marginTop: 40, padding: '28px 28px 24px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <EmailCapture
+                source="eligibility"
+                headline="Not ready to build a profile? Get the weekly report instead."
+                sub="One email a week with what IR tracked across SAM.gov, the set-aside share, and what is closing soon. Read it for a month, then decide."
+              />
+            </div>
 
             <div style={{ marginTop: 40, padding: '32px', border: '1px solid rgba(196,18,48,0.3)', background: 'rgba(196,18,48,0.04)' }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px', fontFamily: sans }}>

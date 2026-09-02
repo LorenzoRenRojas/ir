@@ -239,7 +239,11 @@ const QUESTIONS: Question[] = [
   {
     id: 'capabilityStatement', section: 'CAPABILITY',
     ask: 'In a sentence or two, what does your company actually do?',
-    type: 'textarea',
+    // Optional on purpose: a first-time contractor often has no capability
+    // statement yet, and a required essay on step 5 of 19 is where they quit.
+    // The API already treats it as optional; the semantic layer degrades to
+    // NAICS + set-aside matching without it.
+    type: 'textarea', optional: true,
     hint: 'Be specific — this is the single most important field for match quality. E.g. "We deliver zero-trust architecture and cloud migration for civilian federal agencies, specializing in AWS GovCloud deployments."',
   },
   {

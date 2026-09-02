@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getProviders } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -40,6 +40,13 @@ export default function RegisterPage() {
         setRef(sessionStorage.getItem('ir-ref') ?? '')
       }
     } catch { /* private mode — referral tracking is best-effort */ }
+  }, [])
+
+  // Google is only registered server-side when its credentials exist; render
+  // the button only when it will actually work.
+  const [googleAvailable, setGoogleAvailable] = useState(false)
+  useEffect(() => {
+    getProviders().then(p => setGoogleAvailable(!!p?.google)).catch(() => {})
   }, [])
 
   const mono = 'var(--font-geist-mono, monospace)'
@@ -93,22 +100,26 @@ export default function RegisterPage() {
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0A0A0A', letterSpacing: '-0.02em', fontFamily: sans, margin: 0 }}>Get access.</h1>
         </div>
 
-        {/* Google */}
-        <button
-          onClick={handleGoogle}
-          disabled={googleLoading}
-          style={{ width: '100%', padding: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#ffffff', cursor: googleLoading ? 'not-allowed' : 'pointer', opacity: googleLoading ? 0.6 : 1, fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#0A0A0A', marginBottom: 20 }}
-        >
-          <GoogleIcon />
-          {googleLoading ? 'REDIRECTING…' : 'CONTINUE WITH GOOGLE'}
-        </button>
+        {googleAvailable && (
+          <>
+            {/* Google */}
+            <button
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              style={{ width: '100%', padding: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#ffffff', cursor: googleLoading ? 'not-allowed' : 'pointer', opacity: googleLoading ? 0.6 : 1, fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#0A0A0A', marginBottom: 20 }}
+            >
+              <GoogleIcon />
+              {googleLoading ? 'REDIRECTING…' : 'CONTINUE WITH GOOGLE'}
+            </button>
 
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
-          <span style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.25)' }}>OR</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
-        </div>
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
+              <span style={{ fontFamily: mono, fontSize: 9, letterSpacing: '0.12em', color: 'rgba(0,0,0,0.25)' }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.07)' }} />
+            </div>
+          </>
+        )}
 
         {/* Error */}
         {error && (

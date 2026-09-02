@@ -260,6 +260,8 @@ model Kv {
 model Waitlist {
   id        String   @id @default(cuid())
   email     String   @unique
+  /// Which page captured it (home, eligibility, sba-comment…) — conversion attribution
+  source    String?
   createdAt DateTime @default(now())
 }
 

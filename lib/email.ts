@@ -196,8 +196,8 @@ export async function sendWelcomeEmail(
             <p style="color:rgba(255,255,255,0.4);font-size:9px;letter-spacing:0.18em;margin:0 0 20px;">YOUR ACCOUNT IS LIVE</p>
             <h1 style="color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0 0 16px;font-family:sans-serif;">${greeting}</h1>
             <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin:0 0 32px;font-family:sans-serif;">
-              You're in. IR watches the entire federal market — every SAM.gov solicitation — and scores
-              it against your business, so you spend your time bidding, not searching. Here are the three
+              You're in. IR pulls SAM.gov postings every night and scores each one against your
+              business, so you spend your time bidding, not searching. Here are the three
               moves that get you to your first match.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0">${stepRows}</table>

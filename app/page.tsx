@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import HeroMetatron from '@/components/HeroMetatron'
+import EmailCapture from '@/components/EmailCapture'
 
 // ─── Metatron's Cube geometry (pre-computed) ───────────────────────────────
 const C = 250
@@ -24,15 +25,19 @@ const METATRON_LINES = ALL_PTS.flatMap((p, i) =>
 
 // ─── Content ───────────────────────────────────────────────────────────────
 const STATS = [
-  { value: '$755B',  label: 'ANNUAL MARKET',      sub: 'U.S. federal procurement, FY2025' },
-  { value: '30K+',   label: 'OPEN SOLICITATIONS', sub: 'active on SAM.gov, scored daily' },
+  // Claims policy: market facts cite a source; IR facts describe what IR does,
+  // never a completeness it doesn't have. (The old "30K+ open solicitations,
+  // scored daily" implied the store was a census of SAM.gov. It is a synced
+  // subset.) FY2025 contract obligations: GAO reports more than $793B.
+  { value: '$793B+', label: 'ANNUAL MARKET',      sub: 'U.S. federal contract obligations, FY2025 (GAO)' },
+  { value: '3',      label: 'TIERS OF EVIDENCE',  sub: 'every score shows what is measured, what is rule, what is judgment' },
   { value: '400+',   label: 'FEDERAL AGENCIES',   sub: 'posting opportunities across all branches' },
   { value: '5',      label: 'WIN FACTORS SCORED', sub: 'per opportunity, per company profile' },
 ]
 
 const HOW = [
   { n: '01', title: 'BUILD YOUR PROFILE',  body: 'Tell us your NAICS codes, certifications, clearances, and past performance once — or just paste your SAM.gov UEI and we pull it for you. That becomes the yardstick every contract is measured against.' },
-  { n: '02', title: 'WE SCORE THE MARKET', body: 'Every open contract is scored against your profile — NAICS fit, set-aside eligibility, contract size, and geography — so you see only the work you can realistically win, ranked best-first.' },
+  { n: '02', title: 'WE SCORE THE MARKET', body: 'Every contract IR tracks is scored against your profile — NAICS fit, set-aside eligibility, contract size, and geography — so you see only the work you can realistically win, ranked best-first.' },
   { n: '03', title: 'GET YOUR MATCHES',    body: 'Your best matches land in your dashboard and in a morning email the day they post — with a win-probability read, who the incumbent is, and deadline reminders at 3 days and 24 hours out.' },
   { n: '04', title: 'DRAFT & SEND',        body: 'Answer a short guided questionnaire and IR turns it into a formatted, four-volume federal proposal — plus one-click capability statements. Review it, then send it straight to the contracting officer.' },
 ]
@@ -70,12 +75,14 @@ export default function LandingPage() {
             <span style={{ color: '#0A0A0A', fontSize: 15, fontWeight: 800, letterSpacing: '0.1em' }}>IR</span>
             <span style={{ color: 'rgba(0,0,0,0.22)', fontSize: 10, letterSpacing: '0.08em', marginLeft: 4, fontFamily: mono }}>GOVCON INTELLIGENCE</span>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-            <Link href="/how-to-win" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW TO WIN</Link>
-            <Link href="/capabilities" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>CAPABILITIES</Link>
-            <Link href="#pricing" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
-            <Link href="/login"   className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>SIGN IN</Link>
-            <Link href="/register" className="btn-primary" style={{ padding: '9px 20px', fontSize: 10 }}>GET ACCESS →</Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
+              <Link href="/how-to-win" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>HOW TO WIN</Link>
+              <Link href="/capabilities" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>CAPABILITIES</Link>
+              <Link href="#pricing" className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono }}>PRICING</Link>
+            </div>
+            <Link href="/login"   className="nav-link" style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11, letterSpacing: '0.08em', textDecoration: 'none', fontFamily: mono, whiteSpace: 'nowrap' }}>SIGN IN</Link>
+            <Link href="/register" className="btn-primary" style={{ padding: '9px 20px', fontSize: 10, whiteSpace: 'nowrap' }}>GET ACCESS →</Link>
           </div>
         </div>
       </nav>
@@ -121,7 +128,7 @@ export default function LandingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
             {[
               { n: 'I', title: 'CAPITAL', body: 'Every hour spent hunting is capital burned; every legacy license is capital surrendered. IR surfaces winnable work on day one and keeps both — your team’s time and the five-figure fees the incumbents charge — inside your business.' },
-              { n: 'II', title: 'INFORMATION', body: 'We read the entire federal market so you don’t have to — every open solicitation, every contract about to expire, every incumbent and what they were paid — scored against your company and refreshed daily.' },
+              { n: 'II', title: 'INFORMATION', body: 'We read the federal market so you don’t have to — the solicitations IR pulls from SAM.gov every night, the contracts about to expire, the incumbents and what they were paid — scored against your company and refreshed daily.' },
               { n: 'III', title: 'EXECUTION', body: 'Knowing isn’t winning. IR turns a match into a submitted proposal in the same sitting: capability statements, four-volume drafts, sent straight to the contracting officer. Act immediately, not next quarter.' },
             ].map((c) => (
               <div key={c.title} style={{ background: '#fff', padding: '48px 40px' }}>
@@ -136,9 +143,11 @@ export default function LandingPage() {
 
       {/* ── STATS ── */}
       <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', borderBottom: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
+        {/* auto-fit, not four fixed tracks: fixed columns are what pushed this
+            page to 691px on a 390px phone. */}
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.07)' }}>
           {STATS.map((s, i) => (
-            <div key={i} style={{ padding: '44px 36px', borderRight: i < 3 ? '1px solid rgba(0,0,0,0.07)' : 'none' }}>
+            <div key={i} style={{ padding: '44px 36px', background: '#fff' }}>
               <div style={{ fontSize: 38, fontWeight: 800, color: crimson, letterSpacing: '-0.03em', marginBottom: 8 }}>{s.value}</div>
               <div style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#0A0A0A', marginBottom: 4 }}>{s.label}</div>
               <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)' }}>{s.sub}</div>
@@ -154,7 +163,7 @@ export default function LandingPage() {
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>FROM PROFILE TO PROPOSAL</div>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>How IR works</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
             {HOW.map((item) => (
               <div key={item.n} style={{ background: '#fff', padding: '52px 48px' }}>
                 <div style={{ fontFamily: mono, fontSize: 11, color: 'rgba(0,0,0,0.16)', letterSpacing: '0.1em', marginBottom: 22 }}>{item.n}</div>
@@ -208,6 +217,44 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── EVIDENCE TIERS — the positioning. A score that shows its work is the
+          one thing a competitor cannot copy in a marketing sprint, and the one
+          thing you can screenshot. Definitions mirror /capabilities. ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
+          <div style={{ marginBottom: 56, maxWidth: 720 }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>WHY YOU CAN TRUST THE NUMBER</div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 20px', lineHeight: 1.1 }}>
+              A score is a claim. <span style={{ color: crimson }}>Ours shows its work.</span>
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.85, color: 'rgba(0,0,0,0.5)', margin: 0 }}>
+              If we want you to bet real weeks on a number, we should show you where it came from. Every IR
+              score breaks into three kinds of evidence and tells you which is which — so you know what is
+              counted, what is rule, and what is still judgment.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+            {[
+              { tag: 'MEASURED', color: '#16a34a', title: 'Counted from real awards', body: 'Your own federal award history, pulled from public records by UEI, and the outcomes of contracts IR has already watched close. “You have won three awards in this NAICS code” is a count, not an opinion.' },
+              { tag: 'STRUCTURAL', color: '#0A0A0A', title: 'True by published rule', body: 'Set-aside eligibility, size standards, NAICS fit. These are the government’s own rules applied to your profile — right by definition, and the first thing that can disqualify a bid.' },
+              { tag: 'HEURISTIC', color: '#b45309', title: 'Reasoned, not yet validated', body: 'Incumbent size as a proxy for entrenchment, for example. Defensible, but not yet checked against outcomes — so it is labeled, and it is the part that shrinks as the evidence record grows.' },
+            ].map(t => (
+              <div key={t.tag} style={{ background: '#fff', padding: '40px 36px' }}>
+                <div style={{ display: 'inline-block', fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: t.color, border: `1px solid ${t.color}`, padding: '4px 10px', marginBottom: 20 }}>{t.tag}</div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', margin: '0 0 12px' }}>{t.title}</h3>
+                <p style={{ fontSize: 14.5, lineHeight: 1.75, color: 'rgba(0,0,0,0.52)', margin: 0 }}>{t.body}</p>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.7, color: 'rgba(0,0,0,0.4)', maxWidth: 720, margin: '28px 0 0' }}>
+            The outcome record is still accumulating, so IR does not claim its score is a calibrated
+            probability yet. Every solicitation IR tracks is matched to its eventual award, and calibration
+            gets published the moment the sample supports it — including if it is unflattering.{' '}
+            <Link href="/capabilities" style={{ color: crimson, textDecoration: 'none', fontWeight: 600 }}>How the scoring works →</Link>
+          </p>
+        </div>
+      </section>
+
       {/* ── RECOMPETE RADAR — flagship differentiator (legacy tools sell this at $10K+/yr) ── */}
       <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 56, alignItems: 'center' }}>
@@ -231,8 +278,11 @@ export default function LandingPage() {
               SEE HOW THE RADAR WORKS →
             </Link>
           </div>
-          {/* Mock radar card stack */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Mock radar card stack. Right padding reserves the room the
+              staggered translateX needs — a transform still counts toward
+              scroll width, and the third card was the last 10px of sideways
+              scroll on phones. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 28 }}>
             {[
               { score: 87, desc: 'Enterprise IT support services — recompete window opening', inc: 'INCUMBENT CORP A', val: '$2.4M', ends: 'ENDS MAR 2027 · ~8 MO', color: '#16a34a' },
               { score: 74, desc: 'Cybersecurity operations center staffing', inc: 'INCUMBENT CORP B', val: '$890K', ends: 'ENDS DEC 2026 · ~5 MO', color: crimson },
@@ -262,9 +312,16 @@ export default function LandingPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
           <div style={{ marginBottom: 64 }}>
             <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>ACCESS TIERS</div>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>Pricing</h2>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 16px' }}>Pricing</h2>
+            {/* Billing is not live yet. Say so, and turn it into the founding
+                offer instead of leaving a price list nobody can pay. */}
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: 'rgba(0,0,0,0.5)', maxWidth: 640, margin: 0 }}>
+              <strong style={{ color: '#0A0A0A' }}>Billing is not switched on yet.</strong> Founding members get
+              full access free now, and keep founder pricing when it opens. Ten seats, hand-onboarded by the
+              person who built it.
+            </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 1, background: 'rgba(0,0,0,0.06)' }}>
             {PLANS.map((plan) => (
               <div key={plan.tier} style={{ background: '#fff', padding: '48px 40px', position: 'relative' }}>
                 {plan.popular && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: crimson }} />}
@@ -298,12 +355,39 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── FREE TOOLS + THE OWNED LIST — the lighter asks. Most visitors are
+          not ready to build a profile; these are the steps they will take. ── */}
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.07)', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 56, alignItems: 'start' }}>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>FREE, NO ACCOUNT</div>
+            <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em', margin: '0 0 28px', lineHeight: 1.1 }}>Useful before you sign up for anything.</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { href: '/eligibility', title: 'Set-aside eligibility check', body: 'Five questions. Which of 8(a), WOSB, SDVOSB, HUBZone and small business you likely qualify for, and what each one is worth.' },
+                { href: '/sba-comment', title: 'SBA size standards comment builder', body: 'SBA has proposed redrawing what counts as small. Build a properly formatted public comment in two minutes. Comments close September 21, 2026.' },
+                { href: '/how-to-win', title: 'How federal contracts are actually won', body: 'The capture process the big firms run, written for a five-person shop.' },
+              ].map(t => (
+                <Link key={t.href} href={t.href} style={{ display: 'block', padding: '20px 22px', border: '1px solid rgba(0,0,0,0.1)', textDecoration: 'none', color: '#0A0A0A' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t.title} <span style={{ color: crimson }}>→</span></div>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.65, color: 'rgba(0,0,0,0.5)' }}>{t.body}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: '32px 32px 28px', border: '1px solid rgba(0,0,0,0.1)', background: '#FAFAF9' }}>
+            <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(0,0,0,0.28)', marginBottom: 18 }}>THE WEEKLY REPORT</div>
+            <EmailCapture source="home" theme="light" />
+          </div>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ── */}
       <section style={{ background: crimson, padding: '100px 32px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)', marginBottom: 32 }}>THE MISSION STARTS HERE</div>
           <h2 style={{ fontSize: 'clamp(30px, 4vw, 56px)', fontWeight: 800, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.1, margin: '0 0 20px' }}>
-            $755 billion in federal contracts.<br />How many match your company?
+            $793 billion in federal contracts.<br />How many match your company?
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', margin: '0 0 48px', lineHeight: 1.7 }}>
             Profile takes 4 minutes. First matches appear in under 60 seconds.
@@ -322,7 +406,7 @@ export default function LandingPage() {
             <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '0.1em', color: 'rgba(0,0,0,0.38)' }}>IR GOVCON INTELLIGENCE</span>
           </div>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            {[['AGENCIES', '/agencies'], ['SET-ASIDES', '/set-asides'], ['NAICS', '/naics'], ['SIGN IN', '/login'], ['REGISTER', '/register'], ['SECURITY', '/security'], ['TERMS', '/terms'], ['PRIVACY', '/privacy'], ['CONTACT', 'mailto:hello@ir-gov.app']].map(([label, href]) => (
+            {[['ELIGIBILITY CHECK', '/eligibility'], ['SBA COMMENT', '/sba-comment'], ['HOW TO WIN', '/how-to-win'], ['AGENCIES', '/agencies'], ['SET-ASIDES', '/set-asides'], ['NAICS', '/naics'], ['STATES', '/states'], ['CHANGELOG', '/changelog'], ['SIGN IN', '/login'], ['REGISTER', '/register'], ['SECURITY', '/security'], ['TERMS', '/terms'], ['PRIVACY', '/privacy'], ['CONTACT', 'mailto:hello@ir-gov.app']].map(([label, href]) => (
               <Link key={label} href={href} style={{ fontFamily: mono, color: 'rgba(0,0,0,0.28)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none' }}>{label}</Link>
             ))}
           </div>

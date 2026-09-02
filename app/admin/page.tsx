@@ -147,14 +147,23 @@ export default async function AdminPage() {
   } catch { /* ignore */ }
 
   // Recent waitlist signups
-  let waitlistRecent: { email: string; createdAt: Date }[] = []
+  let waitlistRecent: { email: string; createdAt: Date; source?: string | null }[] = []
   try {
     waitlistRecent = await prisma.waitlist.findMany({
       orderBy: { createdAt: 'desc' },
       take: 10,
-      select: { email: true, createdAt: true },
+      select: { email: true, createdAt: true, source: true },
     })
-  } catch { /* table missing pre-migration */ }
+  } catch {
+    // Pre-migration DB has no `source` column yet — degrade to the old shape
+    try {
+      waitlistRecent = await prisma.waitlist.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { email: true, createdAt: true },
+      })
+    } catch { /* table missing pre-migration */ }
+  }
 
   // Environment config — booleans only, never values
   const ENV_CHECKS: { name: string; ok: boolean; note: string }[] = [
@@ -331,7 +340,10 @@ export default async function AdminPage() {
               {waitlistRecent.map(w => (
                 <div key={w.email} style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: mono }}>{w.email}</span>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: mono, whiteSpace: 'nowrap' }}>{fmtDate(w.createdAt)}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: mono, whiteSpace: 'nowrap' }}>
+                    {w.source ? <span style={{ color: '#C41230', marginRight: 10 }}>{w.source}</span> : null}
+                    {fmtDate(w.createdAt)}
+                  </span>
                 </div>
               ))}
             </div>

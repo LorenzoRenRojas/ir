@@ -132,6 +132,14 @@ body {
 }
 
 /* Subtle underline swipe for nav links */
+/* Marketing navs carry four text links plus a CTA in a 60px bar. On a phone
+   that row is wider than the screen and the whole page scrolls sideways —
+   every LinkedIn visitor (mostly mobile) met a broken layout. Keep the CTA,
+   drop the text links under 720px; the footer still carries every page. */
+@media (max-width: 720px) {
+  .nav-links-desktop { display: none !important; }
+}
+
 .nav-link {
   position: relative;
   text-decoration: none;

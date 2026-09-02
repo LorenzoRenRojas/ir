@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import EmailCapture from '@/components/EmailCapture'
 
 const mono = 'var(--font-geist-mono, monospace)'
 const sans = 'var(--font-geist-sans, sans-serif)'
@@ -346,6 +347,16 @@ export default function CommentBuilder() {
             more than the checkboxes.
           </p>
         </div>
+      </div>
+
+      {/* Separate from the comment on purpose: the comment never leaves the
+          browser, and the page says so. This is a distinct, optional ask. */}
+      <div style={{ marginTop: 40, padding: '28px 28px 24px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}>
+        <EmailCapture
+          source="sba-comment"
+          headline="Want to know what happens to this rule?"
+          sub="One email a week with what IR tracked across SAM.gov, plus a line on this docket when it moves — comment count, final rule, effective date. No account."
+        />
       </div>
 
       <div style={{ marginTop: 40, padding: '24px 26px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 }}>

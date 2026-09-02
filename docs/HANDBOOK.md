@@ -11,6 +11,20 @@ Sept 30 launch plan: 30 paid users, demo cadence, pricing, critical path) ·
 `YEAR_ONE.md` (Aug 2026–Aug 2027 operating plan: quarterly gates, backup
 plans, the Knowledge/Capital/Execution pillars).
 
+**Which plan is current (Sept 2026):** the targets in `LAUNCH_SPRINT.md` and
+`YEAR_ONE.md` (30 paid by Sept 30, 60–70 paid by Dec 31) were not met and are
+superseded. The operating plan is the deep-research marketing plan of Aug 27,
+2026 plus the "500 Before 2027" plan of Sept 1, 2026 (artifact, linked from the
+founder's pinned playbook): LinkedIn founder-voice + comments as the primary
+channel, a weekly Federal Market Report as the second, SEO pages + free tools
+(/eligibility, /sba-comment) + the owned email list as the volume engine.
+Targets: 10 founding members by ~late Nov; first paid conversions after
+LLC/EIN → Stripe; **500 free users by Dec 31, 2026 is the stretch goal** and
+only reachable if SEO indexing and the email list start compounding by
+October. **Product rule for the period: no new features** — funnel, capture,
+claims accuracy and mobile only. Every marketing number obeys the claims policy
+below (IR tracks a synced *subset* of SAM.gov — never claim completeness).
+
 ---
 
 ## What IR is
@@ -50,7 +64,9 @@ Launch date on the coming-soon countdown: **July 28, 2026**.
   the admin console's RUN DB MIGRATION button).
 - **Email:** Resend via raw fetch (`lib/email.ts`), FROM `IR <noreply@ir-gov.app>` (domain verified).
   Every send is logged to the `EmailLog` table with status/error.
-- **Hosting:** Vercel (Hobby plan — max 2 cron jobs, once daily each).
+- **Hosting:** Vercel. Four crons are configured in `vercel.json` (sync-contracts,
+  daily-digest, deadline-reminders, weekly-report); verify the plan tier allows
+  them if a deploy ever complains.
 - **Git:** two remotes; push to `github` remote, branch `main`. All work is on main.
 
 ## Data architecture (the important part)
@@ -132,8 +148,8 @@ score — the sleeper feature), enterprise team system (works, gated to enterpri
 
 ## Public pages / SEO
 
-Coming-soon gate (`COMING_SOON = true` in `middleware.ts`) redirects logged-out users from
-app pages; the bypass list includes all public/marketing pages: `/coming-soon`, auth pages,
+Coming-soon gate (`COMING_SOON` in `middleware.ts`, **now `false` — site is public**)
+redirects logged-out users from app pages when on; the bypass list includes public/marketing pages: `/coming-soon`, auth pages,
 `/naics` (+32 per-code SEO pages), `/set-asides` (+7 per-program SEO pages: 8(a), WOSB,
 EDWOSB, SDVOSB, VOSB, HUBZone, small-business — `lib/set-asides.ts`, each with live
 SAM.gov opportunities + who-qualifies/how-to-certify explainer + FAQ JSON-LD),
@@ -176,6 +192,16 @@ verifies — profile → matches → proposal, so signups never land in silence.
 
 ## Known issues / pending
 
+0. **Sept 2026 funnel work (shipped, needs founder actions):** RUN DB MIGRATION
+   (adds `Waitlist.source`, `ContractOutcome`, `FirmHistory`, referral columns —
+   the nightly outcome collector fails silently until this runs); set
+   `GOOGLE_SITE_VERIFICATION` and submit the sitemap; confirm `hello@ir-gov.app`
+   is a real mailbox (14 references on the site, including the Enterprise
+   CONTACT button); Google sign-in button is hidden until `GOOGLE_CLIENT_ID/SECRET`
+   exist; the weekly Federal Market Report list (`Waitlist` table, `source`
+   column) is capturing on /, /eligibility and /sba-comment — first issue is
+   promised for late September and must actually be sent (Post Studio draft →
+   Resend; the send path is not built yet).
 1. Founder must run RUN DB MIGRATION + SYNC CONTRACTS NOW after SAM quota reset (midnight UTC).
 2. Google Search Console + Bing Webmaster submission (human action, ~10 min).
 3. Env vars marked "pending" above.

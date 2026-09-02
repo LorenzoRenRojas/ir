@@ -12,15 +12,24 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-      // Without this, a Google sign-in whose email already has a password
-      // account bounces back to /login with no visible error. Safe for
-      // Google specifically: Google verifies email ownership before OAuth
-      // completes, so linking by email can't be used to hijack an account.
-      allowDangerousEmailAccountLinking: true,
-    }),
+    // Only register Google when it is actually configured. With empty
+    // credentials the provider still appears in /api/auth/providers, the
+    // sign-in pages render a "Continue with Google" button, and clicking it
+    // lands on a Google error page — a dead button on the one form a new
+    // visitor has to trust. The pages check getProviders() and hide it.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            // Without this, a Google sign-in whose email already has a password
+            // account bounces back to /login with no visible error. Safe for
+            // Google specifically: Google verifies email ownership before OAuth
+            // completes, so linking by email can't be used to hijack an account.
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: 'credentials',
       credentials: {

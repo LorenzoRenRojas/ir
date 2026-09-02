@@ -17,7 +17,7 @@ const PHASES = [
   {
     n: '02', title: 'FIND WINNABLE WORK', tag: 'DAILY',
     you: 'Open the feed and read the highest-scored matches. Filter to what you can prime.',
-    ir: 'Every open federal solicitation, scored against your profile and ranked best-first — with the reasoning shown, factor by factor.',
+    ir: 'Every solicitation IR tracks from SAM.gov, scored against your profile and ranked best-first — with the reasoning shown, factor by factor.',
     why: 'You cannot win what you never see. Most small businesses miss the majority of the work they qualify for.',
   },
   {
