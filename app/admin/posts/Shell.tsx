@@ -7,6 +7,7 @@ const crimson = '#C41230'
 const TABS = [
   { href: '/admin/posts/company', label: 'COMPANY PAGE' },
   { href: '/admin/posts/founder', label: 'YOUR PROFILE' },
+  { href: '/admin/posts/topics', label: 'TOPICS' },
   { href: '/admin/posts/graphics', label: 'GRAPHICS' },
 ]
 
