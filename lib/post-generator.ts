@@ -195,56 +195,81 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     // posts never changed" rather than as an outage.
   }
 
-  // ── 1. Weekly pulse ──────────────────────────────────────────────────────
+  // ── 1. The week, after subtraction ───────────────────────────────────────
+  // Reframed away from a raw volume count. A big number is a vanity metric in
+  // this market; the useful move is showing how fast it collapses once you
+  // apply the filters a real firm applies.
   if (week.length >= 25) {
     const setAside = week.filter(c => SMALL_BIZ_SET_ASIDES.has(c.setAside.toUpperCase())).length
     const pct = Math.round((setAside / week.length) * 100)
+    const narrow = week.filter(c => {
+      const code = c.setAside.toUpperCase()
+      return code.startsWith('8A') || code.startsWith('SDVOSB') || code.startsWith('WOSB')
+        || code.startsWith('EDWOSB') || code.startsWith('HZ') || code.startsWith('VS')
+    }).length
     posts.push({
       kind: 'weekly-pulse',
       audience: 'company',
-      label: 'Weekly market pulse',
+      label: 'The week, after subtraction',
       body: [
-        `IR tracked ${n(week.length)} new federal solicitations over the last seven days.`,
+        `IR tracked ${n(week.length)} new federal solicitations this week. That number is almost useless on its own, so here is what happens to it.`,
         ``,
-        `${pct}% of them carry a small-business set-aside. That is ${n(setAside)} requirements where the competitive field is restricted rather than wide open.`,
+        `${n(setAside)} of them, ${pct}%, carry a small-business set-aside. Everything else puts you against firms with proposal departments.`,
         ``,
-        `Worth being precise about that: some are open to any small business, and some are narrower still, restricted to 8(a), SDVOSB, WOSB or HUBZone firms specifically. Narrower pool, fewer competitors, but only if you hold the certification.`,
+        `${n(narrow)} go further than that and are restricted to a specific certification: 8(a), SDVOSB, WOSB, EDWOSB, HUBZone or VOSB. Those are the smallest pools and the shortest competitor lists, and they are closed to you unless you hold the certification.`,
         ``,
-        `The opportunities are not the scarce part. Knowing which ones are worth your time is.`,
+        `Then subtract the wrong NAICS codes, the wrong geography, the wrong contract size, and the ones with a prerequisite you cannot meet on submission day.`,
+        ``,
+        `What is left is usually a handful. That is not a disappointing number, it is the real one, and it is the difference between a pipeline and a list.`,
+        ``,
+        `The opportunities were never the scarce part.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
-      cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-      dataNote: `Counted ${n(week.length)} solicitations in IR's store with a posted date in the last 7 days; ${n(setAside)} carried a small-business set-aside code. IR's store is a synced subset of SAM.gov, not a complete census — the post says "IR tracked" for exactly this reason.`,
-      image: { stat: n(week.length), label: 'SOLICITATIONS TRACKED THIS WEEK', sub: `${pct}% carry a small-business set-aside` },
+      cta: 'Tell us your NAICS code and set-aside status and we will show you what survives the subtraction.',
+      reference: 'ir-gov.app',
+      dataNote: `Counted ${n(week.length)} solicitations in IR's store with a posted date in the last 7 days; ${n(setAside)} carried any small-business set-aside code and ${n(narrow)} carried a certification-specific code (8(a), SDVOSB, WOSB/EDWOSB, HUBZone, VOSB). IR's store is a synced subset of SAM.gov, not a census, which is why the post says "IR tracked".`,
+      image: { stat: n(narrow), label: 'NEED A CERTIFICATION YOU MAY NOT HOLD', sub: `Of ${n(week.length)} tracked this week. ${n(setAside)} carry any set-aside at all.` },
     })
   }
 
-  // ── 2. Sector heat ───────────────────────────────────────────────────────
+  // ── 2. Concentration ─────────────────────────────────────────────────────
+  // Same tally, different question: not "which codes were busy" but "how
+  // unevenly was the week distributed", which is the part that tells a reader
+  // whether their code being absent means anything.
   const topNaics = tally(week.map(c => c.naicsCode), 5)
   if (topNaics.length >= 3 && topNaics[0].count >= 8) {
-    const lines = topNaics.map((t, i) => `${i + 1}. ${naicsName(t.key)} — ${n(t.count)} postings`)
+    const topSum = topNaics.reduce((s, t) => s + t.count, 0)
+    const share = Math.round((topSum / week.length) * 100)
+    const lines = topNaics.map((t, i) => `${i + 1}. ${naicsName(t.key)} — ${n(t.count)}`)
     posts.push({
       kind: 'sector-heat',
       audience: 'company',
-      label: 'Where new requirements appeared',
+      label: 'How concentrated the week was',
       body: [
-        `Where new federal requirements appeared this week, by volume of solicitations IR tracked:`,
+        `Federal buying is not spread evenly, and this week is a clean illustration.`,
+        ``,
+        `Five NAICS codes accounted for ${share}% of everything IR tracked:`,
         ``,
         ...lines,
         ``,
-        `This is posting volume, not dollars awarded. A code can be busy with small requirements or quiet with one large one, so read it as where activity is, not where the money is.`,
+        `If your code is on that list, this was a busy week for you and it is worth an hour of attention.`,
         ``,
-        `If your code is on this list, there is something to look at this week.`,
+        `If it is not, that is not bad news and it is not a reason to widen your search. Federal requirements arrive in waves driven by fiscal calendars, program cycles and expiring contracts. A quiet week in your code is normal, and chasing work outside it because this week looked slow is how firms end up bidding things they cannot win.`,
+        ``,
+        `This is posting volume, not dollars. A code can be busy with small requirements or quiet with one large one.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #NAICS',
-      cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-      dataNote: `Grouped ${n(week.length)} solicitations in IR's store, posted in the last 7 days, by NAICS code; top ${topNaics.length} by count. Counts are solicitations tracked, not award dollars.`,
+      cta: 'Ask us what your NAICS code looked like this week.',
+      reference: 'ir-gov.app',
+      dataNote: `Grouped ${n(week.length)} solicitations in IR's store, posted in the last 7 days, by NAICS code. The top ${topNaics.length} codes accounted for ${n(topSum)} of them, or ${share}%. Counts are solicitations tracked, not award dollars, and the store is a synced subset of SAM.gov.`,
+      image: { stat: `${share}%`, label: 'OF THE WEEK IN FIVE NAICS CODES', sub: 'Federal buying arrives in waves, not evenly.' },
     })
   }
 
-  // ── 3. Agency spotlight ──────────────────────────────────────────────────
+  // ── 3. Who is still buying ───────────────────────────────────────────────
+  // Re-angled onto the CR. Under a continuing resolution new starts are
+  // constrained, which makes "who is still putting requirements on the
+  // street" a more interesting question than raw activity.
   const topAgency = tally(week.map(c => c.agency), 1)[0]
   if (topAgency && topAgency.count >= 10) {
     const theirs = week.filter(c => c.agency === topAgency.key)
@@ -253,24 +278,25 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     posts.push({
       kind: 'agency-spotlight',
       audience: 'company',
-      label: `Agency spotlight: ${topAgency.key}`,
+      label: `Who is still buying: ${topAgency.key}`,
       body: [
-        `${topAgency.key} was the most active buyer in what IR tracked this week, with ${n(topAgency.count)} solicitations.`,
+        `Agencies are operating under a continuing resolution through December 11, at last year's funding levels, with new starts generally restricted. So the useful question this quarter is not how much is being bought. It is who is still putting requirements on the street.`,
         ``,
-        `${pct}% of them are small-business set-asides.`,
+        `The most active buyer in what IR tracked this week was ${topAgency.key}, with ${n(topAgency.count)} solicitations. ${pct}% of them carry a small-business set-aside.`,
         ``,
-        `Agencies buy in waves. Fiscal calendars, program cycles, and expiring contracts drive when requirements hit the street, and the firms that win consistently are watching those rhythms rather than reacting to whatever showed up today.`,
+        `An agency that is still publishing under a CR is usually working from money that was already appropriated: continuations, recompetes, and orders against vehicles that already exist. Which is exactly the kind of work a small firm can realistically win, because the requirement is understood and the incumbent is visible.`,
         ``,
-        `Which agency is your best customer right now?`,
+        `If you sell to this agency, this is a week to be in front of them rather than waiting for the new fiscal year to unlock something.`,
       ].join('\n'),
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
-      cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-      dataNote: `${topAgency.key} accounted for ${n(topAgency.count)} of ${n(week.length)} solicitations in IR's store over 7 days; ${n(theirSetAside)} carried small-business set-aside codes. "Most active" is scoped to IR's synced subset and to solicitation count, not award value. Agency strings come from SAM.gov and are grouped verbatim, so sub-agency naming variants may split a count.`,
+      cta: 'Ask us which agencies are most active in your NAICS code right now.',
+      reference: 'ir-gov.app',
+      dataNote: `${topAgency.key} accounted for ${n(topAgency.count)} of ${n(week.length)} solicitations in IR's store over 7 days; ${n(theirSetAside)} carried small-business set-aside codes. "Most active" is scoped to IR's synced subset and to solicitation count, not award value. Agency strings come from SAM.gov and are grouped verbatim, so sub-agency naming variants may split a count. CR context: enacted 2026-09-02, funding at FY2026 levels through 2026-12-11; the restriction on new starts is a general feature of continuing resolutions.`,
+      image: { stat: n(topAgency.count), label: `SOLICITATIONS FROM ${topAgency.key.toUpperCase().slice(0, 28)}`, sub: `${pct}% carry a small-business set-aside` },
     })
   }
 
-  // ── 4. Deadline pressure ─────────────────────────────────────────────────
+  // ── 4. The arithmetic of a seven-day window ──────────────────────────────
   const soon = live.filter(c => {
     if (!c.deadline) return false
     const days = (c.deadline.getTime() - now.getTime()) / 86_400_000
@@ -281,25 +307,28 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     posts.push({
       kind: 'deadline-pressure',
       audience: 'founder',
-      label: 'Closing this week',
+      label: 'The arithmetic of a seven-day window',
       body: [
-        `${n(soon.length)} of the contracts IR is tracking close in the next seven days. ${n(soonSetAside)} carry small-business set-asides.`,
+        `${n(soon.length)} contracts IR is tracking close in the next seven days. ${n(soonSetAside)} carry small-business set-asides.`,
         ``,
-        `Here is the uncomfortable part: if you are seeing a solicitation for the first time with a week left, you are usually already too late.`,
+        `Now do the arithmetic that actually matters.`,
         ``,
-        `The firms that win were often talking to that program office months earlier, during market research, before anything was published. Requirements get shaped by those conversations.`,
+        `A serious proposal is forty to eighty hours. In seven days, working nights around delivery, you might have room for one. Possibly two if you are already positioned and reusing recent content.`,
         ``,
-        `Bidding on what closes this week is not a strategy. Knowing what closes next quarter is.`,
+        `So the real question is never which of these you could bid. It is which single one you would still be glad you chose after losing.`,
+        ``,
+        `And here is the uncomfortable part. If you are seeing a requirement for the first time with a week left, you are usually already late. The firms that win were talking to that program office during market research, months before anything was published, and the requirement was shaped while they were in the room.`,
+        ``,
+        `Bidding what closes this week is not a strategy. Knowing what closes next quarter is.`,
       ].join('\n'),
       hashtags: '#GovCon #CaptureManagement #FederalContracting',
-      cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-      dataNote: `Counted ${n(soon.length)} solicitations in IR's store with response deadlines within 7 days; ${n(soonSetAside)} carried small-business set-aside codes. Scoped to IR's synced subset.`,
-      image: { stat: n(soon.length), label: 'TRACKED CONTRACTS CLOSING IN 7 DAYS', sub: `${n(soonSetAside)} carry small-business set-asides` },
+      cta: 'DM me your NAICS code and I will tell you what is closing in it next quarter, not this week.',
+      dataNote: `Counted ${n(soon.length)} solicitations in IR's store with response deadlines within 7 days; ${n(soonSetAside)} carried small-business set-aside codes. Scoped to IR's synced subset. The 40 to 80 hour proposal range is a widely cited industry figure, not an IR measurement.`,
+      image: { stat: n(soon.length), label: 'CLOSING IN SEVEN DAYS', sub: 'You have time for one. Choose the one you would not regret losing.' },
     })
   }
 
-  // ── 5. Set-aside breakdown across the live market ────────────────────────
+  // ── 5. The split the SBA rule would change ───────────────────────────────
   if (live.length >= 200) {
     const buckets: Record<string, number> = {}
     for (const c of live) {
@@ -319,32 +348,35 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     }
     const rows = Object.entries(buckets).sort((a, b) => b[1] - a[1])
     const total = rows.reduce((s, [, v]) => s + v, 0)
+    const certOnly = rows
+      .filter(([l]) => l !== 'Total Small Business' && l !== 'Partial Small Business')
+      .reduce((s, [, v]) => s + v, 0)
     if (total >= 50) {
       posts.push({
         kind: 'set-aside-share',
         audience: 'company',
-        label: 'Set-aside breakdown, live market',
+        label: 'The split the SBA rule would change',
         body: [
-          `${n(total)} of the open contracts IR is tracking carry small-business set-asides. Here is how they split:`,
+          `${n(total)} of the open contracts IR is tracking carry small-business set-asides. The split:`,
           ``,
           ...rows.map(([label, count]) => `${label} — ${n(count)}`),
           ``,
-          `Two things worth noticing.`,
+          `Hold that shape in mind against the SBA size standards proposal, which would make 114,541 more firms eligible as small businesses. It is proposed, not law.`,
           ``,
-          `The narrower programs have far fewer contracts, but far fewer competitors chasing them. A smaller pool you are eligible for beats a large one you are not.`,
+          `If it is adopted, the general small business line gets more crowded. The ${n(certOnly)} contracts restricted to a specific certification do not, because 8(a), SDVOSB, WOSB and HUBZone gate on ownership, control and geography rather than on a revenue threshold. Those gates do not move when a size standard moves.`,
           ``,
-          `And plenty of firms qualify for more of these than they realise. Worth checking rather than assuming.`,
+          `Which is the argument for checking what you qualify for now rather than later. A certification you already hold would get more valuable, not less.`,
         ].join('\n'),
         hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
-        cta: 'The free eligibility check is pinned in my Featured section.',
-    reference: 'ir-gov.app/eligibility',
-        dataNote: `Grouped ${n(total)} open solicitations in IR's store by set-aside code, out of ${n(live.length)} live records tracked. Scoped to IR's synced subset, not the full federal market.`,
-        image: { stat: n(total), label: 'TRACKED SET-ASIDE CONTRACTS', sub: 'Open to small business right now' },
+        cta: 'The free eligibility check is on our page. Five questions, no signup.',
+        reference: 'ir-gov.app/eligibility',
+        dataNote: `Grouped ${n(total)} open solicitations in IR's store by set-aside code, out of ${n(live.length)} live records tracked; ${n(certOnly)} carry a certification-specific code. Scoped to IR's synced subset, not the full federal market. SBA figure of 114,541 additional eligible firms is from the proposed rule, RIN 3245-AI67, which is proposed and not adopted.`,
+        image: { stat: n(certOnly), label: 'RESERVED FOR A SPECIFIC CERTIFICATION', sub: `Of ${n(total)} tracked set-aside contracts open right now.` },
       })
     }
   }
 
-  // ── 6. Pricing reality — only once outcomes exist ────────────────────────
+  // ── 6. What the advertised number is actually worth ──────────────────────
   try {
     // 75+ means the award record actually cites the solicitation. Lower
     // confidences are statistical guesses — fine for internal aggregates,
@@ -361,23 +393,28 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     if (ratios.length >= 40) {
       const mid = ratios[Math.floor(ratios.length / 2)]
       const pct = Math.round(mid * 100)
+      const over = ratios.filter(r => r > 1).length
+      const overPct = Math.round((over / ratios.length) * 100)
       posts.push({
         kind: 'pricing-reality',
         audience: 'company',
-        label: 'Award vs advertised value',
+        label: 'What the advertised number is actually worth',
         body: [
-          `We have been recording what federal contracts actually award for, against what the solicitation advertised.`,
+          `Every solicitation carries an estimated value, and a lot of firms treat it as a price signal. We have been checking whether it is one.`,
           ``,
-          `Across ${n(ratios.length)} awards we matched back to their original solicitation, the median landed at ${pct}% of the advertised value.`,
+          `Across ${n(ratios.length)} awards we matched back to their original solicitation, the median landed at ${pct}% of the advertised value. ${overPct}% came in above the advertised figure.`,
           ``,
-          `Two caveats we would rather state than have pointed out. That is our sample, not the whole market. And advertised value is often a ceiling, especially on IDIQs, so a ratio under 100% is not automatically a discount.`,
+          `That spread is the whole point. If the advertised number reliably predicted the award, there would be no spread to report.`,
           ``,
-          `The point stands regardless: estimated value is a planning figure, not a price signal, and bidding to it is a common and expensive mistake.`,
+          `Two caveats we would rather state than have pointed out. This is our sample, not the market. And advertised value is often a ceiling rather than an estimate, particularly on IDIQs, so landing under it is not automatically a discount.`,
+          ``,
+          `What survives both caveats: estimated value is a planning figure. Pricing to it, or walking away because it looks too small, are both decisions made on a number that was never meant to carry that weight.`,
         ].join('\n'),
         hashtags: '#GovCon #FederalContracting #Pricing',
-        cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-        dataNote: `Median of ${n(ratios.length)} solicitation-to-award matches at confidence 75+ (the award record cites the solicitation number, not a statistical guess), comparing award amount to advertised value. Ratios outside 0.05-20x are excluded as mismatches or IDIQ ceilings. Sample is IR's records only.`,
+        cta: 'Ask us what awards have looked like against advertised value in your NAICS code.',
+        reference: 'ir-gov.app',
+        dataNote: `Median of ${n(ratios.length)} solicitation-to-award matches at confidence 75+ (the award record cites the solicitation number, not a statistical guess), comparing award amount to advertised value; ${n(over)} of ${n(ratios.length)} exceeded the advertised figure. Ratios outside 0.05-20x are excluded as mismatches or IDIQ ceilings. Sample is IR's records only.`,
+        image: { stat: `${pct}%`, label: 'MEDIAN AWARD VS ADVERTISED VALUE', sub: `${overPct}% came in above the advertised figure. IR-matched awards only.` },
       })
     }
   } catch { /* outcomes table not migrated yet — skip this draft */ }
