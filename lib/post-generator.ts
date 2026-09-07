@@ -35,13 +35,14 @@ export type PostKind =
   | 'pricing-reality'
   | 'capability-loop'
   | 'capability-evidence'
-  | 'positioning-tier'
-  | 'founder-why'
   | 'founder-build'
   | 'founder-contrarian'
-  | 'sba-alarm'
+  // Topical, each with its own expiry — see topicalPosts()
+  | 'founder-prereq'
+  | 'fy-end'
+  | 'cas-noise'
+  | 'sba-deadline'
   | 'sba-thesis'
-  | 'sba-our-exposure'
   | 'founder-article-why'
 
 /**
@@ -381,114 +382,243 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
   return posts
 }
 
-// ── TOPICAL: SBA size-standard overhaul ────────────────────────────────────
+// ── TOPICAL: what is actually happening in the market right now ────────────
 //
-// Proposed rule published 2026-08-20 (Docket SBA-2026-0199, RIN 3245-AI67),
-// SBA's third five-year review under the Small Business Jobs Act. Comments
-// close 2026-09-21.
+// These are the drafts with a shelf life. Each carries its own expiry, because
+// a post about a comment window that has already closed, or a fiscal year that
+// has already ended, reads as someone who is not paying attention. Better to
+// serve nothing than to serve stale.
 //
-// PROPOSED, not final — every draft below says so, because a rule that has not
-// been adopted being described as law is the kind of error that costs a
-// reputation in this industry permanently.
-//
-// The alarm draft is gated on the comment deadline: telling people to file a
-// comment after the window shuts is worse than saying nothing. The analytical
-// drafts survive the deadline because the competitive consequence outlives it.
+// SOURCING RULE for everything below: a figure appears only if it was verified
+// against the primary document or cross-checked across independent summaries,
+// and the sourceNote records which. A proposed rule is always called proposed.
+
+// SBA size-standards overhaul. Proposed 2026-08-20, Docket SBA-2026-0199,
+// RIN 3245-AI67. PROPOSED, not adopted.
 const SBA_COMMENT_DEADLINE = new Date('2026-09-21T23:59:59Z')
-// Once the rule is finalised, revisit these: the framing shifts from
-// "proposed" to "adopted" and the numbers may move.
 const SBA_RELEVANCE_END = new Date('2027-03-01T00:00:00Z')
+
+// Federal fiscal year end. The single most reliably useful date in this
+// market, and it resets itself every year.
+function fiscalYearEnd(now: Date): Date {
+  const y = now.getUTCFullYear()
+  const thisYearEnd = new Date(Date.UTC(y, 8, 30, 23, 59, 59)) // Sept 30
+  return now <= thisYearEnd ? thisYearEnd : new Date(Date.UTC(y + 1, 8, 30, 23, 59, 59))
+}
+
+/**
+ * Whole calendar days from today until a deadline.
+ *
+ * Deliberately not a timestamp subtraction. Dividing the millisecond delta and
+ * rounding gives a different answer depending on what time of day the draft is
+ * generated — "14 days left" in the morning becomes "15 days left" at
+ * midnight, off the same deadline. These counts go into public posts next to a
+ * date the reader can check, so they are computed on calendar days: the count
+ * is how many days remain including the deadline day itself.
+ */
+function calendarDaysUntil(deadline: Date, now: Date): number {
+  const a = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const b = Date.UTC(deadline.getUTCFullYear(), deadline.getUTCMonth(), deadline.getUTCDate())
+  return Math.round((b - a) / 86_400_000)
+}
+
+/** "3 days" / "1 day" / "0 days" — pluralisation only, no framing. */
+const dayCount = (d: number) => `${d} ${d === 1 ? 'day' : 'days'}`
+
+// CAS deregulation. Final rule published 2026-09-01, effective 2026-10-01.
+const CAS_RELEVANCE_END = new Date('2026-12-31T00:00:00Z')
+
+const SBA_SOURCE =
+  'SBA proposed rule published 2026-08-20 in the Federal Register, RIN 3245-AI67 / Docket No. SBA-2026-0199. SBA issued TWO companion rules that day (industry size standards, and a revised methodology); these figures are from the rule carrying this RIN. Verified: 995 existing size standards consolidated to 338; 114,541 additional firms become eligible, of which about 37,002 are FY2025 federal contractors holding 105,655 contracts worth more than $71 billion; total eligible small businesses rise from 6,344,967 to 6,459,508 (+1.8%); 24 industry groups see a reduction totalling fewer than 200 firms; comments due 2026-09-21. Cross-checked across Pillsbury, Holland & Knight, Hunton, Schwabe and Potomac Law summaries plus SBA Office of Advocacy. PROPOSED, not adopted.'
 
 function topicalPosts(): GeneratedPost[] {
   const now = new Date()
   const out: GeneratedPost[] = []
-  if (now > SBA_RELEVANCE_END) return out
 
-  const sourceNote =
-    'SBA proposed rule published 2026-08-20 in the Federal Register, RIN 3245-AI67 / Docket No. SBA-2026-0199. Note SBA issued TWO companion rules that day (industry size standards, and a revised size standards methodology); the figures below come from the rule carrying this RIN. Verified figures: 995 existing size standards consolidated to 338; 114,541 additional firms become eligible, of which about 37,002 are FY2025 federal contractors holding 105,655 contracts worth more than $71 billion; total eligible small businesses rise from 6,344,967 to 6,459,508 (+1.8%); 24 industry groups see a reduction in eligible firms totalling fewer than 200; comments due 2026-09-21. Cross-checked across Pillsbury, Holland & Knight, Hunton, Schwabe and Potomac Law summaries plus SBA Office of Advocacy. PROPOSED, not adopted; every draft states this.'
+  const daysToFy = calendarDaysUntil(fiscalYearEnd(now), now)
+  const daysToComment = calendarDaysUntil(SBA_COMMENT_DEADLINE, now)
 
-  if (now <= SBA_COMMENT_DEADLINE) {
+  // ── FOUNDER: the disqualifier nobody scores ──────────────────────────────
+  // Came out of a real comment thread with a capture practitioner. The most
+  // original thing on this list, because it is not in anybody's newsletter.
+  out.push({
+    kind: 'founder-prereq',
+    audience: 'founder',
+    label: 'The one word that disqualifies you',
+    body: [
+      `Someone who has clearly run capture for a living left a comment on my last post, and it named the thing I have been circling for weeks.`,
+      ``,
+      `Most small firms can read a solicitation fine. What they cannot do is decide quickly whether it is winnable.`,
+      ``,
+      `And the fastest way to be wrong about that is not pricing. It is a prerequisite that has to be in place at submission rather than at award.`,
+      ``,
+      `Here is what makes it brutal. The difference is usually one word.`,
+      ``,
+      `"Offeror shall possess a facility clearance."`,
+      `"Contractor shall obtain a facility clearance."`,
+      ``,
+      `Same paragraph. Opposite answer. The first one means you are out today. The second means you have until award to get there.`,
+      ``,
+      `And it is rarely anywhere convenient. It sits in Section L, or an attachment, or a page of a PDF nobody scrolled to.`,
+      ``,
+      `Clearance level. CMMC. Bonding capacity. Key personnel who must already be named and qualified. Each one quietly removes more small businesses from the field than price ever does, and most of them find out after they have spent the weekend writing.`,
+      ``,
+      `We do not parse for this yet. Right now the only thing IR hard-disqualifies on is set-aside status, because that arrives as clean structured data and the rest does not.`,
+      ``,
+      `Saying that out loud because I would rather be honest about the gap than pretend the product is further along than it is.`,
+      ``,
+      `If you bid federal work: what is the prerequisite that has burned you?`,
+    ].join('\n'),
+    hashtags: '#GovCon #CaptureManagement #SmallBusiness',
+    cta: 'Reply with the one that got you. I am collecting them.',
+    dataNote:
+      'Opinion and product transparency. The two quoted phrasings are illustrative examples of standard solicitation language, not quotations from a specific solicitation. The claim about what IR currently disqualifies on is accurate as of this writing: set-aside eligibility is the only hard disqualifier in the scoring layer.',
+    image: {
+      stat: '1',
+      label: 'WORD BETWEEN BIDDABLE AND NOT',
+      sub: '"Shall possess" vs "shall obtain." Same paragraph, opposite answer.',
+    },
+  })
+
+  // ── FISCAL YEAR END — the most decision-relevant date in the market ──────
+  if (daysToFy <= 45 && daysToFy >= 0) {
     out.push({
-      kind: 'sba-alarm',
+      kind: 'fy-end',
       audience: 'founder',
-      label: 'SBA size standards — the alarm (expires Sept 21)',
+      label: `Fiscal year end (${daysToFy === 0 ? 'today' : `${dayCount(daysToFy)} out`})`,
       body: [
-        `SBA has proposed the largest expansion of small business size standards in decades, and I do not think enough small contractors have registered what it would do.`,
+        daysToFy === 0
+          ? `Today is September 30, the last day of the federal fiscal year.`
+          : `${dayCount(daysToFy)} until September 30.`,
         ``,
-        `The proposal consolidates 995 industry size standards into 338, set at the 4 and 5 digit NAICS level. It removes the ceiling on size standards and adds a productivity adjustment on top of inflation. In professional services, IT, engineering and logistics, thresholds rise as much as tenfold or more.`,
+        `If you are new to federal work, here is why everyone gets tense around now. Most annual appropriations stop being available for new obligations after that date. Money that is not committed does not roll over, and an office that gives it back has a harder argument next year.`,
         ``,
-        `SBA proposes not to reduce standards even in industries where its own analysis supported a decrease.`,
+        `So the last weeks of September are the densest buying window in the federal calendar.`,
         ``,
-        `Their estimate: 114,541 additional firms become eligible small businesses. Fewer than 200 lose eligibility.`,
+        `The mistake I see is treating that as a reason to bid more. It is not. Volume against work you were never positioned for is how a ten person firm loses a quarter.`,
         ``,
-        `Here is the number I keep coming back to. Roughly 37,002 of those newly eligible firms are already federal contractors, holding 105,655 contracts worth more than 71 billion dollars.`,
+        `What it actually changes is speed. Turnarounds get shorter, simplified acquisitions get used more, and a contracting officer who already knows your name has an easier time moving quickly than one meeting you for the first time on a proposal.`,
         ``,
-        `Those are not hypothetical competitors. They are companies currently winning federal work who would be able to bid in the small business pool alongside you.`,
+        `Which means the highest-value thing you can do in the next few weeks is not writing. It is being findable and already known.`,
         ``,
-        `The pool does not get bigger. The number of companies allowed into it does.`,
+        `Capability statement current. SAM registration active and accurate. A short note to the contracting officers you have already worked with, telling them what you have capacity for right now.`,
         ``,
-        `This is a proposed rule, not law. Comments close September 21, under RIN 3245-AI67. If it would change how you compete, that is the window.`,
+        `The bidding decision is still subtraction. The calendar just moved the deadline.`,
       ].join('\n'),
-      hashtags: '#GovCon #SmallBusiness #FederalContracting #SBA',
-      cta: 'Search RIN 3245-AI67 or Docket SBA-2026-0199 on regulations.gov. Comments close September 21.',
-    reference: 'regulations.gov — Docket SBA-2026-0199',
-      dataNote: sourceNote,
-      image: { stat: '114,541', label: 'FIRMS WOULD GAIN SMALL STATUS', sub: 'Fewer than 200 would lose it. SBA proposed rule, comments close Sept 21.' },
+      hashtags: '#GovCon #FederalContracting #SmallBusiness',
+      cta: 'DM me your NAICS code and I will tell you what I am seeing close in it.',
+      dataNote:
+        'The federal fiscal year ends September 30 and most annual appropriations expire for new obligations after that date. That is a structural fact of appropriations law, not an IR measurement. No volume or dollar claims are made here.',
+      image: {
+        stat: daysToFy === 0 ? 'TODAY' : `${daysToFy}`,
+        label: daysToFy === 0 ? 'FISCAL YEAR ENDS' : 'DAYS TO FISCAL YEAR END',
+        sub: 'Most annual appropriations expire for new obligations after September 30.',
+      },
     })
   }
 
-  out.push({
-    kind: 'sba-thesis',
-    audience: 'founder',
-    label: 'SBA thesis — certifications become the moat',
-    body: [
-      `A thought on SBA's proposed size standard overhaul that I have not seen made often enough.`,
-      ``,
-      `If 114,541 firms move into small business status, the thing that actually erodes is not any single threshold. It is what the words "small business set aside" mean as a competitive category.`,
-      ``,
-      `A ten person shop would be bidding against companies many times its size, under the same label, for the same work. The broad Total Small Business set aside stops being much of an edge.`,
-      ``,
-      `Which I think makes the narrower certifications considerably more valuable, not less. The 8(a), SDVOSB, WOSB and HUBZone pools do not expand the same way, because those turn on certification rather than size alone. When the broad category stops meaning much, the specific ones become the moat.`,
-      ``,
-      `The counterargument I keep sitting with: there is a real gap where firms graduate out of small status before they can win full and open, and this proposal genuinely helps them. I am not convinced the fix should come out of the smallest firms' share.`,
-      ``,
-      `Still a proposed rule. But if you have been putting off a certification you qualify for, this is the argument for stopping putting it off.`,
-    ].join('\n'),
-    hashtags: '#GovCon #SmallBusiness #8a #SDVOSB #WOSB #HUBZone',
-    cta: 'The free eligibility check is pinned in my Featured section.',
-    reference: 'ir-gov.app/eligibility',
-    dataNote: sourceNote + ' The "certifications become more valuable" conclusion is analysis, presented as opinion rather than fact.',
-    image: { stat: '338', label: 'STANDARDS REPLACING 995', sub: 'SBA proposed rule. Comments close Sept 21.' },
-  })
+  // ── FOUNDER: the signal-vs-noise filter (CAS) ───────────────────────────
+  // Contrarian and genuinely useful: the week's loudest GovCon story does not
+  // apply to this audience at all, and almost nobody is saying so.
+  if (now < CAS_RELEVANCE_END) {
+    out.push({
+      kind: 'cas-noise',
+      audience: 'founder',
+      label: 'The CAS news that does not apply to you',
+      body: [
+        `Half the government contracting newsletters this week are about Cost Accounting Standards. CAS 407 was rescinded almost entirely in a final rule published September 1, effective October 1, after the board found most of its requirements now duplicate GAAP. It follows a July rule that rescinded four more standards.`,
+        ``,
+        `If you are a small business, here is the useful part.`,
+        ``,
+        `Small businesses are exempt from CAS. It does not apply to you. None of it.`,
+        ``,
+        `I am posting this because filtering is most of the value in this industry and nobody does it for the small end of the market. There is an enormous amount of GovCon content written for firms with a compliance department, and it gets read by people who do not have one, and it makes an already intimidating market feel more intimidating than it is.`,
+        ``,
+        `What actually deserves your attention in September, in order: the fiscal year ending on the 30th, and the SBA size standards proposal, where comments close on the 21st and which genuinely could change who you compete against.`,
+        ``,
+        `Not everything that is real news is your news. Knowing the difference is worth more than reading everything.`,
+      ].join('\n'),
+      hashtags: '#GovCon #SmallBusiness #FederalContracting',
+      cta: 'What GovCon news have you been told to care about that turned out not to apply to you?',
+      dataNote:
+        'CAS 407: final rule published 2026-09-01 by the CAS Board, effective 2026-10-01, rescinding CAS 407 in near entirety after finding 12 of its 16 requirements duplicative of GAAP and CAS 401, with a narrow production-unit remnant relocated to CAS 418. A separate final rule of 2026-07-08 rescinded CAS 404, 408, 409 and 411. Small business exemption from CAS coverage is longstanding and codified at 48 CFR 9903.201-1. Verified against the Federal Register and Crowell, Hunton and Covington summaries.',
+      image: {
+        stat: '0',
+        label: 'CAS RULES THAT APPLY TO YOU',
+        sub: 'Small businesses are exempt from Cost Accounting Standards entirely.',
+      },
+    })
+  }
 
-  out.push({
-    kind: 'sba-our-exposure',
-    audience: 'founder',
-    label: 'SBA — what it breaks in our own product',
-    body: [
-      `Everyone writing about SBA's proposed size standard overhaul is explaining what it means for contractors. Here is what it would mean for the tool I build, because I think that is the more useful thing to show.`,
-      ``,
-      `IR scores federal opportunities partly on how open a market has been to small business. That input comes from historical award data: what share of awards in a NAICS code actually went to small firms.`,
-      ``,
-      `If 114,541 companies become small overnight, that history stops describing the present. The competitive field gets more crowded, but the past will not show it for years.`,
-      ``,
-      `Which means my own scoring would quietly become optimistic. It would keep telling a genuinely small shop their odds look good, based on a market that no longer exists.`,
-      ``,
-      `I would rather say that in public now than have someone discover it later.`,
-      ``,
-      `It is also the argument for the thing we are building underneath the product: recording what actually happens to the contracts we score, so the model can be corrected against reality instead of assumption. A tool that tells you your odds should be willing to be measured on them, especially when the ground moves.`,
-    ].join('\n'),
-    hashtags: '#GovCon #BuildInPublic #FederalContracting',
-    cta: 'The full breakdown is linked from my profile.',
-    reference: 'ir-gov.app/capabilities',
-    dataNote: sourceNote + ' The product exposure described is real: IR blends historical small-business award share into scoring, and that input would lag a size-standard change. Stated as a limitation, not a feature.',
-  })
+  // ── SBA: the deadline push, gated on the window ─────────────────────────
+  if (now <= SBA_COMMENT_DEADLINE) {
+    out.push({
+      kind: 'sba-deadline',
+      audience: 'founder',
+      label: `SBA comment deadline (${daysToComment === 0 ? 'closes today' : `${dayCount(daysToComment)} left`})`,
+      body: [
+        daysToComment === 0
+          ? `Today is the last day to comment on the SBA size standards proposal, and I want to make one thing easy.`
+          : `${dayCount(daysToComment)} left to comment on the SBA size standards proposal, and I want to make one thing easy.`,
+        ``,
+        `The proposal would consolidate 995 size standards into 338 and, by SBA's own estimate, make 114,541 more firms eligible as small businesses. Roughly 37,002 of those already hold federal contracts. It is proposed, not law.`,
+        ``,
+        `Whatever you think of it, the comment record is thin compared to the number of firms it would affect, and agencies are required to respond to substantive comments before finalizing.`,
+        ``,
+        `So I built a free comment builder. No signup, nothing stored, and it works whether you support the rule, oppose it, or land somewhere in between. I was not willing to ship a version that only helped one side, because that is lobbying wearing a public service costume.`,
+        ``,
+        `It assembles a properly formatted comment in about two minutes. The part that matters most is the free text box, because identical form comments carry far less weight than one specific example from your business.`,
+        ``,
+        `Comments close September 21. It is in my featured section.`,
+      ].join('\n'),
+      hashtags: '#GovCon #SmallBusiness #SBA',
+      cta: 'The comment builder is pinned in my Featured section. Search Docket SBA-2026-0199 on regulations.gov to file directly.',
+      reference: 'ir-gov.app/sba-comment',
+      dataNote: SBA_SOURCE,
+      image: {
+        stat: daysToComment === 0 ? 'TODAY' : `${daysToComment}`,
+        label: daysToComment === 0 ? 'LAST DAY TO COMMENT' : 'DAYS TO COMMENT ON THE SBA RULE',
+        sub: 'Proposed, not law. Free builder, no signup, any position.',
+      },
+    })
+  }
+
+  // ── COMPANY: the same rule, institutional voice, survives the deadline ───
+  if (now < SBA_RELEVANCE_END) {
+    out.push({
+      kind: 'sba-thesis',
+      audience: 'company',
+      label: 'SBA thesis: certifications become the moat',
+      body: [
+        `A consequence of the SBA size standards proposal that we have not seen discussed much.`,
+        ``,
+        `The proposal would move 114,541 additional firms into small business eligibility. About 37,002 of them already hold federal contracts, together holding 105,655 contracts worth more than 71 billion dollars. These are not new entrants. They are established competitors who would become eligible for the same set-asides as a ten person shop.`,
+        ``,
+        `The volume of set-aside work does not increase to match.`,
+        ``,
+        `Which means the broad small business category gets more crowded, while the narrower certifications do not expand the same way. 8(a), SDVOSB, WOSB and HUBZone all require something beyond size: ownership, control, certification, geography. Those gates do not move because a revenue threshold moved.`,
+        ``,
+        `If this is adopted, the practical effect is that a certification you already hold becomes worth more, not less, and firms that never pursued one may find the general small business pool a harder place to compete.`,
+        ``,
+        `This is a proposed rule. It has not been adopted and the figures could change before it is.`,
+      ].join('\n'),
+      hashtags: '#GovCon #SmallBusiness #SetAsides',
+      cta: 'Free eligibility check for the narrower certifications is on our page.',
+      reference: 'ir-gov.app/eligibility',
+      dataNote: SBA_SOURCE,
+      image: {
+        stat: '338',
+        label: 'STANDARDS REPLACING 995',
+        sub: 'SBA proposed rule. Proposed, not adopted.',
+      },
+    })
+  }
 
   return out
 }
 
 /**
- * Posts that stand on capability and positioning rather than this week's data.
+ * Posts that stand on capability and positioning rather than the news cycle.
  *
  * Competitor language follows docs/COMPETITION.md deliberately: IR positions
  * on price tier, self-serve access, and the integrated loop. It never claims
@@ -500,126 +630,114 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
   const liveText = counts.live > 0 ? n(counts.live) : 'every open'
   const out: GeneratedPost[] = []
 
-  // ── COMPANY: the loop ────────────────────────────────────────────────────
+  // ── COMPANY: what the product is, without the completeness claim ────────
   out.push({
     kind: 'capability-loop',
     audience: 'company',
     label: 'What IR actually does',
     body: [
-      `A capture analyst costs six figures a year. Here is what they do, and what IR does instead.`,
+      `Most tools in this market stop at finding the contract. That is the easy half.`,
       ``,
-      `Scan the market for what fits you. Read the incumbent. Size up the competition. Check what similar work actually awarded for. Decide whether it is worth bidding. Write the first draft.`,
+      `IR pulls solicitations from SAM.gov every night and scores each one against your company: your NAICS codes, your set-aside status, your size, your geography. ${counts.live > 0 ? `${liveText} of them are open in our store right now.` : ''}`,
       ``,
-      `That is six to eight weeks of work on a single pursuit.`,
+      `Then it keeps going, because a match is not a decision. You get who held the work before and what they were paid, how far awards in that segment have historically landed from the advertised value, and a scored read on whether it is worth your weeks.`,
       ``,
-      `IR scores ${liveText} solicitation it tracks against your business profile, then runs the deeper work — incumbent, competition, pricing benchmarks, bid recommendation — on the ones that actually match you. Every point it assigns comes with its reasoning.`,
+      `And when you decide to bid, the capability statement and the proposal draft come out of the same profile you already filled in.`,
       ``,
-      `We are not claiming to replace judgment. We are claiming nobody should be doing the mechanical part by hand at eleven at night.`,
+      `Find, judge, draft, send. One loop, one login, priced like software rather than like a consultancy.`,
     ].join('\n'),
-    hashtags: '#GovCon #CaptureManagement #FederalContracting',
-    cta: 'The full breakdown is linked from my profile.',
-    reference: 'ir-gov.app/capabilities',
-    dataNote: `References ${counts.live > 0 ? `${n(counts.live)} live solicitations currently in IR's store` : 'the live store'} — a synced subset of SAM.gov, not the full market. Scoring runs across the store; incumbent, competition and pricing enrichment run on matched results, and the copy says so rather than implying full enrichment on every record. The 6-8 week figure describes a full capture cycle on a single pursuit, a widely used industry range, not an IR measurement.`,
-    image: { stat: '5 min', label: 'VS WEEKS OF MANUAL CAPTURE WORK', sub: 'Scored, sourced, and explained' },
+    hashtags: '#GovCon #FederalContracting #SmallBusiness',
+    cta: 'DM us and we will set you up.',
+    reference: 'ir-gov.app',
+    dataNote: `Describes shipped functionality only. ${counts.live > 0 ? `The count of ${liveText} is open solicitations currently in IR's store, which is a synced subset of SAM.gov, not a census of the federal market.` : 'No volume claim made.'} Incumbent and award-value figures come from public USAspending records and are only shown where they exist.`,
+    image: {
+      stat: '4',
+      label: 'STEPS, ONE LOGIN',
+      sub: 'Find, judge, draft, send. Scored and sourced.',
+    },
   })
 
-  // ── COMPANY: explainability, the real differentiator ─────────────────────
+  // ── COMPANY: the evidence tiers, which is the actual differentiator ─────
   out.push({
     kind: 'capability-evidence',
     audience: 'company',
     label: 'Why our score shows its work',
     body: [
-      `Most tools hand you a match score. Almost none will tell you how they got it.`,
+      `Every tool in this category now ships a win probability. Almost none of them publish whether those numbers are any good.`,
       ``,
-      `We think a score you cannot interrogate is a score you should not act on, so every point IR assigns carries three things: the factor, the reasoning, and what tier of evidence it rests on.`,
+      `We decided early that a score is a claim, and if we want you to bet real weeks on ours we should show you where it came from.`,
       ``,
-      `Measured means counted from awards that actually happened, including your own federal award history.`,
-      `Structural means a rule, not a prediction. Set-aside eligibility is published in the solicitation.`,
-      `Heuristic means reasoned but not yet validated against outcomes, and we label it that way rather than hiding it.`,
+      `So every IR score breaks into three kinds of evidence, and says which is which.`,
       ``,
-      `That last category is the uncomfortable one to publish. We publish it anyway, because a tool that tells you your odds should be willing to be measured on them.`,
+      `MEASURED is counted. Your own federal award history, pulled from public records by UEI, and the outcomes of solicitations we have already watched close. "You have won three awards in this NAICS code" is a count, not an opinion.`,
+      ``,
+      `STRUCTURAL is true by published rule. Set-aside eligibility, size standards, NAICS fit. Right by definition, and the first thing that can disqualify a bid.`,
+      ``,
+      `HEURISTIC is reasoned but not yet validated. Incumbent size as a proxy for entrenchment, for example. Defensible, not proven, and labelled so you can discount it.`,
+      ``,
+      `We are not claiming our score is a calibrated probability. The outcome record is still accumulating. When there is enough of it we will publish how we did, including if it is unflattering.`,
+      ``,
+      `A tool that tells you your odds should be willing to be measured on them.`,
     ].join('\n'),
-    hashtags: '#GovCon #FederalContracting #DataDriven',
-    cta: 'The full breakdown is linked from my profile.',
+    hashtags: '#GovCon #AI #FederalContracting',
+    cta: 'The full breakdown is on our capabilities page.',
     reference: 'ir-gov.app/capabilities',
-    dataNote: 'Describes the evidence-tier scoring architecture as implemented in lib/evidence-score.ts and documented on the capabilities page.',
+    dataNote:
+      'Describes the shipped evidence-tier scoring layer. The statement that IR does not yet claim calibration is accurate and deliberate: the outcome dataset is still accumulating and no accuracy figure is published or implied.',
+    image: {
+      stat: '3',
+      label: 'TIERS OF EVIDENCE, LABELLED',
+      sub: 'Measured, structural, heuristic. You see which is which.',
+    },
   })
 
-  // ── COMPANY: positioning, per the claims policy ──────────────────────────
-  out.push({
-    kind: 'positioning-tier',
-    audience: 'company',
-    label: 'Positioning vs enterprise platforms',
-    body: [
-      `The best federal market intelligence platforms are priced for enterprise buyers, sold through a sales team, and usually locked to an annual contract.`,
-      ``,
-      `That is not a criticism. They are built for mid-to-large integrators with capture teams and analyst budgets, and for that buyer they are genuinely worth it.`,
-      ``,
-      `The problem is everyone underneath that line. A ten-person shop competing for the same set-asides gets a SAM.gov search box and a spreadsheet.`,
-      ``,
-      `IR exists for that firm. Scored matches with reasoning, recompete signal before the RFP posts, a pipeline, and a first draft. Self-serve, month to month, no sales call, no annual contract.`,
-      ``,
-      `We are not trying to out-analyst an enterprise research desk. We are trying to make sure the firms they price out are not flying blind.`,
-    ].join('\n'),
-    hashtags: '#GovCon #SmallBusiness #FederalContracting',
-    cta: 'More on where we fit is linked from my profile.',
-    reference: 'ir-gov.app/compare/govwin',
-    dataNote: 'Positioning claims are price-tier and access-model only, per docs/COMPETITION.md. No capability superiority is asserted over enterprise research desks, and no specific competitor price figure is stated — quoting a rival\'s pricing publicly requires re-verifying it first, and it changes. Describes access model (sales-gated, annual) which is publicly documented by those vendors.',
-  })
-
-  // ── FOUNDER: why ─────────────────────────────────────────────────────────
-  out.push({
-    kind: 'founder-why',
-    audience: 'founder',
-    label: 'Why I built this',
-    body: [
-      `The federal government is the largest buyer on earth, and the overwhelming majority of small businesses never sell it anything.`,
-      ``,
-      `Not because they cannot do the work. Because the part before the work, figuring out which contracts are worth chasing, is a full-time analyst job, and a ten-person company does not have an analyst.`,
-      ``,
-      `The primes do. That is the entire asymmetry.`,
-      ``,
-      `I did not come up in government contracting, which I think is why the situation looked absurd to me rather than normal. Nobody had trained me to accept that capture intelligence is something only large companies get.`,
-      ``,
-      `So I have been building the version a small business can actually afford. It scores every federal opportunity against your business and shows you exactly why it scored that way.`,
-      ``,
-      `If you run a small business chasing federal work, I would genuinely like to hear what you would need it to do.`,
-    ].join('\n'),
-    hashtags: '#GovCon #SmallBusiness #BuildInPublic',
-    cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-    dataNote: 'Personal narrative. The only factual claim is that the US federal government is the world\'s largest single buyer of goods and services, which is widely documented. No IR-specific performance claims.',
-  })
-
-  // ── FOUNDER: build in public ─────────────────────────────────────────────
+  // ── FOUNDER: build in public ────────────────────────────────────────────
   out.push({
     kind: 'founder-build',
     audience: 'founder',
-    label: 'Build in public: showing the work',
+    label: 'Build in public: the gap a stranger found',
     body: [
-      `Shipped something this week that most tools would rather not.`,
+      `Shipped something this week that most tools would rather not, and then had someone immediately show me a hole in it.`,
       ``,
-      `IR now labels every part of its own match score by how much evidence is behind it. Counted from real awards, a published rule, or reasoning we have not validated yet.`,
+      `The thing we shipped: every score in IR now tells you what kind of evidence it rests on. Counted from real records, true by published rule, or reasoned but not yet proven. The last category is labelled, because it is the part that could be wrong.`,
       ``,
-      `That third label is the awkward one. It means the product openly admits which parts of its own scoring are still assumption.`,
+      `Most products in this space would bury that. A number with a decimal point looks more confident than a number with a caveat.`,
       ``,
-      `I went back and forth on it. Showing your uncertainty looks weaker in a demo.`,
+      `Then someone who has clearly done capture professionally pointed out that our incumbent read is shallow. We show who held the work and what they were paid. We do not show whether the agency was happy with them, and a recompete against a satisfied incumbent is a completely different bet than a recompete against a struggling one.`,
       ``,
-      `But contractors bet real money and real weeks on these calls. If I want someone to trust a number, I should be willing to show them where it came from, including when the honest answer is "this part is reasoning, not measurement, and here is what we are doing about it."`,
+      `They were right. It is now the thing I am working on.`,
       ``,
-      `Building the record now so that eventually it can be measurement.`,
+      `Building in public mostly gets sold as a marketing tactic. The actual value is that strangers with more experience than you will tell you what is wrong with your product for free, but only if you are honest enough about it that they can see the seams.`,
     ].join('\n'),
-    hashtags: '#BuildInPublic #GovCon #ProductDevelopment',
-    cta: 'The full breakdown is linked from my profile.',
-    reference: 'ir-gov.app/capabilities',
-    dataNote: 'Describes the evidence-tier system shipped in lib/evidence-score.ts and published on the capabilities page.',
+    hashtags: '#BuildInPublic #GovCon #SmallBusiness',
+    cta: 'If you bid federal work and something in this is wrong, tell me. That is the whole point.',
+    dataNote:
+      'Narrative and product transparency. The described evidence-tier layer is shipped. The described gap in incumbent performance data is real and currently unaddressed; no claim is made that it is solved.',
   })
 
-  // ── FOUNDER: the long-form founding piece ────────────────────────────────
-  // The Featured article. Written to do three jobs at once: explain the
-  // asymmetry that justifies the product, separate IR from the enterprise
-  // incumbents AND the wave of unverifiable AI scoring tools, and establish
-  // credibility by publishing IR's own limitations before anyone finds them.
+  // ── FOUNDER: contrarian ─────────────────────────────────────────────────
+  out.push({
+    kind: 'founder-contrarian',
+    audience: 'founder',
+    label: 'Contrarian: bidding more is not the strategy',
+    body: [
+      `The most common advice I hear given to new federal contractors is to bid on everything and treat it as a numbers game.`,
+      ``,
+      `I think that advice quietly destroys small companies.`,
+      ``,
+      `A serious proposal is forty to eighty hours. For a ten person firm that is a meaningful share of a month, taken directly out of billable work. Do that six times against contracts you were never positioned to win and you have spent a quarter of your year on nothing.`,
+      ``,
+      `Volume is a strategy for someone with a proposal team. For everyone else the skill is subtraction, deciding fast and honestly what to skip.`,
+      ``,
+      `The hard part of this business was never finding contracts. It is knowing which ones deserve your only real asset, which is your time.`,
+    ].join('\n'),
+    hashtags: '#GovCon #SmallBusiness #CaptureManagement',
+    cta: 'DM me and I will set you up.',
+    reference: 'ir-gov.app',
+    dataNote:
+      'Opinion piece. The 40 to 80 hour proposal estimate is a widely cited industry range, presented as such rather than as IR-measured data.',
+  })
+
   out.push({
     kind: 'founder-article-why',
     audience: 'founder',
@@ -699,28 +817,6 @@ function evergreenPosts(counts: { live: number; week: number }): GeneratedPost[]
       headline: 'The number that decides your next 60 hours',
       deck: 'A score is a claim. If we want you to bet real weeks on ours, we should show you where it came from.',
     },
-  })
-
-  // ── FOUNDER: contrarian ──────────────────────────────────────────────────
-  out.push({
-    kind: 'founder-contrarian',
-    audience: 'founder',
-    label: 'Contrarian: bidding more is not the strategy',
-    body: [
-      `The most common advice I hear given to new federal contractors is to bid on everything and treat it as a numbers game.`,
-      ``,
-      `I think that advice quietly destroys small companies.`,
-      ``,
-      `A serious proposal is forty to eighty hours. For a ten-person firm that is a meaningful share of a month, taken directly out of billable work. Do that six times against contracts you were never positioned to win and you have spent a quarter of your year on nothing.`,
-      ``,
-      `Volume is a strategy for someone with a proposal team. For everyone else the skill is subtraction, deciding fast and honestly what to skip.`,
-      ``,
-      `The hard part of this business was never finding contracts. It is knowing which ones deserve your only real asset, which is your time.`,
-    ].join('\n'),
-    hashtags: '#GovCon #SmallBusiness #CaptureManagement',
-    cta: 'DM me and I will set you up.',
-    reference: 'ir-gov.app',
-    dataNote: 'Opinion piece. The 40–80 hour proposal estimate is a widely cited industry range, presented as such rather than as IR-measured data.',
   })
 
   return out
