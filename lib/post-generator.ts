@@ -183,7 +183,12 @@ export async function generatePosts(): Promise<GeneratedPost[]> {
     week = parse(weekRows)
     live = parse(liveRows)
   } catch {
-    return posts
+    // Do NOT bail. Only the data-driven drafts below need the store, and each
+    // one is already guarded on a minimum sample, so they skip themselves when
+    // `week`/`live` stay empty. The topical and evergreen drafts need no
+    // database whatsoever. Returning early here meant a single DB hiccup — or
+    // an unmigrated table — emptied the entire studio, which reads as "the
+    // posts never changed" rather than as an outage.
   }
 
   // ── 1. Weekly pulse ──────────────────────────────────────────────────────
