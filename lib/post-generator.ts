@@ -40,8 +40,12 @@ export type PostKind =
   // Topical, each with its own expiry — see topicalPosts()
   | 'founder-prereq'
   | 'fy-end'
+  | 'company-fy-end'
+  | 'cr-window'
+  | 'company-cr-window'
   | 'cas-noise'
   | 'sba-deadline'
+  | 'company-sba-deadline'
   | 'sba-thesis'
   | 'founder-article-why'
 
@@ -431,7 +435,14 @@ function calendarDaysUntil(deadline: Date, now: Date): number {
 const dayCount = (d: number) => `${d} ${d === 1 ? 'day' : 'days'}`
 
 // CAS deregulation. Final rule published 2026-09-01, effective 2026-10-01.
+const CAS_EFFECTIVE = new Date('2026-10-01T00:00:00Z')
 const CAS_RELEVANCE_END = new Date('2026-12-31T00:00:00Z')
+
+// Continuing resolution enacted 2026-09-02, funding agencies at FY2026 levels
+// through 2026-12-11. Averted the Oct 1 shutdown; the cliff simply moved.
+// When this is superseded by full-year appropriations or another CR, update
+// the date here and the drafts re-aim themselves.
+const CR_EXPIRY = new Date('2026-12-11T23:59:59Z')
 
 const SBA_SOURCE =
   'SBA proposed rule published 2026-08-20 in the Federal Register, RIN 3245-AI67 / Docket No. SBA-2026-0199. SBA issued TWO companion rules that day (industry size standards, and a revised methodology); these figures are from the rule carrying this RIN. Verified: 995 existing size standards consolidated to 338; 114,541 additional firms become eligible, of which about 37,002 are FY2025 federal contractors holding 105,655 contracts worth more than $71 billion; total eligible small businesses rise from 6,344,967 to 6,459,508 (+1.8%); 24 industry groups see a reduction totalling fewer than 200 firms; comments due 2026-09-21. Cross-checked across Pillsbury, Holland & Knight, Hunton, Schwabe and Potomac Law summaries plus SBA Office of Advocacy. PROPOSED, not adopted.'
@@ -442,6 +453,8 @@ function topicalPosts(): GeneratedPost[] {
 
   const daysToFy = calendarDaysUntil(fiscalYearEnd(now), now)
   const daysToComment = calendarDaysUntil(SBA_COMMENT_DEADLINE, now)
+  const daysToCr = calendarDaysUntil(CR_EXPIRY, now)
+  const daysToCas = calendarDaysUntil(CAS_EFFECTIVE, now)
 
   // ── FOUNDER: the disqualifier nobody scores ──────────────────────────────
   // Came out of a real comment thread with a capture practitioner. The most
@@ -485,8 +498,10 @@ function topicalPosts(): GeneratedPost[] {
     },
   })
 
-  // ── FISCAL YEAR END — the most decision-relevant date in the market ──────
+  // ── FISCAL YEAR END ──────────────────────────────────────────────────────
   if (daysToFy <= 45 && daysToFy >= 0) {
+    const fyStat = daysToFy === 0 ? 'TODAY' : `${daysToFy}`
+
     out.push({
       kind: 'fy-end',
       audience: 'founder',
@@ -504,7 +519,7 @@ function topicalPosts(): GeneratedPost[] {
         ``,
         `What it actually changes is speed. Turnarounds get shorter, simplified acquisitions get used more, and a contracting officer who already knows your name has an easier time moving quickly than one meeting you for the first time on a proposal.`,
         ``,
-        `Which means the highest-value thing you can do in the next few weeks is not writing. It is being findable and already known.`,
+        `Which means the highest-value thing you can do right now is not writing. It is being findable and already known.`,
         ``,
         `Capability statement current. SAM registration active and accurate. A short note to the contracting officers you have already worked with, telling them what you have capacity for right now.`,
         ``,
@@ -513,25 +528,117 @@ function topicalPosts(): GeneratedPost[] {
       hashtags: '#GovCon #FederalContracting #SmallBusiness',
       cta: 'DM me your NAICS code and I will tell you what I am seeing close in it.',
       dataNote:
-        'The federal fiscal year ends September 30 and most annual appropriations expire for new obligations after that date. That is a structural fact of appropriations law, not an IR measurement. No volume or dollar claims are made here.',
+        'The federal fiscal year ends September 30 and most annual appropriations expire for new obligations after that date. That is a structural fact of appropriations law, not an IR measurement. No volume or dollar claims are made.',
       image: {
-        stat: daysToFy === 0 ? 'TODAY' : `${daysToFy}`,
+        stat: fyStat,
         label: daysToFy === 0 ? 'FISCAL YEAR ENDS' : 'DAYS TO FISCAL YEAR END',
         sub: 'Most annual appropriations expire for new obligations after September 30.',
       },
     })
+
+    out.push({
+      kind: 'company-fy-end',
+      audience: 'company',
+      label: `Company: fiscal year end (${daysToFy === 0 ? 'today' : `${dayCount(daysToFy)} out`})`,
+      body: [
+        daysToFy === 0
+          ? `The federal fiscal year ends today.`
+          : `${dayCount(daysToFy)} until the federal fiscal year ends.`,
+        ``,
+        `The mechanic behind the September surge is simple. Most annual appropriations are available for new obligations only until September 30. Unobligated money does not carry forward, and an agency that returns it weakens its own case in the next budget cycle.`,
+        ``,
+        `The practical consequence for a small contractor is not that there is more work. It is that the work moves faster. Response windows compress, simplified acquisition procedures get used more heavily, and prior familiarity with a contracting office matters more than it does in March.`,
+        ``,
+        `Which is why we keep saying the same unglamorous thing at this time of year. Being findable beats being fast. A current capability statement and an accurate SAM registration are worth more in the last three weeks of September than any amount of proposal effort started from scratch.`,
+        ``,
+        `We are tracking what closes between now and the 30th across the set-aside categories, and posting what the data actually shows rather than what the season is supposed to feel like.`,
+      ].join('\n'),
+      hashtags: '#GovCon #FederalContracting #SmallBusiness',
+      cta: 'Tell us your NAICS code and we will send you what we are tracking in it.',
+      reference: 'ir-gov.app',
+      dataNote:
+        'Describes appropriations mechanics, which are structural rather than measured. No claim is made about the volume or value of what is closing; any such figure must come from the data-driven drafts, which state that they count only what IR tracked.',
+      image: {
+        stat: fyStat,
+        label: daysToFy === 0 ? 'FISCAL YEAR ENDS' : 'DAYS TO FISCAL YEAR END',
+        sub: 'Response windows compress. Being findable beats being fast.',
+      },
+    })
   }
 
-  // ── FOUNDER: the signal-vs-noise filter (CAS) ───────────────────────────
-  // Contrarian and genuinely useful: the week's loudest GovCon story does not
-  // apply to this audience at all, and almost nobody is saying so.
+  // ── THE CR WINDOW — funding certainty with an expiry date ────────────────
+  // Enacted 2026-09-02, funds agencies at FY2026 levels through 2026-12-11.
+  // The most decision-relevant date in the market after Sept 30, and almost
+  // nothing written for small contractors explains what it changes for them.
+  if (daysToCr >= 0) {
+    const crStat = daysToCr === 0 ? 'TODAY' : `${daysToCr}`
+
+    out.push({
+      kind: 'cr-window',
+      audience: 'founder',
+      label: `The CR window (${daysToCr === 0 ? 'expires today' : `${dayCount(daysToCr)} left`})`,
+      body: [
+        `There was going to be a shutdown on October 1. There is not, and I think most small contractors have not worked out what that actually means for them.`,
+        ``,
+        `Congress passed a continuing resolution on September 2. It funds agencies at last year's levels through December 11. None of the twelve full-year appropriations bills for FY2027 have been enacted.`,
+        ``,
+        `${daysToCr === 0 ? `That window closes today.` : `That leaves ${dayCount(daysToCr)} of funding certainty.`}`,
+        ``,
+        `Here is the part that matters if you sell to the government. A continuing resolution is not the same as being funded. Agencies operate at prior-year rates, and new starts, meaning programs that did not exist in last year's budget, are generally restricted.`,
+        ``,
+        `So the October to December market skews toward continuations, recompetes, and orders on vehicles that already exist. If you have been waiting on a brand new requirement to be funded, the realistic expectation is that it does not move until this is resolved.`,
+        ``,
+        `That is not a reason to stop. It is a reason to point your effort at the recompete calendar instead of the new-program pipeline for the next quarter.`,
+        ``,
+        `Every contract has a known expiry date. In a quarter where new money is constrained, the work that is already funded and coming up for renewal is where the winnable opportunities are.`,
+      ].join('\n'),
+      hashtags: '#GovCon #FederalContracting #SmallBusiness',
+      cta: 'DM me your NAICS code and I will tell you what is expiring in it before December.',
+      dataNote:
+        'Continuing resolution enacted 2026-09-02, funding federal agencies at FY2026 levels through 2026-12-11. As of that date none of the twelve FY2027 appropriations bills had been enacted; three had passed the House and none had been reported from Senate Appropriations. Verified via Congress.gov and CSIS appropriations tracking. The general restriction on new starts under a CR is a standard feature of continuing resolutions, described as general practice rather than as a specific provision of this one.',
+      image: {
+        stat: crStat,
+        label: daysToCr === 0 ? 'LAST DAY OF THE CR' : 'DAYS OF FUNDING CERTAINTY',
+        sub: 'CR runs to December 11 at FY2026 levels. No FY2027 bills enacted.',
+      },
+    })
+
+    out.push({
+      kind: 'company-cr-window',
+      audience: 'company',
+      label: `Company: the CR window (${daysToCr === 0 ? 'expires today' : `${dayCount(daysToCr)} left`})`,
+      body: [
+        `A continuing resolution enacted on September 2 funds federal agencies at FY2026 levels through December 11. No shutdown on October 1, and ${daysToCr === 0 ? 'the window closes today' : `${dayCount(daysToCr)} of funding certainty from today`}.`,
+        ``,
+        `What that changes for the small business market is worth stating plainly, because most coverage of a CR is written for people who follow appropriations rather than people who bid.`,
+        ``,
+        `Under a continuing resolution agencies generally operate at prior-year rates and new starts are restricted. The practical effect is a quarter weighted toward continuations, recompetes, and orders against existing vehicles rather than newly funded requirements.`,
+        ``,
+        `For a small firm deciding where to spend limited capture time between now and December, that is a real signal. A brand new program you have been tracking is less likely to move. An incumbent contract expiring in your NAICS code is unaffected by any of this, because the money for it was already appropriated.`,
+        ``,
+        `None of the twelve FY2027 appropriations bills have been enacted. December 11 is the next decision point, and it is worth putting on a calendar now rather than discovering it in December.`,
+      ].join('\n'),
+      hashtags: '#GovCon #FederalContracting #SmallBusiness',
+      cta: 'Our recompete tracking is free to try. Ask us what is expiring in your NAICS code.',
+      reference: 'ir-gov.app',
+      dataNote:
+        'Continuing resolution enacted 2026-09-02, funding at FY2026 levels through 2026-12-11; none of the twelve FY2027 appropriations bills enacted as of that date. Verified via Congress.gov and CSIS appropriations tracking. The restriction on new starts is described as a general feature of continuing resolutions, not as a quoted provision.',
+      image: {
+        stat: crStat,
+        label: daysToCr === 0 ? 'LAST DAY OF THE CR' : 'DAYS OF FUNDING CERTAINTY',
+        sub: 'Continuations and recompetes over new starts until December 11.',
+      },
+    })
+  }
+
+  // ── CAS: the loudest story that does not apply to this audience ──────────
   if (now < CAS_RELEVANCE_END) {
     out.push({
       kind: 'cas-noise',
       audience: 'founder',
-      label: 'The CAS news that does not apply to you',
+      label: `The CAS news that does not apply to you${daysToCas >= 0 ? ` (effective in ${dayCount(daysToCas)})` : ''}`,
       body: [
-        `Half the government contracting newsletters this week are about Cost Accounting Standards. CAS 407 was rescinded almost entirely in a final rule published September 1, effective October 1, after the board found most of its requirements now duplicate GAAP. It follows a July rule that rescinded four more standards.`,
+        `Half the government contracting newsletters this week are about Cost Accounting Standards. CAS 407 was rescinded almost entirely in a final rule published September 1${daysToCas > 0 ? `, effective October 1, which is ${dayCount(daysToCas)} away` : ', effective October 1'}, after the board found most of its requirements now duplicate GAAP. It follows a July rule that rescinded four more standards.`,
         ``,
         `If you are a small business, here is the useful part.`,
         ``,
@@ -539,14 +646,14 @@ function topicalPosts(): GeneratedPost[] {
         ``,
         `I am posting this because filtering is most of the value in this industry and nobody does it for the small end of the market. There is an enormous amount of GovCon content written for firms with a compliance department, and it gets read by people who do not have one, and it makes an already intimidating market feel more intimidating than it is.`,
         ``,
-        `What actually deserves your attention in September, in order: the fiscal year ending on the 30th, and the SBA size standards proposal, where comments close on the 21st and which genuinely could change who you compete against.`,
+        `What actually deserves your attention right now, in order: the fiscal year ending September 30, the SBA size standards comment window closing September 21, and the continuing resolution that runs out on December 11.`,
         ``,
         `Not everything that is real news is your news. Knowing the difference is worth more than reading everything.`,
       ].join('\n'),
       hashtags: '#GovCon #SmallBusiness #FederalContracting',
       cta: 'What GovCon news have you been told to care about that turned out not to apply to you?',
       dataNote:
-        'CAS 407: final rule published 2026-09-01 by the CAS Board, effective 2026-10-01, rescinding CAS 407 in near entirety after finding 12 of its 16 requirements duplicative of GAAP and CAS 401, with a narrow production-unit remnant relocated to CAS 418. A separate final rule of 2026-07-08 rescinded CAS 404, 408, 409 and 411. Small business exemption from CAS coverage is longstanding and codified at 48 CFR 9903.201-1. Verified against the Federal Register and Crowell, Hunton and Covington summaries.',
+        'CAS 407: final rule published 2026-09-01 by the CAS Board, effective 2026-10-01, rescinding CAS 407 in near entirety after finding 12 of its 16 requirements duplicative of GAAP and CAS 401, with a narrow production-unit remnant relocated to CAS 418. A separate final rule of 2026-07-08 rescinded CAS 404, 408, 409 and 411. The small business exemption from CAS coverage is longstanding and codified at 48 CFR 9903.201-1. Verified against the Federal Register and Crowell, Hunton and Covington summaries.',
       image: {
         stat: '0',
         label: 'CAS RULES THAT APPLY TO YOU',
@@ -557,6 +664,8 @@ function topicalPosts(): GeneratedPost[] {
 
   // ── SBA: the deadline push, gated on the window ─────────────────────────
   if (now <= SBA_COMMENT_DEADLINE) {
+    const sbaStat = daysToComment === 0 ? 'TODAY' : `${daysToComment}`
+
     out.push({
       kind: 'sba-deadline',
       audience: 'founder',
@@ -581,14 +690,42 @@ function topicalPosts(): GeneratedPost[] {
       reference: 'ir-gov.app/sba-comment',
       dataNote: SBA_SOURCE,
       image: {
-        stat: daysToComment === 0 ? 'TODAY' : `${daysToComment}`,
+        stat: sbaStat,
         label: daysToComment === 0 ? 'LAST DAY TO COMMENT' : 'DAYS TO COMMENT ON THE SBA RULE',
         sub: 'Proposed, not law. Free builder, no signup, any position.',
       },
     })
+
+    out.push({
+      kind: 'company-sba-deadline',
+      audience: 'company',
+      label: `Company: SBA comment deadline (${daysToComment === 0 ? 'closes today' : `${dayCount(daysToComment)} left`})`,
+      body: [
+        daysToComment === 0
+          ? `The comment window on the SBA size standards proposal closes today.`
+          : `${dayCount(daysToComment)} remain to comment on the SBA size standards proposal.`,
+        ``,
+        `The proposal would consolidate 995 industry size standards into 338 and, by SBA's estimate, make 114,541 additional firms eligible as small businesses. About 37,002 of those already hold federal contracts. It is a proposed rule and has not been adopted.`,
+        ``,
+        `Agencies are required to consider substantive public comments before issuing a final rule, and the comment record on this docket is thin relative to the number of firms it would affect.`,
+        ``,
+        `We built a free comment builder for it. No signup, nothing stored, and it supports commenters who oppose the rule, support it, or hold a mixed position. A tool that only helped one side would be advocacy wearing a public service costume, and we were not willing to put our name on that.`,
+        ``,
+        `Comments close September 21 under Docket SBA-2026-0199.`,
+      ].join('\n'),
+      hashtags: '#GovCon #SmallBusiness #SBA',
+      cta: 'The free comment builder is linked on our page. No account required.',
+      reference: 'ir-gov.app/sba-comment',
+      dataNote: SBA_SOURCE,
+      image: {
+        stat: sbaStat,
+        label: daysToComment === 0 ? 'LAST DAY TO COMMENT' : 'DAYS TO COMMENT ON THE SBA RULE',
+        sub: 'Free builder. No signup. Any position.',
+      },
+    })
   }
 
-  // ── COMPANY: the same rule, institutional voice, survives the deadline ───
+  // ── COMPANY: the analytical read, survives the comment deadline ─────────
   if (now < SBA_RELEVANCE_END) {
     out.push({
       kind: 'sba-thesis',
